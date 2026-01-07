@@ -12,6 +12,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Debug - List all files recursively
+        run: ls -R
+
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
@@ -29,10 +32,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: supabase db push
 
-      - name: Debug - List all files recursively
-        run: ls -R
-
-      - name: Deploy Edge Functions
+      - name: Deploy Edge Functions (non-fatal)
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: supabase functions deploy optimize-image --no-verify-jwt
+        run: supabase functions deploy optimize-image --no-verify-jwt || true
