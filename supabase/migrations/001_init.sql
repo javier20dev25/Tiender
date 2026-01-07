@@ -72,9 +72,13 @@ create policy "public_select_stores" on public.stores
 create policy "insert_stores_owner" on public.stores
   for insert with check ( auth.uid() is not null and user_id = auth.uid() );
 
---  - UPDATE/DELETE only by owner
-create policy "owner_modify_stores" on public.stores
-  for update, delete using ( user_id = auth.uid() ) with check ( user_id = auth.uid() );
+--  - UPDATE only by owner
+create policy "owner_update_stores" on public.stores
+  for update using ( user_id = auth.uid() ) with check ( user_id = auth.uid() );
+
+--  - DELETE only by owner
+create policy "owner_delete_stores" on public.stores
+  for delete using ( user_id = auth.uid() );
 
 -- Policies for products:
 --  - Public read (anyone can SELECT products)
@@ -91,14 +95,23 @@ create policy "insert_products_if_owner" on public.products
     )
   );
 
---  - UPDATE/DELETE only by owner (must be owner of product's store)
-create policy "owner_modify_products" on public.products
-  for update, delete using (
+--  - UPDATE only by owner (must be owner of product's store)
+create policy "owner_update_products" on public.products
+  for update using (
     exists (
       select 1 from public.stores s
       where s.id = products.store_id and s.user_id = auth.uid()
     )
   ) with check (
+    exists (
+      select 1 from public.stores s
+      where s.id = products.store_id and s.user_id = auth.uid()
+    )
+  );
+
+--  - DELETE only by owner (must be owner of product's store)
+create policy "owner_delete_products" on public.products
+  for delete using (
     exists (
       select 1 from public.stores s
       where s.id = products.store_id and s.user_id = auth.uid()
