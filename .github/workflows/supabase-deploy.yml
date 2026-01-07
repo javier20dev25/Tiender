@@ -31,6 +31,9 @@ jobs:
         run: |
           supabase db push
 
+      - name: Debug: List files in supabase directory
+        run: ls -R supabase
+
       - name: Deploy Edge Functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
