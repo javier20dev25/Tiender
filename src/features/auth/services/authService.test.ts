@@ -19,7 +19,7 @@ describe('authService', () => {
       const credentials = { email: 'test@example.com', password: 'password123' };
       
       const mockResponse = { data: { user: { id: '123' } }, error: null };
-      vi.mocked(supabase.auth.signUp).mockResolvedValue(mockResponse as any);
+      vi.mocked(supabase.auth.signUp).mockResolvedValue(mockResponse as any) // eslint-disable-line @typescript-eslint/no-explicit-any
 
       await signUp(credentials);
 
@@ -30,7 +30,7 @@ describe('authService', () => {
       const credentials = { email: 'test@example.com', password: 'password123' };
       const mockUser = { id: '123', email: 'test@example.com' };
       const mockResponse = { data: { user: mockUser }, error: null };
-      vi.mocked(supabase.auth.signUp).mockResolvedValue(mockResponse as any);
+      vi.mocked(supabase.auth.signUp).mockResolvedValue(mockResponse as any) // eslint-disable-line @typescript-eslint/no-explicit-any
 
       const { user, error } = await signUp(credentials);
 
@@ -42,7 +42,7 @@ describe('authService', () => {
       const credentials = { email: 'test@example.com', password: 'password123' };
       const mockError = { message: 'User already registered', status: 400 };
       const mockResponse = { data: { user: null }, error: mockError };
-      vi.mocked(supabase.auth.signUp).mockResolvedValue(mockResponse as any);
+      vi.mocked(supabase.auth.signUp).mockResolvedValue(mockResponse as any) // eslint-disable-line @typescript-eslint/no-explicit-any
 
       const { user, error } = await signUp(credentials);
 
@@ -56,7 +56,7 @@ describe('authService', () => {
       const credentials = { email: 'test@example.com', password: 'password123' };
       
       const mockResponse = { data: { user: { id: '123' } }, error: null };
-      vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue(mockResponse as any);
+      vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue(mockResponse as any) // eslint-disable-line @typescript-eslint/no-explicit-any
 
       await signIn(credentials);
 
@@ -67,7 +67,7 @@ describe('authService', () => {
       const credentials = { email: 'test@example.com', password: 'password123' };
       const mockUser = { id: '123', email: 'test@example.com' };
       const mockResponse = { data: { user: mockUser }, error: null };
-      vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue(mockResponse as any);
+      vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue(mockResponse as any) // eslint-disable-line @typescript-eslint/no-explicit-any
 
       const { user, error } = await signIn(credentials);
 
@@ -79,7 +79,7 @@ describe('authService', () => {
       const credentials = { email: 'test@example.com', password: 'password123' };
       const mockError = { message: 'Invalid credentials', status: 400 };
       const mockResponse = { data: { user: null }, error: mockError };
-      vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue(mockResponse as any);
+      vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue(mockResponse as any) // eslint-disable-line @typescript-eslint/no-explicit-any
 
       const { user, error } = await signIn(credentials);
 
@@ -91,7 +91,7 @@ describe('authService', () => {
   describe('signOut', () => {
     it('should call supabase.auth.signOut', async () => {
       const mockResponse = { error: null };
-      vi.mocked(supabase.auth.signOut).mockResolvedValue(mockResponse as any);
+      vi.mocked(supabase.auth.signOut).mockResolvedValue(mockResponse as any) // eslint-disable-line @typescript-eslint/no-explicit-any
 
       await signOut();
 
@@ -100,7 +100,7 @@ describe('authService', () => {
 
     it('should return no error on successful sign out', async () => {
       const mockResponse = { error: null };
-      vi.mocked(supabase.auth.signOut).mockResolvedValue(mockResponse as any);
+      vi.mocked(supabase.auth.signOut).mockResolvedValue(mockResponse as any) // eslint-disable-line @typescript-eslint/no-explicit-any
 
       const { error } = await signOut();
 
@@ -110,7 +110,7 @@ describe('authService', () => {
     it('should return an error on failed sign out', async () => {
       const mockError = { message: 'Sign out failed', status: 500 };
       const mockResponse = { error: mockError };
-      vi.mocked(supabase.auth.signOut).mockResolvedValue(mockResponse as any);
+      vi.mocked(supabase.auth.signOut).mockResolvedValue(mockResponse as any) // eslint-disable-line @typescript-eslint/no-explicit-any
 
       const { error } = await signOut();
 

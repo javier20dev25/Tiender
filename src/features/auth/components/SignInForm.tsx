@@ -17,8 +17,12 @@ const SignInForm: React.FC = () => {
         throw error;
       }
       alert('¡Inicio de sesión exitoso!');
-    } catch (err: any) {
-      setError(err.message || 'Ocurrió un error al iniciar sesión.');
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Ocurrió un error inesperado al iniciar sesión.');
+      }
     } finally {
       setLoading(false);
     }
