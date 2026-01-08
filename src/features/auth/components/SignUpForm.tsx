@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signUp } from '../../services/authService';
+import { signUp } from '../services/authService';
 
 export const SignUpForm: React.FC = () => {
   const [email, setEmail] = useState('');
