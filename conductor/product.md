@@ -1,52 +1,47 @@
-# Product Guide: Tiender
+# Concepto Principal: Marketplace Social-First
 
-## 1. Initial Concept
+Tiender no es un marketplace transaccional clásico, sino una plataforma **social-first**. Su valor principal no reside únicamente en la compra-venta, sino en la **viralidad y la prueba social** que se genera y se comparte fuera de la aplicación.
 
-Tiender is a mobile-first marketplace inspired by Tinder's swipe mechanic. Users browse products from various stores in a card-swiping interface. A right swipe indicates interest, and an explicit "Add to Cart" button places the item in a floating shopping cart.
+El flujo central se basa en que los vendedores compartan "Tiendas Sociales" (páginas de producto) a través de enlaces directos en plataformas como WhatsApp e Instagram. Las interacciones de los compradores (votos, visitas, etc.) generan "señales sociales" (rankings, tendencias, tops de productos) que son, a su vez, compartibles. Este modelo busca influenciar a potenciales clientes incluso antes de que visiten la plataforma, aprovechando la confianza y curiosidad de los círculos sociales.
 
-The checkout process is handled off-platform. When a user decides to "place an order," the app generates a pre-filled WhatsApp message containing the order summary, which is sent directly to the store's WhatsApp number. This fosters a direct communication channel between the customer and the store.
+# Perfiles de Usuario Clave
 
-## 2. Target Audience
+## Vendedores Casuales / Artesanos (El Motor)
 
-### 2.1. Target Seller
+Son el motor inicial del producto. Típicamente, son individuos o pequeños creadores que ya venden de manera informal a través de WhatsApp o historias de Instagram.
 
-Tiender is designed for small and medium-sized sellers in LATAM who currently operate through social media (WhatsApp, Instagram, Facebook) and do not want or need a complex e-commerce solution. The platform is ideal for:
+*   **Necesidades:** Buscan una solución rápida, viral y simple para vender, evitando la complejidad y los costos de plataformas como Shopify.
+*   **Rol en Tiender:** Crean las "Tiendas Sociales" y activan el ciclo de compartición viral en sus redes existentes.
 
--   **Entrepreneurs and artisans:** Selling handmade goods, art, or niche items.
--   **Small local shops and boutiques:** Seeking a simple, low-cost digital sales channel.
--   **Digital-native D2C brands:** Looking for a new, personal customer discovery channel.
+## Nano-Influencers / Líderes de Opinión (El Acelerador)
 
-The typical seller manages their business from their phone, uses WhatsApp as their primary communication tool, has a small-to-medium catalog, and prefers customer proximity over mass-market traffic, avoiding transaction-based commissions.
+Son el acelerador de crecimiento de la plataforma. Ya entienden el valor de la prueba social y saben cómo movilizar a sus comunidades.
 
-### 2.2. Target Buyer
+*   **Necesidades:** Les interesan las herramientas que cuantifican y exhiben la popularidad (rankings, tops) para reforzar su credibilidad y monetizar su audiencia, ya sea con productos propios o curados.
+*   **Rol en Tiender:** Hacen que la plataforma se vea poderosa y deseable en las redes sociales, amplificando el alcance y atrayendo a nuevos usuarios.
 
-The primary benefit for the buyer is a fast, visual, and entertaining discovery experience ("digital window shopping"). It allows them to find unique products with zero friction and contact the store directly via WhatsApp to finalize the purchase or ask questions. The platform provides access to a curated catalog of emerging and local stores not typically found on large marketplaces.
+## Compradores Sociales (El Efecto Red)
 
-## 3. Core Product Mechanics
+Representan el efecto red y son cruciales para la validación de los productos.
 
-### 3.1. Swipe and Cart Interaction
+*   **Comportamiento:** No siempre llegan con una intención de compra directa. A menudo, acceden por curiosidad, impulsados por un enlace compartido en un grupo o una historia.
+*   **Influencias:** Toman decisiones basadas en la prueba social: rankings de productos, número de interacciones y las preferencias de su grupo.
+*   **Rol en Tiender:** Convierten las interacciones pasivas en prueba social activa, validando los productos y alimentando el motor de tendencias.
 
-The user experience is centered around simplicity and clear intent:
+# Producto Mínimo Viable (MVP)
 
--   **Right Swipe (Like):** This action signals user interest in a product. It is a metric for the store owner and can be used to influence product ranking and analytics. It does **not** add the product to the cart.
--   **Add to Cart Button:** Each product card features an explicit button to add the item to a floating, easily accessible shopping cart. This action requires clear user intent.
--   **No Wishlist:** To maintain simplicity and focus on conversion, a separate "Favorites" or "Wishlist" feature will not be implemented in the MVP.
+## Hipótesis a Validar
 
-### 3.2. Store Onboarding and Design
+El MVP está diseñado para validar una única y fundamental hipótesis:
+**"Si le doy a una tienda un link social con productos y un método de pedido fácil por WhatsApp, la gente interactuará y comprará."**
 
-To ensure a high-quality, consistent user experience and minimize setup effort for the seller, Tiender provides:
+## Funcionalidades Críticas del MVP
 
--   **A Single, Optimized Template:** All storefronts will use a single, clean, modern, and mobile-optimized design.
--   **Automatic Personalization:** The template will automatically adapt to give a sense of brand identity by incorporating the store's logo and deriving a primary accent color from it. No advanced customization of fonts or layouts will be offered in the MVP.
+Para validar la hipótesis, el MVP se centrará exclusivamente en dos funcionalidades imprescindibles:
 
-## 4. Monetization and Subscription Plans
+1.  **Generador de "Tienda Social":** El corazón del producto. Una herramienta que permite a un vendedor crear una página de producto simple, la cual tiene un enlace único y compartible. Este enlace es el punto de entrada para todas las interacciones y el ciclo viral.
+2.  **Checkout vía WhatsApp:** El punto de conversión. Un botón "Pedir por WhatsApp" que, al ser presionado, pre-redacta un mensaje con los detalles del pedido, eliminando la fricción y aprovechando un hábito de comunicación ya existente en el usuario. Tiender no busca reemplazar WhatsApp, sino potenciarlo como canal de cierre.
 
-The model is a subscription service for stores, designed to be simple and scalable.
+## Funcionalidades Estratégicamente Postpuestas
 
--   **Structure:** Plans are differentiated primarily by the number of allowed products and secondarily by the level of analytics provided.
--   **Core Features:** All essential functions (storefront, swipe discovery, cart, WhatsApp checkout) are available on all plans.
--   **Tiers (Example):**
-    -   **Trial (Free):** 7-day trial with a limited number of products.
-    -   **Basic:** Allows a higher number of products and includes basic analytics.
-    -   **Pro:** Allows the largest number of products and unlocks advanced analytics, including natural language reports on metrics powered by AI (Gemini 2.5 Flash).
--   **MVP Scope:** Complex marketing tools and customer data export features are excluded from the initial version to keep the product lean and costs low.
+*   **Dashboard de "Señales Sociales":** Aunque es una funcionalidad clave para la visión a largo plazo, se desarrollará después de validar el MVP. Su propósito será optimizar, profesionalizar y fidelizar a los vendedores una vez que exista un volumen de tráfico e interacciones suficiente para justificarlo.

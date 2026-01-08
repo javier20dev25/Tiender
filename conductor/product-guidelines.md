@@ -1,29 +1,27 @@
-# Product Guidelines: Tiender
+# Guías de Producto: Tiender
 
-## 1. Brand Personality
+Este documento define la personalidad de la marca Tiender, asegurando que nuestra comunicación y estética sean consistentes, reconocibles y efectivas para nuestro propósito.
 
-**The Enthusiastic Connector:** Tiender's personality is that of an extroverted, sociable, and energetic friend. It's optimistic, enjoys connecting people with interesting products, and does so in a fun and motivating way. This personality is reflected in a user experience that is light, entertaining, and free of excessive formalities, inspiring curiosity and discovery, especially for mobile users in LATAM.
+## 1. Tono de Voz: Divertido y Viral
 
-## 2. Voice and Tone
+Nuestra voz es nuestro principal conector con la comunidad. No sonamos como una corporación, sonamos como las personas que usan nuestra plataforma.
 
-**Casual and Close:** The tone should always feel human, accessible, and friendly. Communication should be direct and inspiring, like a friend helping you discover something new. We must avoid technical jargon, corporate language, and overly aspirational phrases.
+*   **Principio Clave:** Ser casual, relatable y altamente compartible.
+*   **Tácticas:**
+    *   Uso de un lenguaje informal y directo.
+    *   Incorporación inteligente de emojis (⚡, 🎨, 👉) para añadir énfasis y personalidad.
+    *   Enfoque en crear mensajes que la gente quiera compartir de forma natural.
+*   **Objetivo:** Reforzar el enfoque "social-first" y hacer que cada interacción se sienta nativa de plataformas como WhatsApp e Instagram. Ser divertido no nos impide ser confiables; simplemente nos hace más cercanos.
 
-## 3. Visual Identity
+## 2. Identidad Visual: Vibrante y Eléctrica
 
-**Clean, Vibrant, and Flexible:** The design system is built on three core principles:
--   **Minimalist Base:** The overall layout is clean and prioritizes white space to ensure the products are the main focus.
--   **Vibrant Accents:** Energetic and bold colors are used for calls-to-action, interactive elements, and branding moments, creating a dynamic feel.
--   **Dual Themes:** The interface supports both a light (default) and an elegant dark theme, allowing user choice and adapting to different environments.
+Nuestra estética visual debe capturar la atención de inmediato en un feed social saturado. Debe ser tan energética como la comunidad que estamos construyendo.
 
-## 4. UX Principles
-
-**Radical Simplicity:** This is the most important principle guiding our user experience.
--   **Mantra:** If a feature requires an explanation, it is too complicated for the MVP. Every screen must be understandable in seconds without tutorials.
--   **Consequences:** Speed, fluidity, and consistency are natural outcomes of this unwavering focus on simplicity.
-
-## 5. Communication with Sellers
-
-**Actionable, Valuable, and Respectful:** All communication directed at store owners (notifications, emails, reports) must adhere to these rules:
--   **Purpose:** Every message must be valuable, helping the seller make a clear decision or understand their store's status.
--   **Delivery:** Communications will be grouped into periodic summaries (e.g., weekly) to minimize interruptions and respect the seller's time.
--   **Scope (MVP):** We will not use messages for artificial engagement. In the MVP, communication is strictly limited to metric reports, important subscription notices, and critical alerts.
+*   **Principio Clave:** Ganar la atención y generar acción a través del color y la energía.
+*   **Paleta de Colores:**
+    *   Debemos usar una paleta de colores llamativa y eléctrica. Pensar en fucsias, turquesas, amarillos y otros tonos de alta energía.
+    *   Estos colores se usarán estratégicamente en botones de llamado a la acción (ej. "Pedir por WhatsApp"), contadores, reacciones y cualquier elemento que deba gritar "¡tócame!".
+*   **Tipografía:**
+    *   La tipografía debe ser audaz y clara, fácil de leer en pantallas pequeñas y con la suficiente personalidad para destacar.
+*   **Flexibilidad Estratégica:**
+    *   Esta base vibrante es flexible. En el futuro, se puede combinar con fondos neutros (blanco/negro) para crear contraste y respiro visual, o incluso incorporar elementos "nativos" de redes sociales (como stickers) dentro de nuestra paleta de colores.

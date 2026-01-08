@@ -4,6 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Onboarding de Vendedores y Publicación de Productos
-*Link: [./tracks/onboarding_vendedores_20260107/](./tracks/onboarding_vendedores_20260107/)*
-
+## [ ] Track: Implementar el flujo de autenticación de usuarios (registro y login) para Vendedores usando Supabase.
+*Link: [./conductor/tracks/auth_flow_20260107/](./conductor/tracks/auth_flow_20260107/)*
