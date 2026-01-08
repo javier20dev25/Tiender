@@ -2,13 +2,13 @@
 
 This plan outlines the phases and tasks to implement the user authentication flow with Supabase.
 
-## Phase 1: UI Components & Routing Setup
+## Phase 1: UI Components & Routing Setup [checkpoint: d9bf22c]
 
 - [x] Task: Create UI component for the Sign-Up form (`src/features/auth/components/SignUpForm.tsx`). [8d0e004]
 - [x] Task: Create UI component for the Sign-In form (`src/features/auth/components/SignInForm.tsx`). [52f6d82]
 - [x] Task: Create a container page `AuthPage.tsx` to display and toggle between the Sign-Up and Sign-In forms. [4212b18]
 - [x] Task: Configure `react-router-dom` to set up routes for `/auth`, `/dashboard` (initially a placeholder), and a default redirect. [e3746d7]
-- [ ] Task: Conductor - User Manual Verification 'UI Components & Routing Setup' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'UI Components & Routing Setup' (Protocol in workflow.md) [d9bf22c]
 
 ## Phase 2: Supabase Client & API Logic
 
