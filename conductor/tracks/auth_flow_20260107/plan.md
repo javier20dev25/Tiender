@@ -4,7 +4,7 @@ This plan outlines the phases and tasks to implement the user authentication flo
 
 ## Phase 1: UI Components & Routing Setup
 
-- [ ] Task: Create UI component for the Sign-Up form (`src/features/auth/components/SignUpForm.tsx`).
+- [x] Task: Create UI component for the Sign-Up form (`src/features/auth/components/SignUpForm.tsx`). [8d0e004]
 - [ ] Task: Create UI component for the Sign-In form (`src/features/auth/components/SignInForm.tsx`).
 - [ ] Task: Create a container page `AuthPage.tsx` to display and toggle between the Sign-Up and Sign-In forms.
 - [ ] Task: Configure `react-router-dom` to set up routes for `/auth`, `/dashboard` (initially a placeholder), and a default redirect.
