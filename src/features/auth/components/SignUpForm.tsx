@@ -12,7 +12,7 @@ export const SignUpForm: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      const { error } = await signUp(email, password);
+      const { error } = await signUp({ email, password });
       if (error) {
         throw error;
       }
