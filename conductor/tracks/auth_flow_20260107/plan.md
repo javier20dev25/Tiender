@@ -14,8 +14,8 @@ This plan outlines the phases and tasks to implement the user authentication flo
 
 - [x] Task: Install `@supabase/supabase-js`. (Already done, but good to verify). [verification]
 - [x] Task: Create a Supabase client singleton (`src/lib/supabaseClient.ts`) to be used across the app. [ce50de0]
-- [ ] Task: Write failing unit tests for the `signUp` service function.
-- [ ] Task: Implement the `signUp` service function that wraps `supabase.auth.signUp`.
+- [x] Task: Write failing unit tests for the `signUp` service function. [cb12d69]
+- [x] Task: Implement the `signUp` service function that wraps `supabase.auth.signUp`. [cb12d69]
 - [ ] Task: Write failing unit tests for the `signIn` service function.
 - [ ] Task: Implement the `signIn` service function that wraps `supabase.auth.signInWithPassword`.
 - [ ] Task: Write failing unit tests for the `signOut` service function.
