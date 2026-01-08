@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { signIn } from '../../services/authService';
 
 const SignInForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -10,10 +11,17 @@ const SignInForm: React.FC = () => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    // TODO: Add Supabase signin logic here
-    console.log('Submitting:', { email, password });
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network request
-    setLoading(false);
+    try {
+      const { error } = await signIn(email, password);
+      if (error) {
+        throw error;
+      }
+      alert('¡Inicio de sesión exitoso!');
+    } catch (err: any) {
+      setError(err.message || 'Ocurrió un error al iniciar sesión.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [ ] Track: Implementar el flujo de autenticación de usuarios (registro y login) para Vendedores usando Supabase.
+## [~] Track: Implementar el flujo de autenticación de usuarios (registro y login) para Vendedores usando Supabase.
 *Link: [./conductor/tracks/auth_flow_20260107/](./conductor/tracks/auth_flow_20260107/)*

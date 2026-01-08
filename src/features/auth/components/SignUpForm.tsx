@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { signUp } from '../../services/authService';
 
 export const SignUpForm: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -10,10 +11,17 @@ export const SignUpForm: React.FC = () => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    // TODO: Add Supabase signup logic here
-    console.log('Submitting:', { email, password });
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network request
-    setLoading(false);
+    try {
+      const { error } = await signUp(email, password);
+      if (error) {
+        throw error;
+      }
+      alert('¡Registro exitoso! Revisa tu correo para verificar tu cuenta.');
+    } catch (err: any) {
+      setError(err.message || 'Ocurrió un error durante el registro.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
