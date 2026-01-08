@@ -24,10 +24,10 @@ This plan outlines the phases and tasks to implement the user authentication flo
 
 ## Phase 3: State Management & Integration
 
-- [ ] Task: Create a React Context for session management to provide user and session state globally.
+- [x] Task: Create a React Context for session management to provide user and session state globally.
 - [x] Task: Implement the logic within the `SignUpForm` component to call the `signUp` service function and handle UI state (loading, errors).
 - [x] Task: Implement the logic within the `SignInForm` component to call the `signIn` service function and handle UI state.
-- [ ] Task: Write failing tests for a `ProtectedRoute` component that checks for an active session.
-- [ ] Task: Implement the `ProtectedRoute` component to redirect unauthenticated users.
-- [ ] Task: Update the router configuration to use the `ProtectedRoute` for the `/dashboard` route.
+- [x] Task: Write failing tests for a `ProtectedRoute` component that checks for an active session.
+- [x] Task: Implement the `ProtectedRoute` component to redirect unauthenticated users.
+- [x] Task: Update the router configuration to use the `ProtectedRoute` for the `/dashboard` route.
 - [ ] Task: Conductor - User Manual Verification 'State Management & Integration' (Protocol in workflow.md)
