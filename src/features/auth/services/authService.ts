@@ -11,3 +11,8 @@ export const signIn = async (credentials: SignUpWithPasswordCredentials) => {
   const { data, error } = await supabase.auth.signInWithPassword(credentials);
   return { user: data.user, error };
 };
+
+export const signOut = async () => {
+  const { error } = await supabase.auth.signOut();
+  return { error };
+};

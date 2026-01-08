@@ -1,6 +1,6 @@
 // src/features/auth/services/authService.test.ts
 import { describe, it, expect, vi } from 'vitest';
-import { signUp, signIn } from './authService';
+import { signUp, signIn, signOut } from './authService';
 import { supabase } from '../../../lib/supabaseClient';
 
 vi.mock('../../../lib/supabaseClient', () => ({
@@ -8,6 +8,7 @@ vi.mock('../../../lib/supabaseClient', () => ({
     auth: {
       signUp: vi.fn(),
       signInWithPassword: vi.fn(),
+      signOut: vi.fn(),
     },
   },
 }));
@@ -86,5 +87,34 @@ describe('authService', () => {
       expect(error).toEqual(mockError);
     });
   });
-});
 
+  describe('signOut', () => {
+    it('should call supabase.auth.signOut', async () => {
+      const mockResponse = { error: null };
+      vi.mocked(supabase.auth.signOut).mockResolvedValue(mockResponse as any);
+
+      await signOut();
+
+      expect(supabase.auth.signOut).toHaveBeenCalled();
+    });
+
+    it('should return no error on successful sign out', async () => {
+      const mockResponse = { error: null };
+      vi.mocked(supabase.auth.signOut).mockResolvedValue(mockResponse as any);
+
+      const { error } = await signOut();
+
+      expect(error).toBeNull();
+    });
+
+    it('should return an error on failed sign out', async () => {
+      const mockError = { message: 'Sign out failed', status: 500 };
+      const mockResponse = { error: mockError };
+      vi.mocked(supabase.auth.signOut).mockResolvedValue(mockResponse as any);
+
+      const { error } = await signOut();
+
+      expect(error).toEqual(mockError);
+    });
+  });
+});
