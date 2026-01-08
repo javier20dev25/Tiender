@@ -18,8 +18,8 @@ This plan outlines the phases and tasks to implement the user authentication flo
 - [x] Task: Implement the `signUp` service function that wraps `supabase.auth.signUp`. [cb12d69]
 - [x] Task: Write failing unit tests for the `signIn` service function. [0175d02]
 - [x] Task: Implement the `signIn` service function that wraps `supabase.auth.signInWithPassword`. [0175d02]
-- [ ] Task: Write failing unit tests for the `signOut` service function.
-- [ ] Task: Implement the `signOut` service function that wraps `supabase.auth.signOut`.
+- [x] Task: Write failing unit tests for the `signOut` service function. [060dfa8]
+- [x] Task: Implement the `signOut` service function that wraps `supabase.auth.signOut`. [060dfa8]
 - [ ] Task: Conductor - User Manual Verification 'Supabase Client & API Logic' (Protocol in workflow.md)
 
 ## Phase 3: State Management & Integration
