@@ -6,3 +6,8 @@ export const signUp = async (credentials: SignUpWithPasswordCredentials) => {
   const { data, error } = await supabase.auth.signUp(credentials);
   return { user: data.user, error };
 };
+
+export const signIn = async (credentials: SignUpWithPasswordCredentials) => {
+  const { data, error } = await supabase.auth.signInWithPassword(credentials);
+  return { user: data.user, error };
+};
