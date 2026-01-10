@@ -5,10 +5,16 @@ import SignInForm from '../features/auth/components/SignInForm'; // Default impo
 const AuthPage = () => {
   const [isSignUp, setIsSignUp] = useState(true); // State to toggle between forms
 
+  const switchToSignIn = () => setIsSignUp(false);
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
       <div className="w-full max-w-md">
-        {isSignUp ? <SignUpForm /> : <SignInForm />}
+        {isSignUp ? (
+          <SignUpForm onSwitchToSignIn={switchToSignIn} />
+        ) : (
+          <SignInForm />
+        )}
 
         <div className="mt-4 text-center">
           <button
