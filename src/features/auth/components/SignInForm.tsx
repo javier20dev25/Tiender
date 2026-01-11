@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { signIn } from '../services/authService';
 
 const SignInForm: React.FC = () => {
@@ -6,6 +7,7 @@ const SignInForm: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -16,9 +18,13 @@ const SignInForm: React.FC = () => {
       if (error) {
         throw error;
       }
-      alert('¡Inicio de sesión exitoso!');
-    } catch (err: any) {
-      setError(err.message || 'Ocurrió un error al iniciar sesión.');
+      navigate('/dashboard');
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Ocurrió un error inesperado al iniciar sesión.');
+      }
     } finally {
       setLoading(false);
     }

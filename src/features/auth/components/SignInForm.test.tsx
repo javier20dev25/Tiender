@@ -1,10 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import SignInForm from './SignInForm';
 
 describe('SignInForm', () => {
   it('should render email, password inputs and a submit button', () => {
-    render(<SignInForm />);
+    render(
+      <MemoryRouter>
+        <SignInForm />
+      </MemoryRouter>
+    );
 
     // Check for email input using the Spanish label
     const emailInput = screen.getByLabelText(/correo electrónico/i);
