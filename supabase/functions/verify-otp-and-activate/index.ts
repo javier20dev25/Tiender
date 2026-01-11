@@ -11,7 +11,8 @@ interface VerifyOtpData {
 
 // --- FUNCIONES AUXILIARES ---
 
-/** Registra un evento de negocio en la tabla `business_events`. */
+/*
+/** Registra un evento de negocio en la tabla `business_events`. * /
 const logEvent = async (
     supabase: SupabaseClient,
     eventType: string,
@@ -26,6 +27,7 @@ const logEvent = async (
         payload,
     });
 };
+*/
 
 
 // --- SERVIDOR PRINCIPAL DE LA FUNCIÓN ---
@@ -35,10 +37,10 @@ Deno.serve(async (req) => {
         return new Response('ok', { headers: corsHeaders });
     }
 
-    const supabaseAdmin = createClient(
+    /* const supabaseAdmin = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    ); */
 
     try {
         const { email, otp }: VerifyOtpData = await req.json();

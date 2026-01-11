@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     await logEvent(supabaseAdmin, 'SIGNUP_ATTEMPT', { payload: { email, whatsapp: normalizedWhatsApp } });
 
     // 1. Verificar la identidad de WhatsApp
-    let { data: identity, error: identityError } = await supabaseAdmin
+    const { data: identity, error: identityError } = await supabaseAdmin
       .from('whatsapp_identities')
       .select('*')
       .eq('whatsapp_number', normalizedWhatsApp)

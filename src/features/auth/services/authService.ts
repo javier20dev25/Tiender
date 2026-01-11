@@ -62,7 +62,7 @@ const productionOrchestrateSignUp = async (
   });
 
   if (error) {
-    const errorContext = (error as any).context;
+    const errorContext = (error as { context: Response }).context;
     if (errorContext && typeof errorContext.json === 'function') {
       const errorJson = await errorContext.json();
       // Lanza objeto plain para frontend

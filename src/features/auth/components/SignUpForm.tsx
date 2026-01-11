@@ -24,8 +24,18 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
     try {
       await orchestrateSignUp({ email, password, whatsapp });
       navigate('/verify-otp', { state: { email } });
-    } catch (err: any) {
-      if (err && err.isBusinessError) {
+    } catch (err: unknown) {
+      // Type guard para verificar si es un error de negocio que hemos lanzado a propósito
+      const isBusinessError = (error: unknown): error is { isBusinessError: true; error_code: BusinessErrorCode; message: string } => {
+        return (
+          typeof error === 'object' &&
+          error !== null &&
+          'isBusinessError' in error &&
+          (error as { isBusinessError: boolean }).isBusinessError === true
+        );
+      };
+
+      if (isBusinessError(err)) {
         setBusinessErrorCode(err.error_code);
         setErrorMessage(err.message);
       } else {

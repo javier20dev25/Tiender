@@ -3,7 +3,7 @@ import { render, screen, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AuthProvider, useAuth } from './AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import type { Session, User } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 
 // Mocking supabase client
 vi.mock('../lib/supabaseClient', () => ({

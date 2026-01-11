@@ -30,7 +30,7 @@ const VerifyOtpPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
+      const { error } = await supabase.auth.verifyOtp({
         email,
         token: otp,
         type: 'email',
