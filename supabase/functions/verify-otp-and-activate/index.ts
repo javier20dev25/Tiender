@@ -1,6 +1,6 @@
 // supabase/functions/verify-otp-and-activate/index.ts
 
-import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
 import { corsHeaders } from '../_shared/cors.ts';
 
 // --- INTERFACES Y TIPOS ---
