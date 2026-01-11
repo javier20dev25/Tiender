@@ -20,7 +20,7 @@ jobs:
           version: latest # Usa la última versión de la CLI de Supabase
 
       - name: Apply database migrations
-        run: supabase db push
+        run: supabase db push --project-ref ${{ secrets.PROJECT_ID }}
         env:
           # La contraseña de la base de datos se debe guardar como un secreto en GitHub
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
