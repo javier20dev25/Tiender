@@ -93,7 +93,12 @@ describe('Edge Function: orchestrate-signup', () => {
         if (!supabaseUrl || !serviceRoleKey) {
             throw new Error("Missing supabaseUrl or serviceRoleKey for cleanup");
         }
-        const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+        const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        });
         const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
         
         if (error) {

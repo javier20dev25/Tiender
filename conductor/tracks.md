@@ -10,5 +10,3 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 ## Pending Tasks
-
-- [ ] Unit tests for verify-otp-and-activate edge function

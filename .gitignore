@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 .vercel
 .env*.local
+\n# Local artifacts and environment files\nsupabase.deb\n**/.env.test
