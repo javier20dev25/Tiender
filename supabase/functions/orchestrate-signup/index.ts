@@ -5,16 +5,15 @@ import { corsHeaders } from '../_shared/cors.ts';
 
 // --- INTERFACES Y TIPOS ---
 interface SignUpData {
-  email: string;
+  phone: string; // Changed from email and whatsapp to just phone
   password?: string;
-  whatsapp: string;
 }
 
 // --- FUNCIONES AUXILIARES ---
 
-/** Normaliza un número de WhatsApp a solo dígitos. */
-const normalizeWhatsApp = (whatsapp: string): string => {
-  return whatsapp.replace(/\D/g, '');
+/** Normaliza un número de teléfono a solo dígitos. */
+const normalizePhone = (phone: string): string => {
+  return phone.replace(/\D/g, '');
 };
 
 /** Registra un evento de negocio en la tabla `business_events`. */
@@ -46,23 +45,23 @@ Deno.serve(async (req) => {
   );
 
   try {
-    const { email, password, whatsapp }: SignUpData = await req.json();
+    const { phone, password }: SignUpData = await req.json();
 
-    if (!email || !password || !whatsapp) {
-      return new Response(JSON.stringify({ error_code: 'MISSING_PARAMS', message: 'Faltan datos requeridos.' }), {
+    if (!phone || !password) {
+      return new Response(JSON.stringify({ error_code: 'MISSING_PARAMS', message: 'Faltan el teléfono y la contraseña.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       });
     }
 
-    const normalizedWhatsApp = normalizeWhatsApp(whatsapp);
-    await logEvent(supabaseAdmin, 'SIGNUP_ATTEMPT', { payload: { email, whatsapp: normalizedWhatsApp } });
+    const normalizedPhone = normalizePhone(phone);
+    await logEvent(supabaseAdmin, 'SIGNUP_ATTEMPT', { payload: { phone: normalizedPhone } });
 
     // 1. Verificar la identidad de WhatsApp
     let { data: identity, error: identityError } = await supabaseAdmin
       .from('whatsapp_identities')
       .select('*')
-      .eq('whatsapp_number', normalizedWhatsApp)
+      .eq('whatsapp_number', normalizedPhone)
       .single();
 
     if (identityError && identityError.code !== 'PGRST116') { // 'No rows found'
@@ -82,7 +81,7 @@ Deno.serve(async (req) => {
     } else {
       const { data: newIdentity, error: newIdError } = await supabaseAdmin
         .from('whatsapp_identities')
-        .insert({ whatsapp_number: normalizedWhatsApp, status: 'TRIAL_AVAILABLE' })
+        .insert({ whatsapp_number: normalizedPhone, status: 'TRIAL_AVAILABLE' })
         .select()
         .single();
       if (newIdError) throw new Error(`No se pudo crear la identidad de WhatsApp: ${newIdError.message}`);
@@ -90,15 +89,15 @@ Deno.serve(async (req) => {
     }
     await logEvent(supabaseAdmin, 'WHATSAPP_TRIAL_AVAILABLE', { whatsapp_identity_id: identity.id });
 
-    // 2. Crear el usuario en Supabase Auth
+    // 2. Crear el usuario en Supabase Auth usando el teléfono
     const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.createUser({
-      email,
+      phone: normalizedPhone,
       password,
-      email_confirm: true, // Requerimos confirmación de correo (OTP).
+      phone_confirm: false, // El usuario se activa inmediatamente.
     });
 
     if (userError) {
-      const errorCode = userError.message.includes('already registered') ? 'EMAIL_EXISTS' : 'AUTH_USER_CREATION_FAILED';
+      const errorCode = userError.message.includes('already registered') ? 'PHONE_EXISTS' : 'AUTH_USER_CREATION_FAILED';
       await logEvent(supabaseAdmin, 'SIGNUP_FAILURE', { whatsapp_identity_id: identity.id, payload: { error: userError.message, errorCode } });
       return new Response(JSON.stringify({ error_code: errorCode, message: userError.message }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -108,28 +107,29 @@ Deno.serve(async (req) => {
     if (!user) throw new Error('La creación del usuario no devolvió un usuario.');
     await logEvent(supabaseAdmin, 'SIGNUP_SUCCESS', { whatsapp_identity_id: identity.id, auth_user_id: user.id });
 
-    // 3. Asociar la identidad de WhatsApp con el nuevo usuario de Auth.
+    // 3. Asociar la identidad de WhatsApp y activar el trial.
     const { error: updateError } = await supabaseAdmin
       .from('whatsapp_identities')
       .update({
         associated_auth_user_id: user.id,
-        status: 'PENDING_VERIFICATION', // El trial no se activa hasta la verificación del OTP.
+        status: 'TRIAL_ACTIVE', // El trial se activa inmediatamente.
       })
       .eq('id', identity.id);
     
     if (updateError) throw new Error(`Error al asociar la identidad: ${updateError.message}`);
 
-    // 4. Se asume que Supabase enviará el OTP automáticamente por la configuración de `email_confirm: true`.
-    await logEvent(supabaseAdmin, 'OTP_SENT', { auth_user_id: user.id });
+    await logEvent(supabaseAdmin, 'TRIAL_ACTIVATED', { auth_user_id: user.id });
 
-    // Éxito: el frontend puede proceder a la página de OTP.
-    return new Response(JSON.stringify({ success: true, message: 'Usuario creado. Por favor, verifica tu correo.' }), {
+    // Éxito: el usuario está creado y activo.
+    return new Response(JSON.stringify({ success: true, user_id: user.id, message: 'Usuario creado y activado correctamente.' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
 
   } catch (error) {
-    await logEvent(supabaseAdmin, 'SIGNUP_FAILURE', { payload: { error: error.message, source: 'CATCH_ALL' } });
+    // El logEvent aquí puede fallar si la creación del cliente de Supabase falló.
+    // Es un caso extremo, pero es bueno tenerlo en cuenta.
+    console.error('Error en el bloque catch principal:', error.message);
     return new Response(JSON.stringify({ error_code: 'INTERNAL_SERVER_ERROR', message: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
