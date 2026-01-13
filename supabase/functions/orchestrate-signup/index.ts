@@ -69,10 +69,17 @@ Deno.serve(async (req) => {
     }
 
     if (identity) {
-      if (['TRIAL_ACTIVE', 'TRIAL_EXPIRED', 'BLOCKED'].includes(identity.status)) {
+      if (['TRIAL_ACTIVE', 'TRIAL_EXPIRED'].includes(identity.status)) {
+        await logEvent(supabaseAdmin, 'SIGNUP_FAILURE', { whatsapp_identity_id: identity.id, payload: { error: 'Phone number already exists (trial active/expired)', errorCode: 'PHONE_EXISTS' } });
+        return new Response(JSON.stringify({ error_code: 'PHONE_EXISTS', message: 'User with this phone number already exists.' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 409,
+        });
+      }
+      if (identity.status === 'BLOCKED') {
         await logEvent(supabaseAdmin, 'WHATSAPP_TRIAL_DENIED', { whatsapp_identity_id: identity.id, payload: { status: identity.status } });
-        const message = identity.status === 'BLOCKED' ? 'Este número de WhatsApp se encuentra bloqueado.' : 'Este número de WhatsApp ya ha utilizado su período de prueba.';
-        const error_code = identity.status === 'BLOCKED' ? 'WHATSAPP_BLOCKED' : 'WHATSAPP_IN_USE';
+        const message = 'Este número de WhatsApp se encuentra bloqueado.';
+        const error_code = 'WHATSAPP_BLOCKED';
         return new Response(JSON.stringify({ error_code, message }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 409,
