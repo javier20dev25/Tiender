@@ -45,3 +45,82 @@ Para validar la hipótesis, el MVP se centrará exclusivamente en dos funcionali
 ## Funcionalidades Estratégicamente Postpuestas
 
 *   **Dashboard de "Señales Sociales":** Aunque es una funcionalidad clave para la visión a largo plazo, se desarrollará después de validar el MVP. Su propósito será optimizar, profesionalizar y fidelizar a los vendedores una vez que exista un volumen de tráfico e interacciones suficiente para justificarlo.
+
+---
+
+# Visión Detallada de Funcionalidades v1
+
+Esta sección detalla las características específicas de los planes y la experiencia de usuario.
+
+## Modelo de Planes
+
+### El Plan Estándar: El Lanzamiento
+
+Este es el plan base para que cualquier vendedor pueda empezar a validar sus productos.
+
+*   **Gestión de Tienda:**
+    *   Añadir/Editar **Nombre de la Tienda**.
+*   **Gestión de Productos:**
+    *   Añadir productos con:
+        *   Una foto por producto.
+        *   Nombre.
+        *   Precio (en USD).
+        *   Descripción opcional.
+*   **Panel de Métricas (Simplificado):**
+    *   Visitas totales del día a la tienda.
+    *   Visitas totales de la semana.
+    *   **Ranking de Productos Más Gustados** (basado en 'likes').
+*   **Informes con IA (Básico):**
+    *   Un botón para generar un informe de IA que analizará los datos disponibles en este plan (visitas, likes, información de productos) para dar recomendaciones.
+*   **Acciones de la Tienda:**
+    *   Botón "Agregar/Actualizar Tienda" para guardar cambios.
+    *   Botón "Compartir Tienda" que genera un enlace con un texto predefinido.
+
+### El Plan Full: El Acelerador de Negocio
+
+Este plan ofrece herramientas avanzadas para que los vendedores no solo validen, sino que optimicen su negocio. Incluye todo lo del Plan Estándar más:
+
+*   **Gestión de Tienda Avanzada:**
+    *   Añadir una **foto/logo** para la tienda.
+*   **Métricas y Rankings Avanzados:**
+    *   **Captura de Datos Completa:** Registra `likes`, `dislikes`, y productos "saltados" (sin reacción).
+    *   **Métricas de Carrito:** Captura qué productos se añaden al carrito y en qué cantidad.
+    *   **Rankings Detallados:**
+        *   Top 5 productos más gustados.
+        *   Top 5 productos menos gustados.
+        *   Top 5 productos que generan indiferencia (saltados).
+    *   **Métricas de Valor:**
+        *   Total de productos añadidos al carrito (hoy y en la semana).
+        *   Valor total en USD de los carritos (hoy y en la semana).
+*   **Informes con IA (Avanzado):**
+    *   El botón "Generar Informe con IA" incluye campos opcionales para que el vendedor añada:
+        *   Total de productos facturados vía WhatsApp.
+        *   Ingresos totales de esas ventas.
+        *   Observaciones (ej. "promociones, pagos a cuotas...").
+    *   La IA usará **todos los datos** para generar un informe financiero y administrativo de alto valor.
+*   **Funcionalidades de Producto Externas:**
+    *   Añadir un **enlace a un vídeo de YouTube** por producto.
+    *   Añadir un **enlace directo al producto** en una tienda externa (ej. Shopify, Amazon).
+
+## La Experiencia del Comprador: La "Tienda Social"
+
+Esta es la interfaz pública que ven los clientes al recibir un enlace, inspirada en "Tinder para Productos".
+
+*   **Diseño General:**
+    *   Arriba: Logo (si es Plan Full) y Nombre de la Tienda.
+    *   Centro: La imagen del producto.
+    *   Superpuesto en la imagen (solo Plan Full):
+        *   Icono de YouTube (abajo a la izquierda).
+        *   Icono de "Ver en tienda" (abajo a la derecha).
+*   **Interacción (Estilo Tinder):**
+    *   Botón de Dislike (❌) a la izquierda.
+    *   Botón de Siguiente Producto en medio.
+    *   Botón de Like (❤️) a la derecha.
+*   **Carrito de Compras:**
+    *   Debajo de los botones de reacción: un botón **"Añadir al Carrito"**.
+    *   Al añadir, aparece una **burbuja de carrito**.
+    *   Al tocar la burbuja, se abre un resumen (modal) con:
+        *   Tabla con miniatura, cantidad (+/-), precio unitario y total.
+        *   Total general del pedido.
+        *   Botón **"Hacer Pedido por WhatsApp"**.
+    *   Este último botón redirige a WhatsApp con un mensaje pre-redactado. El cierre de la venta es **off-platform**.
