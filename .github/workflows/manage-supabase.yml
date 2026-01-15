@@ -2,11 +2,6 @@ name: Manage Supabase
 
 on:
   workflow_dispatch:
-    inputs:
-      secrets_to_set:
-        description: 'Secrets to set for the Edge Function (e.g., "SECRET_NAME=SECRET_VALUE ANOTHER_SECRET=VALUE")'
-        required: true
-        type: string
 
 jobs:
   manage-supabase:
@@ -21,12 +16,14 @@ jobs:
       - name: Link Supabase project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          # The project ref is specified here
         run: |
-          supabase link --project-ref zilkwckvsnxualaaapud
+          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
 
       - name: Set Supabase secrets
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
-          supabase secrets set ${{ github.event.inputs.secrets_to_set }}
+          supabase secrets set \
+            SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
+            SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} \
+            SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
