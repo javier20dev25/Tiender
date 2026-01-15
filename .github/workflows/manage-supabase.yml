@@ -1,0 +1,32 @@
+name: Manage Supabase
+
+on:
+  workflow_dispatch:
+    inputs:
+      secrets_to_set:
+        description: 'Secrets to set for the Edge Function (e.g., "SECRET_NAME=SECRET_VALUE ANOTHER_SECRET=VALUE")'
+        required: true
+        type: string
+
+jobs:
+  manage-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/cli-action@v1.4.1
+
+      - name: Link Supabase project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          # The project ref is specified here
+        run: |
+          supabase link --project-ref zilkwckvsnxualaaapud
+
+      - name: Set Supabase secrets
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase secrets set ${{ github.event.inputs.secrets_to_set }}
