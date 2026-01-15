@@ -2,11 +2,17 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
-import AddProductForm from '../components/AddProductForm'; // Importar el nuevo componente
+import AddProductForm from '../components/AddProductForm';
+import EditProductForm from '../components/EditProductForm';
+import EditStoreForm from '../components/EditStoreForm';
 
 type Store = {
   id: string;
   name: string;
+  logo_url: string | null;
+  whatsapp_number: string;
+  plan: string;
+  product_limit: number;
 };
 
 type Product = {
@@ -24,23 +30,28 @@ const DashboardPage: React.FC = () => {
   
   const [showCreateStoreForm, setShowCreateStoreForm] = useState(false);
   const [showAddProductForm, setShowAddProductForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [showEditStoreForm, setShowEditStoreForm] = useState(false);
+  
   const [newStoreName, setNewStoreName] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const fetchDashboardData = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     setError('');
+    setEditingProduct(null);
+    setShowAddProductForm(false);
+    setShowEditStoreForm(false);
 
     const { data: storeData, error: storeError } = await supabase
       .from('stores')
-      .select('id, name')
+      .select('id, name, logo_url, whatsapp_number, plan, product_limit') // Obtener plan y límite
       .eq('user_id', user.id)
       .single();
 
     if (storeError && storeError.code !== 'PGRST116') {
-      console.error('Error fetching store:', storeError);
       setError('No se pudo cargar la información de tu tienda.');
       setLoading(false);
       return;
@@ -55,7 +66,6 @@ const DashboardPage: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (productsError) {
-        console.error('Error fetching products:', productsError);
         setError('No se pudieron cargar los productos.');
       } else {
         setProducts(productsData || []);
@@ -75,21 +85,41 @@ const DashboardPage: React.FC = () => {
   const handleCreateStore = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStoreName.trim() || !user || !user.phone) return;
-    setIsCreating(true);
+    setIsSubmitting(true);
     setError('');
     const { error: insertError } = await supabase.from('stores').insert({
       name: newStoreName.trim(),
       user_id: user.id,
-      whatsapp_number: user.phone,
+      whatsapp_number: user.phone || 'N/A',
+      // product_limit tendrá el valor DEFAULT 10 de la DB
     });
     if (insertError) {
       setError('Hubo un error al crear tu tienda. Inténtalo de nuevo.');
     } else {
-      setShowCreateStoreForm(false);
-      setNewStoreName('');
       await fetchDashboardData();
     }
-    setIsCreating(false);
+    setIsSubmitting(false);
+  };
+
+  const handleDeleteProduct = async (productId: string, imageUrl: string | null) => {
+    if (!window.confirm('¿Estás seguro de que quieres eliminar este producto?')) return;
+    setIsSubmitting(true);
+    setError('');
+    try {
+      const { error: dbError } = await supabase.from('products').delete().eq('id', productId);
+      if (dbError) throw dbError;
+      if (imageUrl) {
+        const imagePath = imageUrl.split('/product-images/').pop();
+        if (imagePath) {
+          await supabase.storage.from('product-images').remove([imagePath]);
+        }
+      }
+      await fetchDashboardData();
+    } catch (err: any) {
+      setError('No se pudo eliminar el producto.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   const renderContent = () => {
@@ -97,24 +127,75 @@ const DashboardPage: React.FC = () => {
     if (error) return <p className="text-red-500">{error}</p>;
 
     if (store) {
+      const atProductLimit = products.length >= store.product_limit;
+
       return (
         <div className="w-full text-left">
-          <h2 className="text-2xl font-bold mb-4">Tu Tienda: {store.name}</h2>
-          <div className="mb-6">
-            <h3 className="text-xl font-semibold mb-2">Productos</h3>
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-center space-x-4">
+              {store.logo_url && <img src={store.logo_url} alt="Store Logo" className="h-12 w-12 object-cover rounded-full" />}
+              <div>
+                <h2 className="text-2xl font-bold">Tu Tienda: {store.name}</h2>
+                <div className="flex items-center space-x-2">
+                    <span className="text-sm font-semibold capitalize px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">{store.plan}</span>
+                    <button className="text-sm text-blue-600 hover:underline">Mejorar Plan</button>
+                </div>
+              </div>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setShowEditStoreForm(true)}
+                className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-700 disabled:bg-gray-400"
+                disabled={isSubmitting}
+              >
+                Editar Tienda
+              </button>
+              <button 
+                onClick={() => setShowAddProductForm(true)}
+                className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 disabled:bg-gray-400"
+                disabled={isSubmitting || atProductLimit}
+              >
+                + Añadir Producto
+              </button>
+            </div>
+          </div>
+          
+          {atProductLimit && (
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md" role="alert">
+              <p className="font-bold">Límite de productos alcanzado</p>
+              <p>Has alcanzado el límite de {store.product_limit} productos para tu plan actual. ¡Mejora tu plan para añadir más!</p>
+            </div>
+          )}
+
+          <div className="border-t pt-4">
+            <h3 className="text-xl font-semibold mb-4">Tus Productos ({products.length}/{store.product_limit})</h3>
             {products.length > 0 ? (
-              <ul>
-                {products.map(p => <li key={p.id}>{p.title} - ${p.price}</li>)}
-              </ul>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.map(product => (
+                  <div key={product.id} className="bg-gray-50 rounded-lg shadow-md overflow-hidden transition-transform hover:scale-105">
+                    <img src={product.image_url || 'https://placehold.co/600x400'} alt={product.title} className="w-full h-40 object-cover" />
+                    <div className="p-4">
+                      <h4 className="font-bold text-lg truncate">{product.title}</h4>
+                      <p className="text-gray-700 text-md mb-3">${product.price.toFixed(2)}</p>
+                      <div className="flex justify-end space-x-2">
+                        <button onClick={() => setEditingProduct(product)} className="text-sm px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 disabled:bg-gray-300" disabled={isSubmitting}>Editar</button>
+                        <button 
+                          onClick={() => handleDeleteProduct(product.id, product.image_url)}
+                          className="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 disabled:bg-gray-300"
+                          disabled={isSubmitting}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
-              <p>Aún no tienes productos. ¡Añade el primero!</p>
+              <div className="text-center py-10 bg-gray-50 rounded-lg">
+                <p>Aún no tienes productos. ¡Añade el primero!</p>
+              </div>
             )}
-            <button 
-              onClick={() => setShowAddProductForm(true)}
-              className="mt-4 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700"
-            >
-              Añadir Producto
-            </button>
           </div>
         </div>
       );
@@ -125,8 +206,8 @@ const DashboardPage: React.FC = () => {
         <form onSubmit={handleCreateStore} className="w-full max-w-sm">
           <h2 className="text-2xl font-bold mb-4">Dale un nombre a tu tienda</h2>
           <input type="text" value={newStoreName} onChange={(e) => setNewStoreName(e.target.value)} placeholder="Ej: Tienda de Ana" className="w-full px-4 py-2 mb-4 border border-gray-300 rounded-lg" required />
-          <button type="submit" disabled={isCreating} className="w-full px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md disabled:bg-gray-400">
-            {isCreating ? 'Creando...' : 'Crear Tienda'}
+          <button type="submit" disabled={isSubmitting} className="w-full px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md disabled:bg-gray-400">
+            {isSubmitting ? 'Creando...' : 'Crear Tienda'}
           </button>
         </form>
       );
@@ -146,7 +227,7 @@ const DashboardPage: React.FC = () => {
   return (
     <>
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-100px)]">
-        <div className="p-8 bg-white rounded-lg shadow-lg text-center w-full max-w-lg">
+        <div className="p-8 bg-white rounded-lg shadow-lg text-center w-full max-w-4xl">
           <h1 className="text-3xl font-bold mb-6">Panel del Vendedor</h1>
           {renderContent()}
         </div>
@@ -158,9 +239,24 @@ const DashboardPage: React.FC = () => {
           onProductAdded={fetchDashboardData}
         />
       )}
+      {editingProduct && (
+        <EditProductForm
+          product={editingProduct}
+          onClose={() => setEditingProduct(null)}
+          onProductUpdated={fetchDashboardData}
+        />
+      )}
+      {showEditStoreForm && store && (
+        <EditStoreForm
+          store={store}
+          onClose={() => setShowEditStoreForm(false)}
+          onStoreUpdated={fetchDashboardData}
+        />
+      )}
     </>
   );
 };
 
 export default DashboardPage;
+
 

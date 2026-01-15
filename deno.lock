@@ -39,6 +39,8 @@
     "https://deno.land/std@0.217.0/fmt/colors.ts": "d239d84620b921ea520125d778947881f62c50e78deef2657073840b8af9559a",
     "https://deno.land/std@0.217.0/testing/_test_suite.ts": "f10a8a6338b60c403f07a76f3f46bdc9f1e1a820c0a1decddeb2949f7a8a0546",
     "https://deno.land/std@0.217.0/testing/bdd.ts": "a7a9f691c6531166e4afa9d91bd5750c7418407bb310473b27eda59fd2d1f609",
+    "https://deno.land/x/dotenv@v3.2.2/mod.ts": "077b48773de9205266a0b44c3c3a3c3083449ed64bb0b6cc461b95720678d38e",
+    "https://deno.land/x/dotenv@v3.2.2/util.ts": "693730877b13f8ead2b79b2aa31e2a0652862f7dc0c5f6d2f313f4d39c7b7670",
     "https://esm.sh/@supabase/auth-js@2.90.1/denonext/auth-js.mjs": "f2900150a8400b3f13df9b53d582d951d3ea2e430379aa14ce76625a2c3cf209",
     "https://esm.sh/@supabase/functions-js@2.90.1/denonext/functions-js.mjs": "ae961d62308ed59bca19c60cba7086c4b62c8931fe8d730df837319a21152d51",
     "https://esm.sh/@supabase/postgrest-js@2.90.1/denonext/postgrest-js.mjs": "2582ef3ffa2033390c9c9a52bd8acb590ff5208ef76196bb5aaab09560ae10fa",

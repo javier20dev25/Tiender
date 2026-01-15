@@ -23,6 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
-.env*.local
-\n# Local artifacts and environment files\nsupabase.deb\n**/.env.test
-\n# Local artifacts and environment files\nsupabase.deb\n**/.env.test
+
+# Local artifacts and environment files
+*.env*
+supabase.deb
