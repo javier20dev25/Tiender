@@ -74,10 +74,18 @@ const productionOrchestrateSignUp = async (
 
 
 // --- FUNCIONES EXPUESTAS ---
-export const orchestrateSignUp = import.meta.env.DEV ? mockOrchestrateSignUp : productionOrchestrateSignUp;
+export const orchestrateSignUp = productionOrchestrateSignUp;
 
 export const signIn = async (credentials: { phone: string; password: string }) => {
-  const { data, error } = await supabase.auth.signInWithPassword(credentials);
+  // The phone number must be normalized (digits only) and then converted
+  // to the derived email format to match the user identity created in the backend.
+  const normalizedPhone = credentials.phone.replace(/\D/g, '');
+  const email = `${normalizedPhone}@tiender.app`;
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email,
+    password: credentials.password,
+  });
   return { user: data.user, error };
 };
 
