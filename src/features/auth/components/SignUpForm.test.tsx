@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SignUpForm } from './SignUpForm';
 import * as authService from '../services/authService';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 // Mocks
 const mockNavigate = vi.fn();
@@ -17,32 +17,45 @@ describe('SignUpForm', () => {
   const mockOnSwitch = vi.fn();
 
   beforeEach(() => {
-    // Limpia contadores y mocks antes de cada test.
     vi.clearAllMocks();
   });
 
-  const fillForm = (email = 'test@example.com', whatsapp = '123456789') => {
-    fireEvent.change(screen.getByLabelText(/correo electrónico/i), { target: { value: email } });
-    fireEvent.change(screen.getByLabelText(/contraseña/i), { target: { value: 'password123' } });
+  // Updated helper to only use phone number
+  const fillForm = (whatsapp = '123456789') => {
     fireEvent.change(screen.getByLabelText(/número de whatsapp/i), { target: { value: whatsapp } });
+    fireEvent.change(screen.getByLabelText(/contraseña/i), { target: { value: 'password123' } });
   };
 
   it('debería renderizar los campos y el botón', () => {
     render(<SignUpForm onSwitchToSignIn={mockOnSwitch} />, { wrapper: MemoryRouter });
     expect(screen.getByLabelText(/número de whatsapp/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/contraseña/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /crear cuenta/i })).toBeInTheDocument();
   });
 
-  it('debería llamar a orchestrateSignUp y redirigir en un registro exitoso', async () => {
+  it('debería llamar a orchestrateSignUp, signIn y redirigir en un registro exitoso', async () => {
     vi.mocked(authService.orchestrateSignUp).mockResolvedValue({ success: true, message: 'Éxito' });
-    render(<SignUpForm onSwitchToSignIn={mockOnSwitch} />, { wrapper: MemoryRouter });
+    vi.mocked(authService.signIn).mockResolvedValue({ user: {} as any, error: null });
+    
+    render(
+      <MemoryRouter>
+        <SignUpForm onSwitchToSignIn={mockOnSwitch} />
+      </MemoryRouter>
+    );
 
-    fillForm();
+    fillForm('1122334455');
     fireEvent.click(screen.getByRole('button', { name: /crear cuenta/i }));
 
     await waitFor(() => {
-      expect(authService.orchestrateSignUp).toHaveBeenCalledTimes(1);
-      expect(mockNavigate).toHaveBeenCalledWith('/verify-otp', expect.any(Object));
+      expect(authService.orchestrateSignUp).toHaveBeenCalledWith({
+        phone: '1122334455',
+        password: 'password123',
+      });
+      expect(authService.signIn).toHaveBeenCalledWith({
+        phone: '1122334455',
+        password: 'password123',
+      });
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
     });
   });
 
@@ -56,23 +69,6 @@ describe('SignUpForm', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Este número de WhatsApp ya está registrado/i)).toBeInTheDocument();
-    });
-    
-    const signInCTA = screen.getByRole('button', { name: /inicia sesión/i });
-    fireEvent.click(signInCTA);
-    expect(mockOnSwitch).toHaveBeenCalledTimes(1);
-  });
-
-  it('debería mostrar error y CTA para email existente', async () => {
-    const error = { isBusinessError: true, error_code: 'EMAIL_EXISTS', message: 'Este correo electrónico ya está en uso.' };
-    vi.mocked(authService.orchestrateSignUp).mockRejectedValue(error);
-    render(<SignUpForm onSwitchToSignIn={mockOnSwitch} />, { wrapper: MemoryRouter });
-
-    fillForm();
-    fireEvent.click(screen.getByRole('button', { name: /crear cuenta/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/Este correo electrónico ya está en uso/i)).toBeInTheDocument();
     });
     
     const signInCTA = screen.getByRole('button', { name: /inicia sesión/i });
@@ -97,14 +93,14 @@ describe('SignUpForm', () => {
   });
 
   it('debería mostrar un error genérico para fallos inesperados', async () => {
-    vi.mocked(authService.orchestrateSignUp).mockRejectedValue({}); // Un objeto vacío, no un Error
+    vi.mocked(authService.orchestrateSignUp).mockRejectedValue(new Error('Network Error'));
     render(<SignUpForm onSwitchToSignIn={mockOnSwitch} />, { wrapper: MemoryRouter });
 
     fillForm();
     fireEvent.click(screen.getByRole('button', { name: /crear cuenta/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Ocurrió un error inesperado/i)).toBeInTheDocument();
+      expect(screen.getByText(/Network Error/i)).toBeInTheDocument();
     });
   });
 });

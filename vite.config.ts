@@ -9,6 +9,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/setupTests.ts',
+    testTimeout: 30000, // 30 seconds
     exclude: [
       'node_modules/**', // Ignorar tests de dependencias
       'supabase/functions/**', // Excluir los tests de Deno

@@ -47,7 +47,7 @@ const DashboardPage: React.FC = () => {
 
     const { data: storeData, error: storeError } = await supabase
       .from('stores')
-      .select('id, name, logo_url, whatsapp_number, plan, product_limit') // Obtener plan y límite
+      .select('id, name, logo_url, whatsapp_number, plan, product_limit')
       .eq('user_id', user.id)
       .single();
 
@@ -91,7 +91,7 @@ const DashboardPage: React.FC = () => {
       name: newStoreName.trim(),
       user_id: user.id,
       whatsapp_number: user.phone || 'N/A',
-      // product_limit tendrá el valor DEFAULT 10 de la DB
+      // product_limit will use the DEFAULT 10 from the DB
     });
     if (insertError) {
       setError('Hubo un error al crear tu tienda. Inténtalo de nuevo.');
@@ -121,6 +121,25 @@ const DashboardPage: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  const handleUpgrade = async () => {
+    setIsSubmitting(true);
+    setError('');
+    try {
+      const { data, error } = await supabase.functions.invoke('create-paypal-subscription');
+      if (error) throw error;
+      
+      if (data.approve_url) {
+        window.location.href = data.approve_url;
+      } else {
+        throw new Error('No se recibió la URL de aprobación de PayPal.');
+      }
+    } catch (err: any) {
+      console.error('Error invoking subscription function:', err);
+      setError('No se pudo iniciar el proceso de mejora de plan. Inténtalo de nuevo.');
+      setIsSubmitting(false);
+    }
+  };
   
   const renderContent = () => {
     if (loading || authLoading) return <p>Cargando panel...</p>;
@@ -138,7 +157,9 @@ const DashboardPage: React.FC = () => {
                 <h2 className="text-2xl font-bold">Tu Tienda: {store.name}</h2>
                 <div className="flex items-center space-x-2">
                     <span className="text-sm font-semibold capitalize px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">{store.plan}</span>
-                    <button className="text-sm text-blue-600 hover:underline">Mejorar Plan</button>
+                    <button onClick={handleUpgrade} disabled={isSubmitting} className="text-sm text-blue-600 hover:underline disabled:text-gray-500">
+                      {isSubmitting ? 'Procesando...' : 'Mejorar Plan'}
+                    </button>
                 </div>
               </div>
             </div>
@@ -258,5 +279,3 @@ const DashboardPage: React.FC = () => {
 };
 
 export default DashboardPage;
-
-

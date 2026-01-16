@@ -20,23 +20,18 @@ const mockOrchestrateSignUp = (
 ): Promise<OrchestrationSignUpResponse> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      const normalizedWhatsApp = credentials.whatsapp.replace(/\D/g, '');
+      // Use credentials.phone instead of credentials.whatsapp
+      const normalizedPhone = credentials.phone.replace(/\D/g, '');
 
-      if (credentials.whatsapp.includes('blocked')) {
+      if (credentials.phone.includes('blocked')) {
         return reject({
           isBusinessError: true,
           error_code: 'WHATSAPP_BLOCKED',
           message: 'Esta cuenta se encuentra bloqueada.'
         });
       }
-      if (credentials.email.includes('email_exists')) {
-        return reject({
-          isBusinessError: true,
-          error_code: 'EMAIL_EXISTS',
-          message: 'Este correo electrónico ya está en uso. Por favor, inicia sesión.'
-        });
-      }
-      const existingIdentity = mockWhatsappDB.find(identity => identity.whatsapp_number === normalizedWhatsApp);
+      
+      const existingIdentity = mockWhatsappDB.find(identity => identity.whatsapp_number === normalizedPhone);
       if (existingIdentity) {
         return reject({
           isBusinessError: true,
@@ -45,10 +40,10 @@ const mockOrchestrateSignUp = (
         });
       }
 
-      mockWhatsappDB.push({ whatsapp_number: normalizedWhatsApp, status: 'TRIAL_ACTIVE' });
-      mockEmailDB.push(credentials.email);
+      mockWhatsappDB.push({ whatsapp_number: normalizedPhone, status: 'TRIAL_ACTIVE' });
+      // mockEmailDB is no longer relevant
 
-      resolve({ success: true, message: '(Mock) Usuario registrado. Por favor, verifica tu OTP.' });
+      resolve({ success: true, message: '(Mock) Usuario registrado.' });
     }, 500);
   });
 };

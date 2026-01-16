@@ -11,9 +11,9 @@ describe('SignInForm', () => {
       </MemoryRouter>
     );
 
-    // Check for email input using the Spanish label
-    const emailInput = screen.getByLabelText(/correo electrónico/i);
-    expect(emailInput).toBeInTheDocument();
+    // Check for phone input using the Spanish label
+    const phoneInput = screen.getByLabelText(/número de whatsapp/i);
+    expect(phoneInput).toBeInTheDocument();
 
     // Check for password input using the Spanish label
     const passwordInput = screen.getByLabelText(/contraseña/i);
