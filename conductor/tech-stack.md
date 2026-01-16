@@ -19,3 +19,9 @@ Esta es la pila tecnológica seleccionada para el desarrollo de Tiender, alinead
 ## Flujo de Trabajo y Despliegue (CI/CD)
 
 *   **GitHub Actions & Supabase:** Se utiliza un bot automatizado que coordina los despliegues y otras tareas entre el repositorio de GitHub y la plataforma de Supabase.
+
+## Testing
+
+*   **Vitest:** Como corredor de pruebas principal, seleccionado por su alta velocidad, su integración nativa con Vite y su potente sistema de mocks.
+*   **React Testing Library:** Para renderizar componentes y simular interacciones del usuario, siguiendo la filosofía de testear el software de la manera en que el usuario lo utiliza.
+*   **Mocking (`vi.mock`):** La estrategia clave para el aislamiento de componentes y la simulación de dependencias externas. Se utiliza `vi.mock` de forma extensiva para crear dobles de prueba de servicios como Supabase, permitiendo tests de integración de frontend robustos y predecibles sin depender de una red o una base de datos real.

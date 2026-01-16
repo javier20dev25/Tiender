@@ -154,23 +154,27 @@ Before marking any task complete, verify:
 
 ### Setup
 ```bash
-# Example: Commands to set up the development environment (e.g., install dependencies, configure database)
-# e.g., for a Node.js project: npm install
-# e.g., for a Go project: go mod tidy
+# Instalar todas las dependencias del proyecto.
+npm install
 ```
 
 ### Daily Development
 ```bash
-# Example: Commands for common daily tasks (e.g., start dev server, run tests, lint, format)
-# e.g., for a Node.js project: npm run dev, npm test, npm run lint
-# e.g., for a Go project: go run main.go, go test ./..., go fmt ./...
+# Iniciar el servidor de desarrollo con hot-reloading.
+npm run dev
+
+# Ejecutar la suite de pruebas en modo "watch".
+npm test
+
+# Analizar el código en busca de errores de estilo y calidad.
+npm run lint
 ```
 
 ### Before Committing
 ```bash
-# Example: Commands to run all pre-commit checks (e.g., format, lint, type check, run tests)
-# e.g., for a Node.js project: npm run check
-# e.g., for a Go project: make check (if a Makefile exists)
+# Ejecutar todas las verificaciones de calidad antes de confirmar los cambios.
+# Esto asegura que el código cumple con los estándares y que todos los tests pasan.
+npm run lint && CI=true npm test
 ```
 
 ## Testing Requirements
