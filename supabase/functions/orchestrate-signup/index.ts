@@ -102,9 +102,11 @@ Deno.serve(async (req) => {
     // 2. Crear el usuario en Supabase Auth usando el teléfono
     console.log('Intentando crear usuario en Supabase Auth con:', { phone: normalizedPhone, password: '[REDACTED]' });
     const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.createUser({
-      phone: normalizedPhone,
+      email: `${normalizedPhone}@tiender.app`,
       password,
+      phone: normalizedPhone,
       phone_confirm: true, // Auto-confirma al usuario inmediatamente
+      email_confirm: true, // ¡CRUCIAL! Auto-confirma el email falso también
     });
 
     console.log('Resultado de createUser:', { user: user?.id, error: userError?.message || null });
