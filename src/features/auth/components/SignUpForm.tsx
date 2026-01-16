@@ -28,6 +28,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
       const { error: signInError } = await signIn({ phone: whatsapp, password });
 
       if (signInError) {
+        console.error('Error detallado de Supabase al intentar iniciar sesión:', signInError);
         setErrorMessage('Tu cuenta fue creada, pero no pudimos iniciar sesión. Por favor, intenta iniciar sesión manualmente.');
         setBusinessErrorCode('MANUAL_SIGN_IN_REQUIRED'); // This is now a critical failure indicator
         return;
