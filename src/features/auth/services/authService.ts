@@ -81,7 +81,7 @@ const productionOrchestrateSignUp = async (
 // --- FUNCIONES EXPUESTAS ---
 export const orchestrateSignUp = import.meta.env.DEV ? mockOrchestrateSignUp : productionOrchestrateSignUp;
 
-export const signIn = async (credentials: SignUpWithPasswordCredentials) => {
+export const signIn = async (credentials: { phone: string; password: string }) => {
   const { data, error } = await supabase.auth.signInWithPassword(credentials);
   return { user: data.user, error };
 };

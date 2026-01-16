@@ -5,7 +5,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 
 // --- INTERFACES Y TIPOS ---
 interface SignUpData {
-  phone: string; // Changed from email and whatsapp to just phone
+  phone: string;
   password?: string;
 }
 
@@ -46,6 +46,9 @@ Deno.serve(async (req) => {
 
   try {
     const { phone, password }: SignUpData = await req.json();
+    console.log('Iniciando orchestrate-signup con body:', { phone, password: password ? '[REDACTED]' : 'N/A' });
+    console.log('Contraseña recibida (longitud):', password?.length);
+
 
     if (!phone || !password) {
       return new Response(JSON.stringify({ error_code: 'MISSING_PARAMS', message: 'Faltan el teléfono y la contraseña.' }), {
@@ -97,11 +100,14 @@ Deno.serve(async (req) => {
     await logEvent(supabaseAdmin, 'WHATSAPP_TRIAL_AVAILABLE', { whatsapp_identity_id: identity.id });
 
     // 2. Crear el usuario en Supabase Auth usando el teléfono
+    console.log('Intentando crear usuario en Supabase Auth con:', { phone: normalizedPhone, password: '[REDACTED]' });
     const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.createUser({
       phone: normalizedPhone,
       password,
-      phone_confirm: false, // El usuario se activa inmediatamente.
+      phone_confirm: true, // Auto-confirma al usuario inmediatamente
     });
+
+    console.log('Resultado de createUser:', { user: user?.id, error: userError?.message || null });
 
     if (userError) {
       const errorCode = userError.message.includes('already registered') ? 'PHONE_EXISTS' : 'AUTH_USER_CREATION_FAILED';
@@ -134,8 +140,6 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
-    // El logEvent aquí puede fallar si la creación del cliente de Supabase falló.
-    // Es un caso extremo, pero es bueno tenerlo en cuenta.
     console.error('Error en el bloque catch principal:', error.message);
     return new Response(JSON.stringify({ error_code: 'INTERNAL_SERVER_ERROR', message: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

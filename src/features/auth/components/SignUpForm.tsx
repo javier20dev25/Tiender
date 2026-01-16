@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { orchestrateSignUp } from '../services/authService';
+import { orchestrateSignUp, signIn } from '../services/authService';
 import type { BusinessErrorCode } from '../services/authContracts';
 
 interface SignUpFormProps {
@@ -8,7 +8,6 @@ interface SignUpFormProps {
 }
 
 export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,10 +21,22 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
     setBusinessErrorCode(null);
     setLoading(true);
     try {
-      await orchestrateSignUp({ email, password, whatsapp });
-      navigate('/verify-otp', { state: { email } });
+      // Step 1: Create the user account using the phone number
+      await orchestrateSignUp({ phone: whatsapp, password });
+
+      // Step 2: Automatically sign in the user with the same phone number
+      const { error: signInError } = await signIn({ phone: whatsapp, password });
+
+      if (signInError) {
+        setErrorMessage('Tu cuenta fue creada, pero no pudimos iniciar sesión. Por favor, intenta iniciar sesión manualmente.');
+        setBusinessErrorCode('MANUAL_SIGN_IN_REQUIRED'); // This is now a critical failure indicator
+        return;
+      }
+
+      // Step 3: Navigate to the dashboard on successful sign-in
+      navigate('/dashboard');
+
     } catch (err: unknown) {
-      // Type guard para verificar si es un error de negocio que hemos lanzado a propósito
       const isBusinessError = (error: unknown): error is { isBusinessError: true; error_code: BusinessErrorCode; message: string } => {
         return (
           typeof error === 'object' &&
@@ -38,7 +49,10 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
       if (isBusinessError(err)) {
         setBusinessErrorCode(err.error_code);
         setErrorMessage(err.message);
-      } else {
+      } else if (err instanceof Error) {
+        setErrorMessage(err.message);
+      }
+      else {
         setErrorMessage('Ocurrió un error inesperado. Por favor, intenta de nuevo.');
       }
     } finally {
@@ -51,7 +65,9 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
 
     switch (businessErrorCode) {
       case 'WHATSAPP_IN_USE':
-      case 'EMAIL_EXISTS':
+      case 'EMAIL_EXISTS': // This case might be obsolete but kept for safety
+      case 'PHONE_EXISTS':
+      case 'MANUAL_SIGN_IN_REQUIRED':
         return (
           <p className="text-sm text-center text-red-600">
             {errorMessage.split('.')[0]}.
@@ -79,36 +95,6 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
       <form className="space-y-6" onSubmit={handleSubmit}>
         <fieldset disabled={isFormDisabled}>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Correo Electrónico
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 mt-1 text-gray-900 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Contraseña
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 mt-1 text-gray-900 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
-          <div>
             <label htmlFor="whatsapp" className="block text-sm font-medium text-gray-700">
               Número de WhatsApp
             </label>
@@ -122,6 +108,21 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
               onChange={(e) => setWhatsapp(e.target.value)}
               className="w-full px-3 py-2 mt-1 text-gray-900 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
               placeholder="+54 9 11 1234 5678"
+            />
+          </div>
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              Contraseña
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-3 py-2 mt-1 text-gray-900 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
           {renderError()}

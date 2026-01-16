@@ -5,9 +5,8 @@
  * para iniciar el proceso de registro orquestado.
  */
 export interface OrchestrationSignUpRequest {
-  email: string;
+  phone: string;
   password?: string; // Es opcional para permitir futuros proveedores como 'Sign in with Google'.
-  whatsapp: string;
 }
 
 /**

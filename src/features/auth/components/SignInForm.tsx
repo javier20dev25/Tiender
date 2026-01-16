@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { signIn } from '../services/authService';
 
 const SignInForm: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -14,17 +14,19 @@ const SignInForm: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      const { error } = await signIn({ email, password });
+      const { error } = await signIn({ phone, password });
       if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          setError('Número de WhatsApp o contraseña incorrectos.');
+        } else {
+          setError(error.message);
+        }
         throw error;
       }
       navigate('/dashboard');
     } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Ocurrió un error inesperado al iniciar sesión.');
-      }
+      // Error is already handled and set in the state, just log it for debugging
+      console.error('Sign in failed:', err);
     } finally {
       setLoading(false);
     }
@@ -35,17 +37,17 @@ const SignInForm: React.FC = () => {
       <h1 className="text-2xl font-bold text-center text-gray-900">Iniciar Sesión</h1>
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-            Correo Electrónico
+          <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+            Número de WhatsApp
           </label>
           <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
+            id="phone"
+            name="phone"
+            type="tel"
+            autoComplete="tel"
             required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
             className="w-full px-3 py-2 mt-1 text-gray-900 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
           />
         </div>
@@ -64,7 +66,7 @@ const SignInForm: React.FC = () => {
             className="w-full px-3 py-2 mt-1 text-gray-900 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
           />
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-red-600 text-center">{error}</p>}
         <div>
           <button
             type="submit"
