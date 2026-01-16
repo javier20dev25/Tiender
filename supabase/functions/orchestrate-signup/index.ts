@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
 
     // 4. Crear la tienda por defecto para el usuario.
     const { error: storeError } = await supabaseAdmin.from('stores').insert({
-      owner_id: user.id,
+      user_id: user.id,
       name: 'Mi Tienda', // Nombre por defecto
       phone_number: normalizedPhone,
     });
