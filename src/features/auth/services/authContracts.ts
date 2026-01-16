@@ -17,6 +17,9 @@ export type BusinessErrorCode =
   | 'WHATSAPP_IN_USE'
   | 'WHATSAPP_BLOCKED'
   | 'EMAIL_EXISTS'
+  | 'PHONE_EXISTS' // Nuevo
+  | 'SIGN_UP_SUCCESS' // Nuevo
+  | 'MANUAL_SIGN_IN_REQUIRED' // Nuevo
   | 'INTERNAL_SERVER_ERROR';
 
 /**
