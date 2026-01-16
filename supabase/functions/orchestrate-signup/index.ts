@@ -139,7 +139,7 @@ Deno.serve(async (req) => {
     const { error: storeError } = await supabaseAdmin.from('stores').insert({
       user_id: user.id,
       name: 'Mi Tienda', // Nombre por defecto
-      phone_number: normalizedPhone,
+      whatsapp_number: normalizedPhone,
     });
 
     if (storeError) {
