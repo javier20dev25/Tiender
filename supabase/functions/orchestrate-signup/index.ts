@@ -135,6 +135,18 @@ Deno.serve(async (req) => {
 
     await logEvent(supabaseAdmin, 'TRIAL_ACTIVATED', { auth_user_id: user.id });
 
+    // 4. Crear la tienda por defecto para el usuario.
+    const { error: storeError } = await supabaseAdmin.from('stores').insert({
+      owner_id: user.id,
+      name: 'Mi Tienda', // Nombre por defecto
+      phone_number: normalizedPhone,
+    });
+
+    if (storeError) {
+      throw new Error(`Error al crear la tienda por defecto: ${storeError.message}`);
+    }
+    await logEvent(supabaseAdmin, 'STORE_CREATED', { auth_user_id: user.id });
+
     // Éxito: el usuario está creado y activo.
     return new Response(JSON.stringify({ success: true, user_id: user.id, message: 'Usuario creado y activado correctamente.' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
