@@ -52,6 +52,7 @@ const DashboardPage: React.FC = () => {
       .single();
 
     if (storeError && storeError.code !== 'PGRST116') {
+      console.error('Error fetching store data:', storeError); // Log the detailed error
       setError('No se pudo cargar la información de tu tienda.');
       setLoading(false);
       return;
