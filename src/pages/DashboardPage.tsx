@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabaseClient';
 import AddProductForm from '../components/AddProductForm';
 import EditProductForm from '../components/EditProductForm';
 import EditStoreForm from '../components/EditStoreForm';
+import AnalyticsSummary, { type AnalyticsData } from '../components/AnalyticsSummary';
 
 type Store = {
   id: string;
@@ -29,15 +30,21 @@ const DashboardPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // State for forms and UI
   const [showCreateStoreForm, setShowCreateStoreForm] = useState(false);
   const [showAddProductForm, setShowAddProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showEditStoreForm, setShowEditStoreForm] = useState(false);
-  
   const [newStoreName, setNewStoreName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // State for Analytics
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
 
   const fetchDashboardData = useCallback(async () => {
     if (!user) return;
@@ -77,6 +84,25 @@ const DashboardPage: React.FC = () => {
     setLoading(false);
   }, [user]);
 
+  const fetchAnalytics = useCallback(async (storeId: string) => {
+    setLoadingAnalytics(true);
+    setAnalyticsError(null);
+    try {
+      const { data, error } = await supabase
+        .rpc('get_store_analytics', { target_store_id: storeId });
+
+      if (error) {
+        console.error('Error fetching analytics:', error);
+        throw new Error('No se pudo cargar la analítica.');
+      }
+      setAnalyticsData(data);
+    } catch (err: any) {
+      setAnalyticsError(err.message);
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!authLoading && user) {
       fetchDashboardData();
@@ -84,6 +110,12 @@ const DashboardPage: React.FC = () => {
       setLoading(false);
     }
   }, [user, authLoading, fetchDashboardData]);
+
+  useEffect(() => {
+    if (store?.id) {
+      fetchAnalytics(store.id);
+    }
+  }, [store, fetchAnalytics]);
 
   const handleCreateStore = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,7 +149,8 @@ const DashboardPage: React.FC = () => {
           await supabase.storage.from('product-images').remove([imagePath]);
         }
       }
-      await fetchDashboardData();
+      // Refresh both product list and analytics
+      await Promise.all([fetchDashboardData(), store ? fetchAnalytics(store.id) : Promise.resolve()]);
     } catch (err: any) {
       setError('No se pudo eliminar el producto.');
     } finally {
@@ -201,6 +234,8 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
           
+          <AnalyticsSummary data={analyticsData} loading={loadingAnalytics} error={analyticsError} />
+
           {atProductLimit && (
             <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md" role="alert">
               <p className="font-bold">Límite de productos alcanzado</p>
@@ -208,7 +243,7 @@ const DashboardPage: React.FC = () => {
             </div>
           )}
 
-          <div className="border-t pt-4">
+          <div className="border-t pt-4 mt-8">
             <h3 className="text-xl font-semibold mb-4">Tus Productos ({products.length}/{store.product_limit})</h3>
             {products.length > 0 ? (
               <div className="space-y-4">
@@ -277,21 +312,30 @@ const DashboardPage: React.FC = () => {
         <AddProductForm 
           storeId={store.id}
           onClose={() => setShowAddProductForm(false)}
-          onProductAdded={fetchDashboardData}
+          onProductAdded={async () => {
+            await fetchDashboardData();
+            if (store) await fetchAnalytics(store.id);
+          }}
         />
       )}
       {editingProduct && (
         <EditProductForm
           product={editingProduct}
           onClose={() => setEditingProduct(null)}
-          onProductUpdated={fetchDashboardData}
+          onProductUpdated={async () => {
+            await fetchDashboardData();
+            if (store) await fetchAnalytics(store.id);
+          }}
         />
       )}
       {showEditStoreForm && store && (
         <EditStoreForm
           store={store}
           onClose={() => setShowEditStoreForm(false)}
-          onStoreUpdated={fetchDashboardData}
+          onStoreUpdated={async () => {
+            await fetchDashboardData();
+            if (store) await fetchAnalytics(store.id);
+          }}
         />
       )}
     </>
