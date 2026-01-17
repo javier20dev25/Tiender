@@ -1,5 +1,6 @@
 // src/pages/DashboardPage.tsx
 import React, { useEffect, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import AddProductForm from '../components/AddProductForm';
@@ -11,7 +12,7 @@ type Store = {
   name: string;
   logo_url: string | null;
   whatsapp_number: string;
-  plan: string;
+  plan_type: string;
   product_limit: number;
 };
 
@@ -36,6 +37,7 @@ const DashboardPage: React.FC = () => {
   const [newStoreName, setNewStoreName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const fetchDashboardData = useCallback(async () => {
     if (!user) return;
@@ -47,7 +49,7 @@ const DashboardPage: React.FC = () => {
 
     const { data: storeData, error: storeError } = await supabase
       .from('stores')
-      .select('id, name, logo_url, whatsapp_number, plan, product_limit')
+      .select('id, name, logo_url, whatsapp_number, plan_type, product_limit')
       .eq('user_id', user.id)
       .single();
 
@@ -141,6 +143,14 @@ const DashboardPage: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  const handleShare = () => {
+    if (!store) return;
+    const url = `${window.location.origin}/tienda/${store.id}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
+  };
   
   const renderContent = () => {
     if (loading || authLoading) return <p>Cargando panel...</p>;
@@ -157,14 +167,23 @@ const DashboardPage: React.FC = () => {
               <div>
                 <h2 className="text-2xl font-bold">Tu Tienda: {store.name}</h2>
                 <div className="flex items-center space-x-2">
-                    <span className="text-sm font-semibold capitalize px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">{store.plan}</span>
+                    <span className="text-sm font-semibold capitalize px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">{store.plan_type}</span>
                     <button onClick={handleUpgrade} disabled={isSubmitting} className="text-sm text-blue-600 hover:underline disabled:text-gray-500">
                       {isSubmitting ? 'Procesando...' : 'Mejorar Plan'}
                     </button>
                 </div>
               </div>
             </div>
-            <div className="flex space-x-2">
+            <div className="flex items-center space-x-2">
+               <Link to={`/tienda/${store.id}`} target="_blank" className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700">
+                Ver Tienda
+              </Link>
+              <button
+                onClick={handleShare}
+                className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700"
+              >
+                {copied ? '¡Copiado!' : 'Compartir Enlace'}
+              </button>
               <button
                 onClick={() => setShowEditStoreForm(true)}
                 className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-700 disabled:bg-gray-400"
@@ -192,23 +211,23 @@ const DashboardPage: React.FC = () => {
           <div className="border-t pt-4">
             <h3 className="text-xl font-semibold mb-4">Tus Productos ({products.length}/{store.product_limit})</h3>
             {products.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="space-y-4">
                 {products.map(product => (
-                  <div key={product.id} className="bg-gray-50 rounded-lg shadow-md overflow-hidden transition-transform hover:scale-105">
-                    <img src={product.image_url || 'https://placehold.co/600x400'} alt={product.title} className="w-full h-40 object-cover" />
-                    <div className="p-4">
-                      <h4 className="font-bold text-lg truncate">{product.title}</h4>
-                      <p className="text-gray-700 text-md mb-3">${product.price.toFixed(2)}</p>
-                      <div className="flex justify-end space-x-2">
-                        <button onClick={() => setEditingProduct(product)} className="text-sm px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 disabled:bg-gray-300" disabled={isSubmitting}>Editar</button>
-                        <button 
-                          onClick={() => handleDeleteProduct(product.id, product.image_url)}
-                          className="text-sm px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 disabled:bg-gray-300"
-                          disabled={isSubmitting}
-                        >
-                          Eliminar
-                        </button>
-                      </div>
+                  <div key={product.id} className="flex items-center bg-gray-50 p-4 rounded-lg shadow-md space-x-4">
+                    <img src={product.image_url || 'https://placehold.co/100x100'} alt={product.title} className="w-20 h-20 object-cover rounded-md" />
+                    <div className="flex-grow">
+                      <h4 className="font-bold text-lg">{product.title}</h4>
+                      <p className="text-gray-700 text-md">${product.price.toFixed(2)}</p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                      <button onClick={() => setEditingProduct(product)} className="text-sm px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 disabled:bg-gray-300" disabled={isSubmitting}>Editar</button>
+                      <button
+                        onClick={() => handleDeleteProduct(product.id, product.image_url)}
+                        className="text-sm px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:bg-gray-300"
+                        disabled={isSubmitting}
+                      >
+                        Eliminar
+                      </button>
                     </div>
                   </div>
                 ))}

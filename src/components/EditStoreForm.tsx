@@ -7,18 +7,17 @@ interface Store {
   id: string;
   name: string;
   logo_url: string | null;
-  whatsapp_number: string;
+  // whatsapp_number is not editable via this form
 }
 
 interface EditStoreFormProps {
-  store: Store;
+  store: Store & { whatsapp_number: string };
   onClose: () => void;
   onStoreUpdated: () => void;
 }
 
 const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUpdated }) => {
   const [name, setName] = useState('');
-  const [whatsappNumber, setWhatsappNumber] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,7 +26,6 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
   useEffect(() => {
     if (store) {
       setName(store.name);
-      setWhatsappNumber(store.whatsapp_number);
       setCurrentLogoUrl(store.logo_url);
     }
   }, [store]);
@@ -36,8 +34,8 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
     e.preventDefault();
     setError('');
 
-    if (!name.trim() || !whatsappNumber.trim()) {
-      setError('El nombre de la tienda y el número de WhatsApp son obligatorios.');
+    if (!name.trim()) {
+      setError('El nombre de la tienda es obligatorio.');
       return;
     }
 
@@ -47,34 +45,21 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
     try {
       // 1. Handle Logo Upload/Update
       if (logoFile) {
-        // Delete old logo if it exists
-        if (currentLogoUrl) {
-          const oldLogoPath = currentLogoUrl.split('/store-logos/').pop();
-          if (oldLogoPath) {
-            await supabase.storage.from('store-logos').remove([oldLogoPath]);
-          }
-        }
-
-        // Upload new logo
         const fileExtension = logoFile.name.split('.').pop();
         const fileName = `${uuidv4()}.${fileExtension}`;
-        const filePath = `${store.id}/${fileName}`; // Store logos per store ID
+        const filePath = `${store.id}/${fileName}`;
 
+        // Unlike product images, we can upsert/overwrite the store logo
         const { error: uploadError } = await supabase.storage
-          .from('store-logos') // TODO: Ensure this bucket exists in Supabase Storage
-          .upload(filePath, logoFile, {
-            upsert: true // Overwrite if file with same path exists (e.g., if re-uploading the same file name)
-          });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data: publicUrlData } = supabase.storage
           .from('store-logos')
-          .getPublicUrl(filePath);
-        
-        newLogoUrl = publicUrlData.publicUrl;
+          .upload(filePath, logoFile, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        // Construct the new public URL manually for stability
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        newLogoUrl = `${supabaseUrl}/storage/v1/object/public/store-logos/${filePath}`;
+      
       }
 
       // 2. Update Store Details in Database
@@ -82,7 +67,6 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
         .from('stores')
         .update({
           name: name.trim(),
-          whatsapp_number: whatsappNumber.trim(),
           logo_url: newLogoUrl,
         })
         .eq('id', store.id);
@@ -107,27 +91,29 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
         <h2 className="text-2xl font-bold mb-6">Editar Tienda</h2>
+        <p className="text-sm text-left text-gray-600 mb-4 border-l-4 border-blue-500 pl-3">
+          Tu número de WhatsApp <span className="font-semibold">{store.whatsapp_number}</span> está vinculado a tu cuenta y no se puede cambiar.
+        </p>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 text-left">Nombre de la Tienda</label>
             <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required />
           </div>
-          <div className="mb-4">
-            <label htmlFor="whatsappNumber" className="block text-sm font-medium text-gray-700 text-left">Número de WhatsApp</label>
-            <input id="whatsappNumber" type="text" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required />
-          </div>
+          
           <div className="mb-6">
             <label htmlFor="logo" className="block text-sm font-medium text-gray-700 text-left">Logo de la Tienda</label>
             {currentLogoUrl && !logoFile && (
-              <div className="mt-2 mb-4">
-                <img src={currentLogoUrl} alt="Current Logo" className="h-20 w-20 object-cover rounded-full mx-auto" />
-                <p className="text-center text-sm text-gray-500">Logo actual</p>
+              <div className="mt-2 mb-4 text-center">
+                <img src={currentLogoUrl} alt="Current Logo" className="h-20 w-20 object-cover rounded-full inline-block" />
+                <p className="text-sm text-gray-500">Logo actual</p>
               </div>
             )}
             <input id="logo" type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files ? e.target.files[0] : null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
             {!currentLogoUrl && !logoFile && <p className="text-sm text-gray-500 mt-1">Sube un logo para tu tienda.</p>}
           </div>
+          
           {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+          
           <div className="flex items-center justify-end space-x-4">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
               Cancelar

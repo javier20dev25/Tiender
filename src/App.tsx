@@ -10,7 +10,7 @@ function App() {
     <Routes>
       {/* Rutas Públicas */}
       <Route path="/auth" element={<AuthPage />} />
-      <Route path="/store/:storeId" element={<SocialStorePage />} />
+      <Route path="/tienda/:storeId" element={<SocialStorePage />} />
 
       {/* Rutas Protegidas */}
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />

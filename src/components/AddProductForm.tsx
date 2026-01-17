@@ -41,12 +41,10 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, onClose, onPro
         throw uploadError;
       }
 
-      // 2. Obtener la URL pública de la imagen
-      const { data: publicUrlData } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath);
-      
-      const imageUrl = publicUrlData.publicUrl;
+      // 2. Construir la URL pública manualmente
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const imageUrl = `${supabaseUrl}/storage/v1/object/public/product-images/${filePath}`;
+
 
       // 3. Insertar el producto en la base de datos
       const { error: insertError } = await supabase

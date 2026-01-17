@@ -8,6 +8,7 @@ type Store = {
   id: string;
   name: string;
   logo_url: string | null;
+  whatsapp_number: string;
 };
 
 type Product = {
@@ -39,7 +40,7 @@ const SocialStorePage: React.FC = () => {
     try {
       const { data: storeData, error: storeError } = await supabase
         .from('stores')
-        .select('id, name, logo_url')
+        .select('id, name, logo_url, whatsapp_number')
         .eq('id', storeId)
         .single();
 
@@ -66,24 +67,91 @@ const SocialStorePage: React.FC = () => {
     fetchStoreAndProducts();
   }, [fetchStoreAndProducts]);
 
+  // --- Analytics ---
+  const logEvent = useCallback(async (eventType: 'VISIT' | 'LIKE' | 'DISLIKE' | 'ADD_TO_CART') => {
+    if (!storeId || !products[currentIndex]?.id) return;
+    try {
+      await supabase.functions.invoke('log-product-event', {
+        body: {
+          store_id: storeId,
+          product_id: products[currentIndex].id,
+          event_type: eventType,
+        },
+      });
+    } catch (error) {
+      console.error('Error logging event:', error);
+    }
+  }, [storeId, currentIndex, products]);
+
+  useEffect(() => {
+    if (products.length > 0) {
+      logEvent('VISIT');
+    }
+  }, [products.length, logEvent]);
+
+
+  // --- Cart Logic ---
+  const setCartQuantity = (product: Product, newQuantity: number) => {
+    setCart(prevCart => {
+      const existingItem = prevCart.find(item => item.id === product.id);
+
+      if (newQuantity <= 0) {
+        if (existingItem) {
+          return prevCart.filter(item => item.id !== product.id);
+        }
+        return prevCart;
+      }
+
+      if (existingItem) {
+        return prevCart.map(item =>
+          item.id === product.id ? { ...item, quantity: newQuantity } : item
+        );
+      }
+      return [...prevCart, { ...product, quantity: newQuantity }];
+    });
+  };
+
   // --- UI Handlers ---
   const handleNextProduct = () => {
     setCurrentIndex(prev => (prev + 1) % products.length);
+  };
+  
+  const handlePreviousProduct = () => {
+    setCurrentIndex(prev => (prev - 1 + products.length) % products.length);
+  };
+  
+  const handleLike = () => {
+    logEvent('LIKE');
+    // We could add some visual feedback here, like a temporary icon
+  };
+  
+  const handleDislike = () => {
+    logEvent('DISLIKE');
+     // We could add some visual feedback here
   };
 
   const handleAddToCart = () => {
     if (products.length === 0) return;
     const currentProduct = products[currentIndex];
-    setCart(prevCart => {
-      const existingItem = prevCart.find(item => item.id === currentProduct.id);
-      if (existingItem) {
-        return prevCart.map(item =>
-          item.id === currentProduct.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      }
-      return [...prevCart, { ...currentProduct, quantity: 1 }];
-    });
-    handleNextProduct(); // Move to next product after adding to cart
+    const isNewItem = !cart.some(item => item.id === currentProduct.id);
+    
+    setCartQuantity(currentProduct, 1);
+
+    if (isNewItem) {
+      logEvent('ADD_TO_CART');
+    }
+  };
+
+  const handleIncreaseQuantity = () => {
+    const currentProduct = products[currentIndex];
+    const currentQuantity = cart.find(item => item.id === currentProduct.id)?.quantity || 0;
+    setCartQuantity(currentProduct, currentQuantity + 1);
+  };
+
+  const handleDecreaseQuantity = () => {
+    const currentProduct = products[currentIndex];
+    const currentQuantity = cart.find(item => item.id === currentProduct.id)?.quantity || 0;
+    setCartQuantity(currentProduct, currentQuantity - 1);
   };
 
   // --- Render Functions ---
@@ -92,6 +160,7 @@ const SocialStorePage: React.FC = () => {
   if (!store) return <div className="flex justify-center items-center min-h-screen">Tienda no encontrada.</div>;
 
   const currentProduct = products[currentIndex];
+  const currentQuantity = currentProduct ? (cart.find(item => item.id === currentProduct.id)?.quantity || 0) : 0;
 
   return (
     <div className="container mx-auto p-4 max-w-lg">
@@ -102,43 +171,57 @@ const SocialStorePage: React.FC = () => {
       </div>
 
       {/* Product Tinder Card */}
-      {products.length > 0 ? (
+      {products.length > 0 && currentProduct ? (
         <div className="relative">
           <div className="bg-white rounded-lg shadow-xl overflow-hidden mb-6 aspect-square">
-            {currentProduct.image_url && <img src={currentProduct.image_url} alt={currentProduct.title} className="w-full h-full object-cover" />}
+            <img src={currentProduct.image_url || 'https://placehold.co/600x400'} alt={currentProduct.title} className="w-full h-full object-cover" />
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/50 to-transparent p-4">
               <h3 className="text-2xl font-bold text-white">{currentProduct.title}</h3>
               <p className="text-xl font-semibold text-green-300">${currentProduct.price.toFixed(2)}</p>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-around items-center mb-6">
-            <button onClick={handleNextProduct} className="p-4 bg-white rounded-full shadow-lg text-red-500 text-3xl">❌</button>
-            <button onClick={handleAddToCart} className="px-6 py-4 bg-blue-600 text-white font-bold rounded-lg shadow-lg transform scale-110">AÑADIR AL CARRITO</button>
-            <button onClick={handleNextProduct} className="p-4 bg-white rounded-full shadow-lg text-green-500 text-3xl">❤️</button>
+          {/* Add to Cart / Quantity Control */}
+          <div className="flex justify-center items-center mb-4 h-16">
+            {currentQuantity === 0 ? (
+                <button onClick={handleAddToCart} className="px-8 py-4 bg-blue-600 text-white font-bold rounded-lg shadow-lg transform hover:scale-105 transition-transform">AÑADIR AL CARRITO</button>
+            ) : (
+                <div className="flex items-center justify-center bg-blue-600 text-white font-bold rounded-lg shadow-lg">
+                    <button onClick={handleDecreaseQuantity} className="px-5 py-4 text-2xl">-</button>
+                    <span className="px-4 py-4 text-xl">{currentQuantity}</span>
+                    <button onClick={handleIncreaseQuantity} className="px-5 py-4 text-2xl">+</button>
+                </div>
+            )}
+          </div>
+
+          {/* Action & Navigation Buttons */}
+          <div className="flex justify-around items-center">
+            <button onClick={handlePreviousProduct} className="p-3 bg-white rounded-full shadow-lg text-gray-700 text-2xl transition-transform hover:scale-110">⬅️</button>
+            <button onClick={handleDislike} className="p-4 bg-white rounded-full shadow-lg text-red-500 text-3xl transition-transform hover:scale-110">❌</button>
+            <button onClick={handleLike} className="p-4 bg-white rounded-full shadow-lg text-green-500 text-3xl transition-transform hover:scale-110">❤️</button>
+            <button onClick={handleNextProduct} className="p-3 bg-white rounded-full shadow-lg text-gray-700 text-2xl transition-transform hover:scale-110">➡️</button>
           </div>
         </div>
       ) : (
-        <p className="text-center text-gray-500">¡Esta tienda aún no tiene productos!</p>
+        <p className="text-center text-gray-500 py-20">¡Esta tienda aún no tiene productos!</p>
       )}
       
       {/* Cart Bubble */}
       {cart.length > 0 && (
-        <button onClick={() => setIsCartOpen(true)} className="fixed bottom-4 right-4 bg-green-500 text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-2xl">
+        <button onClick={() => setIsCartOpen(true)} className="fixed bottom-4 right-4 bg-blue-600 text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-2xl">
           🛒
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
         </button>
       )}
 
       {/* Cart Modal */}
-      {isCartOpen && <CartModal cart={cart} storeName={store.name} onClose={() => setIsCartOpen(false)} />}
+      {isCartOpen && <CartModal cart={cart} storeName={store.name} sellerPhone={store.whatsapp_number} onClose={() => setIsCartOpen(false)} />}
     </div>
   );
 };
 
 // --- Cart Modal Component ---
-const CartModal: React.FC<{ cart: CartItem[], storeName: string, onClose: () => void }> = ({ cart, storeName, onClose }) => {
+const CartModal: React.FC<{ cart: CartItem[], storeName: string, sellerPhone: string, onClose: () => void }> = ({ cart, storeName, sellerPhone, onClose }) => {
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const generateWhatsAppMessage = () => {
@@ -150,7 +233,7 @@ const CartModal: React.FC<{ cart: CartItem[], storeName: string, onClose: () => 
     return encodeURIComponent(message);
   };
 
-  const whatsappUrl = `https://wa.me/?text=${generateWhatsAppMessage()}`; // Assumes seller's number is known or handled elsewhere
+  const whatsappUrl = `https://wa.me/${sellerPhone}?text=${generateWhatsAppMessage()}`;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
@@ -158,12 +241,13 @@ const CartModal: React.FC<{ cart: CartItem[], storeName: string, onClose: () => 
         <h2 className="text-2xl font-bold mb-4">Tu Pedido</h2>
         <div className="space-y-3 mb-6 max-h-60 overflow-y-auto">
           {cart.map(item => (
-            <div key={item.id} className="flex justify-between items-center">
-              <div>
-                <p className="font-semibold">{item.title}</p>
+            <div key={item.id} className="flex items-center space-x-4">
+              <img src={item.image_url || 'https://placehold.co/100x100'} alt={item.title} className="w-16 h-16 object-cover rounded-lg flex-shrink-0" />
+              <div className="flex-grow">
+                <p className="font-semibold leading-tight">{item.title}</p>
                 <p className="text-sm text-gray-600">x{item.quantity} - ${item.price.toFixed(2)} c/u</p>
               </div>
-              <p className="font-bold">${(item.price * item.quantity).toFixed(2)}</p>
+              <p className="font-bold text-right">${(item.price * item.quantity).toFixed(2)}</p>
             </div>
           ))}
         </div>
