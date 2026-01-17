@@ -54,6 +54,7 @@ const SocialStorePage: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (productsError) throw new Error('No se pudieron cargar los productos.');
+      console.log('--- DEBUG: Products Fetched ---', productsData);
       setProducts(productsData || []);
 
     } catch (err: any) {
@@ -130,7 +131,14 @@ const SocialStorePage: React.FC = () => {
 
   // --- UI Handlers ---
   const handleNextProduct = () => {
-    setCurrentIndex(prev => (prev + 1) % products.length);
+    console.log('--- DEBUG: handleNextProduct called ---');
+    console.log('Current index:', currentIndex);
+    console.log('Total products:', products.length);
+    setCurrentIndex(prev => {
+      const newIndex = (prev + 1) % products.length;
+      console.log('New index will be:', newIndex);
+      return newIndex;
+    });
   };
   
   const handlePreviousProduct = () => {
