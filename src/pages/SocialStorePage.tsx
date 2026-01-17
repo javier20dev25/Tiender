@@ -54,7 +54,6 @@ const SocialStorePage: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (productsError) throw new Error('No se pudieron cargar los productos.');
-      console.log('--- DEBUG: Products Fetched ---', productsData);
       setProducts(productsData || []);
 
     } catch (err: any) {
@@ -131,14 +130,7 @@ const SocialStorePage: React.FC = () => {
 
   // --- UI Handlers ---
   const handleNextProduct = () => {
-    console.log('--- DEBUG: handleNextProduct called ---');
-    console.log('Current index:', currentIndex);
-    console.log('Total products:', products.length);
-    setCurrentIndex(prev => {
-      const newIndex = (prev + 1) % products.length;
-      console.log('New index will be:', newIndex);
-      return newIndex;
-    });
+    setCurrentIndex(prev => (prev + 1) % products.length);
   };
   
   const handlePreviousProduct = () => {
@@ -207,7 +199,7 @@ const SocialStorePage: React.FC = () => {
           </div>
 
           {/* Add to Cart / Quantity Control */}
-          <div className="flex justify-center items-center mb-4 h-16">
+          <div className="relative z-10 flex justify-center items-center mb-4 h-16">
             {currentQuantity === 0 ? (
                 <button onClick={handleAddToCart} className="px-8 py-4 bg-blue-600 text-white font-bold rounded-lg shadow-lg transform hover:scale-105 transition-transform">AÑADIR AL CARRITO</button>
             ) : (
@@ -220,7 +212,7 @@ const SocialStorePage: React.FC = () => {
           </div>
 
           {/* Action & Navigation Buttons */}
-          <div className="flex justify-around items-center">
+          <div className="relative z-10 flex justify-around items-center">
             <button onClick={handlePreviousProduct} className="p-3 bg-white rounded-full shadow-lg text-gray-700 text-2xl transition-transform hover:scale-110">⬅️</button>
             <button onClick={handleDislike} className="p-4 bg-white rounded-full shadow-lg text-red-500 text-3xl transition-transform hover:scale-110">❌</button>
             <button onClick={handleLike} className="p-4 bg-white rounded-full shadow-lg text-green-500 text-3xl transition-transform hover:scale-110">❤️</button>
