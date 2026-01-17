@@ -30,6 +30,7 @@ const SocialStorePage: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [productInteractions, setProductInteractions] = useState<{ [productId: string]: 'liked' | 'disliked' }>({});
 
   // --- Data Fetching ---
   const fetchStoreAndProducts = useCallback(async () => {
@@ -138,13 +139,19 @@ const SocialStorePage: React.FC = () => {
   };
   
   const handleLike = () => {
+    const currentProduct = products[currentIndex];
+    if (!currentProduct || productInteractions[currentProduct.id]) return;
+
     logEvent('LIKE');
-    // We could add some visual feedback here, like a temporary icon
+    setProductInteractions(prev => ({...prev, [currentProduct.id]: 'liked'}));
   };
   
   const handleDislike = () => {
+    const currentProduct = products[currentIndex];
+    if (!currentProduct || productInteractions[currentProduct.id]) return;
+
     logEvent('DISLIKE');
-     // We could add some visual feedback here
+    setProductInteractions(prev => ({...prev, [currentProduct.id]: 'disliked'}));
   };
 
   const handleAddToCart = () => {
@@ -178,6 +185,7 @@ const SocialStorePage: React.FC = () => {
 
   const currentProduct = products[currentIndex];
   const currentQuantity = currentProduct ? (cart.find(item => item.id === currentProduct.id)?.quantity || 0) : 0;
+  const interaction = currentProduct ? productInteractions[currentProduct.id] : null;
 
   return (
     <div className="container mx-auto p-4 max-w-lg">
@@ -213,10 +221,38 @@ const SocialStorePage: React.FC = () => {
 
           {/* Action & Navigation Buttons */}
           <div className="relative z-10 flex justify-around items-center">
-            <button onClick={handlePreviousProduct} className="p-3 bg-white rounded-full shadow-lg text-gray-700 text-2xl transition-transform hover:scale-110">⬅️</button>
-            <button onClick={handleDislike} className="p-4 bg-white rounded-full shadow-lg text-red-500 text-3xl transition-transform hover:scale-110">❌</button>
-            <button onClick={handleLike} className="p-4 bg-white rounded-full shadow-lg text-green-500 text-3xl transition-transform hover:scale-110">❤️</button>
-            <button onClick={handleNextProduct} className="p-3 bg-white rounded-full shadow-lg text-gray-700 text-2xl transition-transform hover:scale-110">➡️</button>
+            <button
+              onClick={handlePreviousProduct}
+              disabled={products.length <= 1}
+              className="p-3 bg-white rounded-full shadow-lg text-gray-700 text-2xl transition-transform hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              ⬅️
+            </button>
+            <button
+              onClick={handleDislike}
+              disabled={!!interaction}
+              className={`p-4 rounded-full shadow-lg text-3xl transition-transform hover:scale-110 disabled:opacity-75 disabled:cursor-not-allowed ${
+                interaction === 'disliked' ? 'bg-red-500 text-white' : 'bg-white text-red-500'
+              }`}
+            >
+              ❌
+            </button>
+            <button
+              onClick={handleLike}
+              disabled={!!interaction}
+              className={`p-4 rounded-full shadow-lg text-3xl transition-transform hover:scale-110 disabled:opacity-75 disabled:cursor-not-allowed ${
+                interaction === 'liked' ? 'bg-green-500 text-white' : 'bg-white text-green-500'
+              }`}
+            >
+              ❤️
+            </button>
+            <button
+              onClick={handleNextProduct}
+              disabled={products.length <= 1}
+              className="p-3 bg-white rounded-full shadow-lg text-gray-700 text-2xl transition-transform hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              ➡️
+            </button>
           </div>
         </div>
       ) : (
