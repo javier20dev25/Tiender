@@ -69,15 +69,32 @@ const SocialStorePage: React.FC = () => {
 
   // --- Analytics ---
   const logEvent = useCallback(async (eventType: 'VISIT' | 'LIKE' | 'DISLIKE' | 'ADD_TO_CART') => {
-    if (!storeId || !products[currentIndex]?.id) return;
+    if (!storeId) return;
+    
+    const isProductEvent = eventType === 'LIKE' || eventType === 'DISLIKE' || eventType === 'ADD_TO_CART';
+    const currentProductId = products[currentIndex]?.id;
+
+    if (isProductEvent && !currentProductId) {
+      console.warn(`logEvent: Missing product_id for event type ${eventType}`);
+      return;
+    }
+    
     try {
-      await supabase.functions.invoke('log-product-event', {
-        body: {
-          store_id: storeId,
-          product_id: products[currentIndex].id,
-          event_type: eventType,
-        },
-      });
+      const payload: {
+        store_id: string;
+        event_type: string;
+        product_id?: string;
+      } = {
+        store_id: storeId,
+        event_type: eventType,
+      };
+
+      if (isProductEvent) {
+        payload.product_id = currentProductId;
+      }
+
+      await supabase.functions.invoke('log-product-event', { body: payload });
+
     } catch (error) {
       console.error('Error logging event:', error);
     }
