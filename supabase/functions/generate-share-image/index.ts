@@ -3,9 +3,19 @@ import satori from 'https://esm.sh/satori@0.10.9';
 import { Resvg } from 'https://esm.sh/@resvg/resvg-js@2.6.0';
 import { corsHeaders } from '../_shared/cors.ts';
 
-// Define the expected request body
+// --- Type Definitions ---
 interface ShareImagePayload {
   storeId: string;
+}
+
+interface TopProduct {
+  id: string;
+  title: string;
+  image_url: string | null;
+  likes: number;
+  dislikes: number;
+  added_to_cart: number;
+  score: number;
 }
 
 // --- Main Function ---
@@ -43,9 +53,9 @@ Deno.serve(async (req) => {
     if (!analyticsData?.top_products) throw new Error('Analytics data not available.');
 
     const { name: storeName, logo_url: logoUrl } = storeData;
-    const { top_products: topProducts } = analyticsData;
+    const topProducts: TopProduct[] = analyticsData.top_products;
 
-    // 3. Design the shareable image using Satori (HTML/CSS-in-JS)
+    // 3. Design the shareable image using Satori
     const template = {
       type: 'div',
       props: {
@@ -106,7 +116,7 @@ Deno.serve(async (req) => {
                 width: '100%',
                 gap: '15px',
               },
-              children: topProducts.slice(0, 5).map((product, index) => ({
+              children: topProducts.slice(0, 5).map((product: TopProduct, index: number) => ({
                 type: 'div',
                 props: {
                   style: {
@@ -206,7 +216,7 @@ Deno.serve(async (req) => {
     };
 
     // 4. Generate SVG from HTML
-    const svg = await satori(template, {
+    const svg = await satori(template as any, {
       width: 600,
       height: 1067, // Aspect ratio similar to stories
       fonts: [{
@@ -252,7 +262,7 @@ Deno.serve(async (req) => {
 
   } catch (err) {
     console.error('Error generating share image:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
