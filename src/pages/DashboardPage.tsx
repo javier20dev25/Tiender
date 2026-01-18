@@ -39,6 +39,7 @@ const DashboardPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
 
   // State for Analytics
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
@@ -177,12 +178,50 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  const handleShare = () => {
+  const handleCopyLink = () => {
     if (!store) return;
     const url = `${window.location.origin}/tienda/${store.id}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
+    setTimeout(() => setCopied(false), 2000);
+  };
+  
+  const handleShare = async () => {
+    if (!store || !analyticsData?.top_products) {
+      alert("No hay suficientes datos de analítica para compartir.");
+      return;
+    }
+    
+    setIsSharing(true);
+    setError('');
+
+    try {
+      // Step 1: Ensure the share image is generated and up-to-date
+      await supabase.functions.invoke('generate-share-image', {
+        body: { storeId: store.id },
+      });
+
+      // Step 2: Construct the URL to the shareable intermediate page
+      const shareUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-share-page?storeId=${store.id}`;
+
+      // Step 3: Use the Web Share API
+      if (navigator.share) {
+        await navigator.share({
+          title: `¡Mira el Top 5 de ${store.name}!`,
+          text: `Estos son los productos más populares de nuestra tienda. ¡Échales un vistazo!`,
+          url: shareUrl,
+        });
+      } else {
+        // Fallback for browsers that don't support Web Share API
+        navigator.clipboard.writeText(shareUrl);
+        alert('El enlace para compartir se ha copiado a tu portapapeles. ¡Pégalo en tus redes sociales!');
+      }
+    } catch (err: any) {
+      console.error("Share failed:", err);
+      setError("No se pudo generar el enlace para compartir. Inténtalo de nuevo.");
+    } finally {
+      setIsSharing(false);
+    }
   };
   
   const renderContent = () => {
@@ -207,15 +246,22 @@ const DashboardPage: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-wrap items-center space-x-2">
                <Link to={`/tienda/${store.id}`} target="_blank" className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700">
                 Ver Tienda
               </Link>
               <button
-                onClick={handleShare}
-                className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700"
+                onClick={handleCopyLink}
+                className="px-4 py-2 bg-gray-500 text-white font-semibold rounded-lg shadow-md hover:bg-gray-600"
               >
-                {copied ? '¡Copiado!' : 'Compartir Enlace'}
+                {copied ? '¡Copiado!' : 'Copiar Enlace'}
+              </button>
+              <button
+                onClick={handleShare}
+                className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-blue-400"
+                disabled={isSubmitting || isSharing || !analyticsData?.top_products?.length}
+              >
+                {isSharing ? 'Generando...' : 'Compartir Top 5'}
               </button>
               <button
                 onClick={() => setShowEditStoreForm(true)}
