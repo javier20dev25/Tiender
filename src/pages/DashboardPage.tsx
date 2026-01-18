@@ -202,7 +202,7 @@ const DashboardPage: React.FC = () => {
       });
 
       // Step 2: Construct the URL to the shareable intermediate page
-      const shareUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-share-page?storeId=${store.id}`;
+      const shareUrl = `${window.location.origin}/s/${store.id}`;
 
       // Step 3: Use the Web Share API
       if (navigator.share) {

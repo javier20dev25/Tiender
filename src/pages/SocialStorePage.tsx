@@ -1,5 +1,5 @@
 // src/pages/SocialStorePage.tsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 
@@ -31,6 +31,7 @@ const SocialStorePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [productInteractions, setProductInteractions] = useState<{ [productId: string]: 'liked' | 'disliked' }>({});
+  const hasLoggedVisit = useRef(false);
 
   // --- Data Fetching ---
   const fetchStoreAndProducts = useCallback(async () => {
@@ -81,7 +82,7 @@ const SocialStorePage: React.FC = () => {
   const logEvent = useCallback(async (eventType: 'VISIT' | 'LIKE' | 'DISLIKE' | 'ADD_TO_CART') => {
     if (!storeId) return;
     
-    const isProductEvent = eventType === 'LIKE' || eventType === 'DISLIKE' || eventType === 'ADD_TO_CART';
+    const isProductEvent = eventType !== 'VISIT';
     const currentProductId = products[currentIndex]?.id;
 
     if (isProductEvent && !currentProductId) {
@@ -90,20 +91,12 @@ const SocialStorePage: React.FC = () => {
     }
     
     try {
-      const payload: {
-        store_id: string;
-        event_type: string;
-        product_id?: string;
-        session_id: string;
-      } = {
+      const payload = {
         store_id: storeId,
         event_type: eventType,
+        product_id: isProductEvent ? currentProductId : undefined,
         session_id: getSessionId(),
       };
-
-      if (isProductEvent) {
-        payload.product_id = currentProductId;
-      }
 
       await supabase.functions.invoke('log-product-event', { body: payload });
 
@@ -113,10 +106,12 @@ const SocialStorePage: React.FC = () => {
   }, [storeId, currentIndex, products]);
 
   useEffect(() => {
-    if (products.length > 0) {
+    // Log a single visit event once the store is loaded for the first time.
+    if (store && !hasLoggedVisit.current) {
       logEvent('VISIT');
+      hasLoggedVisit.current = true;
     }
-  }, [products.length, logEvent]);
+  }, [store, logEvent]);
 
 
   // --- Cart Logic ---
@@ -151,7 +146,7 @@ const SocialStorePage: React.FC = () => {
   
   const handleLike = () => {
     const currentProduct = products[currentIndex];
-    if (!currentProduct || productInteractions[currentProduct.id]) return;
+    if (!currentProduct) return;
 
     logEvent('LIKE');
     setProductInteractions(prev => ({...prev, [currentProduct.id]: 'liked'}));
@@ -159,7 +154,7 @@ const SocialStorePage: React.FC = () => {
   
   const handleDislike = () => {
     const currentProduct = products[currentIndex];
-    if (!currentProduct || productInteractions[currentProduct.id]) return;
+    if (!currentProduct) return;
 
     logEvent('DISLIKE');
     setProductInteractions(prev => ({...prev, [currentProduct.id]: 'disliked'}));
@@ -168,19 +163,16 @@ const SocialStorePage: React.FC = () => {
   const handleAddToCart = () => {
     if (products.length === 0) return;
     const currentProduct = products[currentIndex];
-    const isNewItem = !cart.some(item => item.id === currentProduct.id);
     
     setCartQuantity(currentProduct, 1);
-
-    if (isNewItem) {
-      logEvent('ADD_TO_CART');
-    }
+    logEvent('ADD_TO_CART');
   };
 
   const handleIncreaseQuantity = () => {
     const currentProduct = products[currentIndex];
     const currentQuantity = cart.find(item => item.id === currentProduct.id)?.quantity || 0;
     setCartQuantity(currentProduct, currentQuantity + 1);
+    logEvent('ADD_TO_CART');
   };
 
   const handleDecreaseQuantity = () => {

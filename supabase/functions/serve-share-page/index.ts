@@ -29,23 +29,46 @@ Deno.serve(async (req) => {
     if (!storeData) throw new Error('Store not found.');
 
     const { name: storeName } = storeData;
-    
-    // 3. Construct the image URL from storage
-    const { data: imageUrlData } = supabaseAdmin.storage
-      .from('share-images')
-      .getPublicUrl(`${storeId}.png`);
 
-    const imageUrl = imageUrlData?.publicUrl;
-    if (!imageUrl) {
-      // Fallback or error if image doesn't exist yet
-      // For now, we'll proceed without an image, but in a real scenario,
-      // you might want to trigger the generation here or show a default image.
-      console.warn(`Share image for store ${storeId} not found.`);
+    // 3. Ensure share image exists, generating it if necessary.
+    let imageUrl = '';
+    try {
+      // Check if the file exists by trying to get its public URL.
+      // A more robust way could be to list files, but this is often sufficient.
+      const potentialImageUrl = supabaseAdmin.storage.from('share-images').getPublicUrl(`${storeId}.png`).data.publicUrl;
+
+      // A simple HEAD request can verify existence without downloading the file.
+      const headResponse = await fetch(potentialImageUrl, { method: 'HEAD' });
+
+      if (headResponse.ok) {
+        imageUrl = potentialImageUrl;
+      } else {
+        // If not found (or other error), generate it.
+        throw new Error("Image not found, generating...");
+      }
+    } catch (e) {
+      // This block runs if the fetch fails (e.g., 404) or if we throw the error.
+      console.log("Generating new share image for store:", storeId);
+      const { data: generated, error: generationError } = await supabaseAdmin.functions.invoke('generate-share-image', {
+        body: { storeId },
+      });
+
+      if (generationError) {
+        console.error("Failed to generate image on the fly:", generationError);
+        // Proceed without an image, or handle error differently
+      } else {
+        imageUrl = generated.imageUrl;
+      }
+    }
+    
+    // Add a cache-busting query param to the image URL
+    if (imageUrl) {
+      imageUrl = `${imageUrl}?t=${new Date().getTime()}`;
     }
 
     // 4. Define URLs
     const pageUrl = `${url.origin}${url.pathname}?storeId=${storeId}`;
-    const redirectUrl = `${APP_URL}/tienda/${storeId}`; // Assuming a route like /tienda/:storeId for the social store
+    const redirectUrl = `${APP_URL}/tienda/${storeId}`;
 
     // 5. Generate HTML with Open Graph tags and redirect
     const html = `
