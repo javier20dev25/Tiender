@@ -3,6 +3,10 @@
     {
       "source": "/s/:storeId",
       "destination": "https://zilkwckvsnxualaaapud.supabase.co/functions/v1/serve-share-page?storeId=:storeId"
+    },
+    {
+      "source": "/((?!api/|_next/|static/|favicon.ico|.*\\..*).*) ",
+      "destination": "/index.html"
     }
   ]
 }
