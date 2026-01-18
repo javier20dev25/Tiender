@@ -8,7 +8,8 @@ AS $$
 WITH store_events AS (
     SELECT
         product_id,
-        event_type
+        event_type,
+        session_id
     FROM
         public.product_analytics
     WHERE
@@ -16,7 +17,7 @@ WITH store_events AS (
 ),
 total_visits AS (
     SELECT
-        COUNT(*) AS count
+        COUNT(DISTINCT session_id) AS count
     FROM
         store_events
     WHERE

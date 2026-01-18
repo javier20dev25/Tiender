@@ -6,8 +6,9 @@ import { corsHeaders } from '../_shared/cors.ts'
 // Define the expected request body
 interface LogPayload {
   store_id: string;
-  product_id?: string; // Optional for 'VISIT' events
+  product_id?: string;
   event_type: 'VISIT' | 'LIKE' | 'DISLIKE' | 'ADD_TO_CART';
+  session_id: string; // Required to track unique sessions
 }
 
 Deno.serve(async (req) => {
@@ -18,21 +19,23 @@ Deno.serve(async (req) => {
 
   try {
     const payload: LogPayload = await req.json();
-    const { store_id, product_id, event_type } = payload;
+    const { store_id, product_id, event_type, session_id } = payload;
 
     // Basic validation
-    if (!store_id || !event_type) {
-      return new Response(JSON.stringify({ error: 'store_id and event_type are required' }), {
+    if (!store_id || !event_type || !session_id) {
+      return new Response(JSON.stringify({ error: 'store_id, event_type, and session_id are required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    // Since we relaxed the constraint, 'VISIT' can now optionally have a product_id.
+    // This allows tracking store visits and specific product page views under the same event type.
     if (event_type !== 'VISIT' && !product_id) {
-        return new Response(JSON.stringify({ error: 'product_id is required for this event type' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      return new Response(JSON.stringify({ error: 'product_id is required for non-VISIT event types' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Create a Supabase client with the service role key to bypass RLS
@@ -44,8 +47,9 @@ Deno.serve(async (req) => {
     // Insert the event into the analytics table
     const { error } = await supabaseAdmin.from('product_analytics').insert({
       store_id,
-      product_id, // This can be null for 'VISIT' events
+      product_id,
       event_type,
+      session_id,
     });
 
     if (error) {

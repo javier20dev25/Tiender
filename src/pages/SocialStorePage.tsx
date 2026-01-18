@@ -69,6 +69,15 @@ const SocialStorePage: React.FC = () => {
   }, [fetchStoreAndProducts]);
 
   // --- Analytics ---
+  const getSessionId = () => {
+    let sessionId = sessionStorage.getItem('sessionId');
+    if (!sessionId) {
+      sessionId = crypto.randomUUID();
+      sessionStorage.setItem('sessionId', sessionId);
+    }
+    return sessionId;
+  };
+
   const logEvent = useCallback(async (eventType: 'VISIT' | 'LIKE' | 'DISLIKE' | 'ADD_TO_CART') => {
     if (!storeId) return;
     
@@ -85,9 +94,11 @@ const SocialStorePage: React.FC = () => {
         store_id: string;
         event_type: string;
         product_id?: string;
+        session_id: string;
       } = {
         store_id: storeId,
         event_type: eventType,
+        session_id: getSessionId(),
       };
 
       if (isProductEvent) {
