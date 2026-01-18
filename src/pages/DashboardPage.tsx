@@ -234,7 +234,16 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
           
-          <AnalyticsSummary data={analyticsData} loading={loadingAnalytics} error={analyticsError} />
+          <AnalyticsSummary
+            data={analyticsData}
+            loading={loadingAnalytics}
+            error={analyticsError}
+            onRefresh={() => {
+              if (store?.id) {
+                fetchAnalytics(store.id);
+              }
+            }}
+          />
 
           {atProductLimit && (
             <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md" role="alert">

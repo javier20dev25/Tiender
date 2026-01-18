@@ -22,11 +22,12 @@ interface AnalyticsSummaryProps {
   data: AnalyticsData | null;
   loading: boolean;
   error: string | null;
+  onRefresh: () => void;
 }
 
 // --- Component ---
 
-const AnalyticsSummary: React.FC<AnalyticsSummaryProps> = ({ data, loading, error }) => {
+const AnalyticsSummary: React.FC<AnalyticsSummaryProps> = ({ data, loading, error, onRefresh }) => {
   if (loading) {
     return (
       <div className="mt-8 p-6 bg-white rounded-lg shadow-md animate-pulse">
@@ -51,7 +52,16 @@ const AnalyticsSummary: React.FC<AnalyticsSummaryProps> = ({ data, loading, erro
 
   return (
     <div className="mt-8 p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Resumen de Analítica</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Resumen de Analítica</h2>
+        <button
+          onClick={onRefresh}
+          disabled={loading}
+          className="px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-100 rounded-lg hover:bg-blue-200 disabled:opacity-50 disabled:cursor-wait"
+        >
+          Refrescar
+        </button>
+      </div>
 
       {/* Total Visits */}
       <div className="mb-8">
