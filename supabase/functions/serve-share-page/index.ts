@@ -7,12 +7,14 @@ const APP_URL = Deno.env.get('APP_URL') || 'http://localhost:5173';
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const storeId = url.searchParams.get('storeId');
+  console.log(`[serve-share-page] Received request for storeId: ${storeId}`);
 
   if (!storeId) {
     return new Response('storeId query parameter is required.', { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
   }
 
   try {
+    console.log(`[serve-share-page] Using APP_URL: ${APP_URL}`);
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -29,29 +31,29 @@ Deno.serve(async (req) => {
       throw new Error(`Store not found: ${storeError?.message || ''}`);
     }
     const { name: storeName } = storeData;
+    console.log(`[serve-share-page] Found store: ${storeName}`);
 
     // 2. Invoke the image generation function to ensure the image is fresh and get its URL
-    // This simplifies the logic and guarantees we have the URL before proceeding.
+    console.log('[serve-share-page] Invoking generate-share-image function...');
     const { data: generatedImageData, error: generationError } = await supabaseAdmin.functions.invoke('generate-share-image', {
       body: { storeId },
     });
 
     if (generationError || !generatedImageData.imageUrl) {
-      // Log the error but proceed to generate HTML without an image, so the redirect still works
-      console.error('Critical error: Could not generate or retrieve share image.', generationError);
+      console.error('[serve-share-page] Critical error: Could not generate or retrieve share image.', generationError);
     }
     
-    // The public URL of the generated image
-    let imageUrl = generatedImageData.imageUrl;
+    let imageUrl = generatedImageData?.imageUrl;
+    console.log(`[serve-share-page] Image URL from generator: ${imageUrl}`);
     
-    // Add a cache-busting query param to ensure the latest image is shown
     if (imageUrl) {
       imageUrl = `${imageUrl}?t=${new Date().getTime()}`;
     }
 
     // 3. Define final, correct URLs using the APP_URL
-    const pageUrl = `${APP_URL}/s/${storeId}`; // The clean, rewritten URL
-    const storeUrl = `${APP_URL}/tienda/${storeId}`; // The final destination
+    const pageUrl = `${APP_URL}/s/${storeId}`; 
+    const storeUrl = `${APP_URL}/tienda/${storeId}`;
+    console.log(`[serve-share-page] Final URLs | Page: ${pageUrl} | Store: ${storeUrl}`);
 
     // 4. Generate the definitive HTML with all fixes
     const html = `
@@ -108,4 +110,3 @@ Deno.serve(async (req) => {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });
   }
-});

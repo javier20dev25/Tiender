@@ -202,8 +202,8 @@ const DashboardPage: React.FC = () => {
         body: { storeId: store.id },
       });
 
-      // Step 2: Construct the URL to the shareable intermediate page
-      const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+      // Step 2: Construct the URL using the production domain from environment variables
+      const appUrl = import.meta.env.VITE_APP_URL || 'https://tiender.vercel.app'; // Force production URL
       const shareUrl = `${appUrl}/s/${store.id}`;
 
       // Step 3: Use the Web Share API
