@@ -25,6 +25,7 @@ type Product = {
 };
 
 const DashboardPage: React.FC = () => {
+  // Triggering redeployment to apply new environment variables.
   const { user, loading: authLoading } = useAuth();
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
