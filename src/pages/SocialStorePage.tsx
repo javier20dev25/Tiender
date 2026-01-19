@@ -186,6 +186,17 @@ const SocialStorePage: React.FC = () => {
   if (error) return <div className="flex justify-center items-center min-h-screen text-red-500">{error}</div>;
   if (!store) return <div className="flex justify-center items-center min-h-screen">Tienda no encontrada.</div>;
 
+  // Validate that the store is properly configured before showing it
+  if (!store.name || !store.logo_url) {
+    return (
+      <div className="flex flex-col justify-center items-center min-h-screen text-center p-4">
+        <h1 className="text-3xl font-bold text-gray-700 mb-2">🚧 Tienda en Construcción 🚧</h1>
+        <p className="text-lg text-gray-500">El vendedor todavía está preparando esta tienda. ¡Vuelve pronto!</p>
+      </div>
+    );
+  }
+
+
   const currentProduct = products[currentIndex];
   const currentQuantity = currentProduct ? (cart.find(item => item.id === currentProduct.id)?.quantity || 0) : 0;
   const interaction = currentProduct ? productInteractions[currentProduct.id] : null;
