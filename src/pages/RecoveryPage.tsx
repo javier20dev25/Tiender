@@ -3,8 +3,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 
-const RecoveryPage: React.FC = () => {
-  const [userId, setUserId] = useState<string | null>(null);
+interface RecoveryPageProps {
+  onSwitchToSignIn: () => void;
+}
+
+const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
+  const [whatsapp, setWhatsapp] = useState('');
   const [recoveryCode, setRecoveryCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [step, setStep] = useState<'enter_phone' | 'enter_code' | 'reset_password'>('enter_phone');
@@ -12,59 +16,40 @@ const RecoveryPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const handleFindUser = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleFindUser = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
-    setLoading(true);
-
-    try {
-      // In a real app, this would verify the phone number exists and potentially link to user_id
-    // For now, we'll simulate finding the userId based on phone input (requires backend function to support phone lookup)
-    // As a placeholder, if user enters a specific format, we can proceed to code entry.
-    // This part needs a backend lookup or a pre-established user context.
-    // For this example, we'll just simulate finding the user ID.
-    // A proper implementation would query Supabase for the user associated with 'whatsapp'.
-    // Example: Find user by phone (if that's the primary identifier)
-    const { data, error } = await supabase.rpc('find_user_by_phone', { phone_number: whatsapp }); // Assuming such RPC exists
-
-    if (error || !data || !data.userId) {
-      throw new Error('No account found with that WhatsApp number.');
+    if (!whatsapp) {
+      setErrorMessage('Por favor, introduce tu número de WhatsApp.');
+      return;
     }
-
-      setUserId(data.userId);
-      setStep('enter_code');
-
-    } catch (err: any) {
-      setErrorMessage(err.message);
-    } finally {
-      setLoading(false);
-    }
+    // The verification function will handle if the user exists.
+    // We just proceed to the next step.
+    setStep('enter_code');
   };
 
   const handleVerifyCode = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!userId) return;
     setErrorMessage(null);
     setLoading(true);
 
     try {
       // Call the Supabase function to verify the code
-      const response = await fetch('/.redirections/verify-backup-code', { // Assuming rewrite rules for functions
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, code: recoveryCode }),
+      const { data, error } = await supabase.functions.invoke('verify-backup-code', {
+        body: { phone: whatsapp, code: recoveryCode },
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to verify recovery code.');
+      if (error) {
+        throw new Error(error.message || 'Error al verificar el código.');
       }
 
-      if (result.success) {
+      if (data.success) {
+        // The user is verified. We can now proceed to the password reset step.
+        // A full implementation would use the session/token returned from the function
+        // to securely perform the password update.
         setStep('reset_password');
       } else {
-        throw new Error(result.message || 'Invalid recovery code.');
+        throw new Error(data.message || 'Código de recuperación inválido o expirado.');
       }
 
     } catch (err: any) {
@@ -76,27 +61,20 @@ const RecoveryPage: React.FC = () => {
 
   const handlePasswordReset = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!userId) return;
     setErrorMessage(null);
     setLoading(true);
 
     try {
-      // Use Supabase auth to reset password for the user
-      // This requires a flow where the user is already "verified" by the backup code.
-      // The actual password reset in Supabase typically uses email.
-      // Since we are using backup codes, we'll assume this step is a confirmation.
-      // In a real scenario, Supabase's password reset is email-based.
-      // For this example, we'll simulate a successful reset and direct to login.
+      // Placeholder for password reset logic.
+      // In a real implementation, you would need a secure way to update the user's password.
+      // This might involve a temporary token returned from the 'verify-backup-code' function.
+      // For now, we simulate success and redirect to the login page.
       
-      // If using Supabase's auth.resetPasswordForEmail() after verification:
-      // const { error } = await supabase.auth.resetPasswordForEmail(userEmail, { redirectTo: `${APP_URL}/auth/update-password` });
+      // Example of what could be here:
+      // const { error } = await supabase.auth.updateUser({ password: newPassword });
       // if (error) throw error;
-
-      // Since we don't have the user's email here and are using backup codes,
-      // we'll just signal success and redirect to login.
-      // The system needs a way to link userId to a password field for reset.
-      // For now, this is a placeholder.
-      alert("Password reset flow initiated. Please check your email or proceed to login.");
+      
+      alert("Contraseña restablecida (simulado). Serás redirigido al inicio de sesión.");
       navigate('/auth'); // Redirect to login page
 
     } catch (err: any) {
@@ -123,7 +101,7 @@ const RecoveryPage: React.FC = () => {
               className="w-full px-3 py-2 mb-4 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             />
             <button type="submit" disabled={loading} className="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400">
-              {loading ? 'Buscando cuenta...' : 'Buscar Cuenta'}
+              {loading ? 'Buscando...' : 'Continuar'}
             </button>
             {errorMessage && <p className="text-sm text-red-600 text-center mt-4">{errorMessage}</p>}
           </form>
@@ -141,7 +119,7 @@ const RecoveryPage: React.FC = () => {
               className="w-full px-3 py-2 mb-4 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             />
             <button type="submit" disabled={loading} className="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400">
-              {loading ? 'Verificando código...' : 'Verificar Código'}
+              {loading ? 'Verificando...' : 'Verificar Código'}
             </button>
             {errorMessage && <p className="text-sm text-red-600 text-center mt-4">{errorMessage}</p>}
           </form>
@@ -158,10 +136,6 @@ const RecoveryPage: React.FC = () => {
               required
               className="w-full px-3 py-2 mb-4 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             />
-            {/* NOTE: A real password reset would involve confirming password and actually calling Supabase reset function.
-                This is a simplified placeholder, assuming successful code verification leads to password update.
-                Supabase's auth.resetPasswordForEmail is email-based. For backup codes, a custom flow is needed.
-                This flow simulates success and redirects to login. */}
             <button type="submit" disabled={loading} className="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400">
               {loading ? 'Restableciendo...' : 'Restablecer Contraseña'}
             </button>
@@ -170,7 +144,7 @@ const RecoveryPage: React.FC = () => {
         )}
          <div className="mt-4 text-center">
             <button
-              onClick={onSwitchToSignIn} // Assuming this prop is passed or context is available
+              onClick={onSwitchToSignIn}
               className="text-sm text-indigo-600 hover:text-indigo-500 underline"
               role="button"
             >

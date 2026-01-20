@@ -1,0 +1,7 @@
+{
+  "id": "auth_flow_finalization_20260120",
+  "name": "Finalización y Despliegue del Flujo de Autenticación",
+  "status": "pending",
+  "created_at": "2026-01-20T12:00:00Z",
+  "description": "Corrige la conexión frontend-backend para las funciones de recuperación de cuenta, despliega la infraestructura de Supabase necesaria y verifica el flujo completo en producción."
+}

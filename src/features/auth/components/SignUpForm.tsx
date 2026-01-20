@@ -68,18 +68,15 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
       const userId = signUpData.user.id;
 
       // Step 2: Generate backup codes using the new Supabase function
-      const response = await fetch('/.redirections/generate-backup-codes', { // Use the rewritten URL if applicable, or direct function URL
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
+      const { data: codesData, error: codesError } = await supabase.functions.invoke('generate-backup-codes', {
+        body: { userId },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Failed to generate backup codes: ${errorData.error || response.statusText}`);
+      if (codesError) {
+        throw new Error(`Failed to generate backup codes: ${codesError.message}`);
       }
       
-      const { plain_codes } = await response.json();
+      const { plain_codes } = codesData;
       setBackupCodes(plain_codes);
       // Modal will be opened and handled by state change (isModalOpen)
 
