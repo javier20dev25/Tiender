@@ -4,6 +4,7 @@ import AuthPage from './pages/AuthPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardPage from './pages/DashboardPage';
 import SocialStorePage from './pages/SocialStorePage'; // Importar la nueva página
+import RecoveryPage from './pages/RecoveryPage'; // Importar la nueva página de recuperación
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
       <Route path="/tienda/:storeId" element={<SocialStorePage />} />
 
       {/* Rutas Protegidas */}
+      <Route path="/recovery" element={<RecoveryPage />} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       
       {/* Redirección Principal */}
