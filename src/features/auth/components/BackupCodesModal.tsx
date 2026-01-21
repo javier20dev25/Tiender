@@ -1,14 +1,12 @@
-import React, { useState } from 'react';
-import html2canvas from 'html2canvas';
+import React from 'react';
 
 interface BackupCodesModalProps {
   codes: string[];
-  storeName: string; // Assuming this is needed for the context, though not strictly used in the modal itself for now.
   onClose: () => void;
   onDownload: () => void;
 }
 
-const BackupCodesModal: React.FC<BackupCodesModalProps> = ({ codes, storeName, onClose, onDownload }) => {
+const BackupCodesModal: React.FC<BackupCodesModalProps> = ({ codes, onClose, onDownload }) => {
   const handleDownloadClick = () => {
     onDownload(); // Trigger the download logic
     onClose(); // Close modal after download action

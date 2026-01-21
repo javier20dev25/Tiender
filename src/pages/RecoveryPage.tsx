@@ -1,10 +1,10 @@
 // src/pages/RecoveryPage.tsx
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 
 interface RecoveryPageProps {
-  onSwitchToSignIn: () => void;
+  onSwitchToSignIn?: () => void;
 }
 
 const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
@@ -16,6 +16,14 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  const handleSwitchToSignIn = () => {
+    if (onSwitchToSignIn) {
+      onSwitchToSignIn();
+    } else {
+      navigate('/auth');
+    }
+  };
+  
   const handleFindUser = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -144,7 +152,7 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
         )}
          <div className="mt-4 text-center">
             <button
-              onClick={onSwitchToSignIn}
+              onClick={handleSwitchToSignIn}
               className="text-sm text-indigo-600 hover:text-indigo-500 underline"
               role="button"
             >

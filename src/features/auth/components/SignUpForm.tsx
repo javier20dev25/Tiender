@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabaseClient'; // Assuming supabase client is here
-import { orchestrateSignUp, signIn } from '../services/authService';
 import type { BusinessErrorCode } from '../services/authContracts';
 import BackupCodesModal from './BackupCodesModal'; // Import the new modal
 import html2canvas from 'html2canvas'; // Import html2canvas for image generation
@@ -209,7 +208,6 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
       {isModalOpen && backupCodes && (
         <BackupCodesModal 
           codes={backupCodes}
-          storeName={store?.name || 'Tu Tienda'} // Fallback name
           onClose={() => setIsModalOpen(false)}
           onDownload={handleDownloadCodes} // Pass the download handler
         />
