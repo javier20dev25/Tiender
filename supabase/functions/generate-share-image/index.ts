@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import satori from 'https://esm.sh/satori@0.10.9';
-import { Resvg } from 'https://esm.sh/@resvg/resvg-js@2.6.0';
+import { Resvg } from 'https://deno.land/x/resvg_wasm/mod.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
 // --- Type Definitions ---
@@ -215,8 +215,18 @@ Deno.serve(async (req) => {
       },
     };
 
+    // Define a minimal type for Satori nodes
+    type SatoriNode = {
+      type: string;
+      props?: {
+        style?: Record<string, string | number>;
+        src?: string;
+        children?: (SatoriNode | string | null | undefined)[];
+      };
+    };
+    
     // 4. Generate SVG from HTML
-    const svg = await satori(template as any, {
+    const svg = await satori(template as SatoriNode, {
       width: 600,
       height: 1067, // Aspect ratio similar to stories
       fonts: [{
@@ -260,11 +270,14 @@ Deno.serve(async (req) => {
       status: 200,
     });
 
-  } catch (err) {
-    console.error('Error generating share image:', err);
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
+    } catch (error: unknown) {
+      console.error('Error generating share image:', error);
+      return new Response(
+        JSON.stringify({ error: error instanceof Error ? error.message : 'An unknown error occurred' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        }
+      );
+    }
 });
