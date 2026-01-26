@@ -61,11 +61,13 @@ Deno.serve(async (req) => {
     await logEvent(supabaseAdmin, 'SIGNUP_ATTEMPT', { payload: { phone: normalizedPhone } });
 
     // 1. Verificar la identidad de WhatsApp
-    let { data: identity, error: identityError } = await supabaseAdmin
+    const { data: initialIdentity, error: identityError } = await supabaseAdmin
       .from('whatsapp_identities')
       .select('*')
       .eq('whatsapp_number', normalizedPhone)
       .single();
+    
+    let identity = initialIdentity;
 
     if (identityError && identityError.code !== 'PGRST116') { // 'No rows found'
       throw new Error(`Error al verificar WhatsApp: ${identityError.message}`);
@@ -135,11 +137,15 @@ Deno.serve(async (req) => {
 
     await logEvent(supabaseAdmin, 'TRIAL_ACTIVATED', { auth_user_id: user.id });
 
-    // 4. Crear la tienda por defecto para el usuario.
+    // 4. Crear la tienda por defecto para el usuario y establecer el fin del trial.
+    const trialEndsDate = new Date();
+    trialEndsDate.setDate(trialEndsDate.getDate() + 7);
+
     const { error: storeError } = await supabaseAdmin.from('stores').insert({
       user_id: user.id,
       name: 'Mi Tienda', // Nombre por defecto
       whatsapp_number: normalizedPhone,
+      trial_ends_at: trialEndsDate.toISOString(), // Establecer el fin del trial
     });
 
     if (storeError) {
@@ -154,8 +160,8 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Error en el bloque catch principal:', error.message);
-    return new Response(JSON.stringify({ error_code: 'INTERNAL_SERVER_ERROR', message: error.message }), {
+    console.error('Error en el bloque catch principal:', (error as Error).message);
+    return new Response(JSON.stringify({ error_code: 'INTERNAL_SERVER_ERROR', message: (error as Error).message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });
