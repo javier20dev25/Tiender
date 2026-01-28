@@ -8,7 +8,7 @@
 
 *Meta: Establecer el ciclo de vida de la prueba gratuita y la limpieza automática de cuentas.*
 
-*   **[ ] Tarea: Actualizar la BD para el trial.**
+*   **[x] Tarea: Actualizar la BD para el trial.**
     *   **Acción:** Añadir una columna `trial_ends_at` (de tipo `timestamp`) a la tabla `stores`.
 
 *   **[ ] Tarea: Implementar el bloqueo post-trial.**
