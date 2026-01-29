@@ -7,7 +7,8 @@ import AddProductForm from '../components/AddProductForm';
 import EditProductForm from '../components/EditProductForm';
 import EditStoreForm from '../components/EditStoreForm';
 import AnalyticsSummary, { type AnalyticsData } from '../components/AnalyticsSummary';
-import MobileMenu from '../components/MobileMenu'; // Importar el futuro componente
+import MobileMenu from '../components/MobileMenu';
+import CancellationModal from '../components/CancellationModal';
 
 type Store = {
   id: string;
@@ -43,6 +44,7 @@ const DashboardPage: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false); // Estado para el menú
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false); // Estado para el modal de cancelación
 
   // State for Analytics
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
@@ -410,7 +412,20 @@ const DashboardPage: React.FC = () => {
           }}
         />
       )}
-      <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+      <MobileMenu 
+        isOpen={isMenuOpen} 
+        onClose={() => setIsMenuOpen(false)}
+        onOpenCancelModal={() => setIsCancelModalOpen(true)}
+      />
+      <CancellationModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        onSuccess={() => {
+          setIsCancelModalOpen(false);
+          alert('Tu suscripción ha sido programada para cancelación al final del período.');
+          fetchDashboardData(); // Re-fetch data para reflejar cualquier cambio de estado inmediato
+        }}
+      />
     </>
   );
 };

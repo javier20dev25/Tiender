@@ -6,9 +6,10 @@ import { useAuth } from '../context/AuthContext';
 interface MobileMenuProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenCancelModal: () => void;
 }
 
-const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose }) => {
+const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, onOpenCancelModal }) => {
   const { signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -17,11 +18,9 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose }) => {
     navigate('/auth');
   };
   
-  // Por ahora, la cancelación solo mostrará una alerta.
-  // En la siguiente fase, esto abrirá un modal de confirmación.
   const handleCancelSubscription = () => {
-    alert('Funcionalidad de cancelación pendiente de implementación.');
-    onClose();
+    onOpenCancelModal(); // Abre el modal de cancelación
+    onClose(); // Cierra el menú
   };
 
   if (!isOpen) {
