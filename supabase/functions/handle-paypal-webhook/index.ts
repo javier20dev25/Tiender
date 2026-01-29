@@ -115,14 +115,18 @@ serve(async (req) => {
         trialEndDate.setDate(trialEndDate.getDate() + 7);
         trialEndsAt = trialEndDate.toISOString();
         
-        // Actualizar la tienda con la fecha de fin de prueba
+        // Actualizar la tienda con la fecha de fin de prueba y el límite de productos
         const { error: storeUpdateError } = await supabaseAdmin
           .from('stores')
-          .update({ plan_type: planType, trial_ends_at: trialEndsAt })
+          .update({ 
+            plan_type: planType, 
+            trial_ends_at: trialEndsAt,
+            product_limit: 30 // Límite de productos para el plan standard/trial
+          })
           .eq('user_id', userId);
 
         if (storeUpdateError) throw new Error(`Error al actualizar la tienda con el fin de prueba: ${storeUpdateError.message}`);
-        console.log(`Tienda del usuario ${userId} actualizada a plan '${planType}' en modo trial, finaliza en: ${trialEndsAt}.`);
+        console.log(`Tienda del usuario ${userId} actualizada a plan '${planType}' en modo trial (límite: 30 prod), finaliza en: ${trialEndsAt}.`);
       
       } else {
         // Lógica para otros planes (ej. Full) que no tienen trial
