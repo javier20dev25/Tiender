@@ -58,11 +58,12 @@ const SocialStorePage: React.FC = () => {
       if (productsError) throw new Error('No se pudieron cargar los productos.');
       setProducts(productsData || []);
 
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (error: unknown) {
+        console.error("Error fetching store data:", error);
+        setError('No se pudo cargar la tienda. Inténtalo de nuevo.');
+      } finally {
+        setLoading(false);
+      }
   }, [storeId]);
 
   useEffect(() => {
@@ -91,7 +92,7 @@ const SocialStorePage: React.FC = () => {
     }
     
     try {
-      const payload = {
+      const payload: { store_id: string; event_type: string; product_id?: string; session_id: string; } = {
         store_id: storeId,
         event_type: eventType,
         product_id: isProductEvent ? currentProductId : undefined,
@@ -150,6 +151,7 @@ const SocialStorePage: React.FC = () => {
 
     logEvent('LIKE');
     setProductInteractions(prev => ({...prev, [currentProduct.id]: 'liked'}));
+    setCurrentIndex(prev => (prev + 1) % products.length);
   };
   
   const handleDislike = () => {
@@ -158,6 +160,7 @@ const SocialStorePage: React.FC = () => {
 
     logEvent('DISLIKE');
     setProductInteractions(prev => ({...prev, [currentProduct.id]: 'disliked'}));
+    setCurrentIndex(prev => (prev + 1) % products.length);
   };
 
   const handleAddToCart = () => {
@@ -245,6 +248,7 @@ const SocialStorePage: React.FC = () => {
             <button
               onClick={handleDislike}
               disabled={!!interaction}
+              aria-label="Dislike this product"
               className={`p-4 rounded-full shadow-lg text-3xl transition-transform hover:scale-110 disabled:opacity-75 disabled:cursor-not-allowed ${
                 interaction === 'disliked' ? 'bg-red-500 text-white' : 'bg-white text-red-500'
               }`}
@@ -254,6 +258,7 @@ const SocialStorePage: React.FC = () => {
             <button
               onClick={handleLike}
               disabled={!!interaction}
+              aria-label="Like this product"
               className={`p-4 rounded-full shadow-lg text-3xl transition-transform hover:scale-110 disabled:opacity-75 disabled:cursor-not-allowed ${
                 interaction === 'liked' ? 'bg-green-500 text-white' : 'bg-white text-green-500'
               }`}
@@ -277,7 +282,7 @@ const SocialStorePage: React.FC = () => {
       {cart.length > 0 && (
         <button onClick={() => setIsCartOpen(true)} className="fixed bottom-4 right-4 bg-blue-600 text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-2xl">
           🛒
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
+          <span className="cart-badge absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
         </button>
       )}
 

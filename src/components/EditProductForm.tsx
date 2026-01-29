@@ -58,9 +58,13 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onClose, onP
       onProductUpdated();
       onClose();
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating product:', error);
-      setError(error.message || 'Ocurrió un error al actualizar el producto.');
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Ocurrió un error al actualizar el producto.');
+      }
     } finally {
       setIsSubmitting(false);
     }

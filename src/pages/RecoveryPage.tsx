@@ -60,8 +60,9 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
         throw new Error(data.message || 'Código de recuperación inválido o expirado.');
       }
 
-    } catch (err: any) {
-      setErrorMessage(err.message);
+    } catch (error: unknown) { // Corrected
+      console.error(error); // Log the error object directly
+      setErrorMessage((error as Error).message);
     } finally {
       setLoading(false);
     }
@@ -85,8 +86,9 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
       alert("Contraseña restablecida (simulado). Serás redirigido al inicio de sesión.");
       navigate('/auth'); // Redirect to login page
 
-    } catch (err: any) {
-      setErrorMessage(err.message);
+    } catch (error: unknown) { // Corrected
+      console.error(error); // Log the error object directly
+      setErrorMessage((error as Error).message);
     } finally {
       setLoading(false);
     }

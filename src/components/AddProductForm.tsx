@@ -13,7 +13,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, onClose, onPro
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,9 +64,13 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, onClose, onPro
       onProductAdded();
       onClose();
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding product:', error);
-      setError(error.message || 'Ocurrió un error al añadir el producto.');
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Ocurrió un error al añadir el producto.');
+      }
     } finally {
       setIsSubmitting(false);
     }

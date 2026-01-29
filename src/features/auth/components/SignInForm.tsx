@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signIn } from '../services/authService';
+import { supabase } from '../../../lib/supabaseClient'; // Import supabase
 
 const SignInForm: React.FC = () => {
   const [phone, setPhone] = useState('');
@@ -14,7 +14,12 @@ const SignInForm: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      const { error } = await signIn({ phone, password });
+      // Usar supabase directamente. Asumimos que el "email" es el número de teléfono.
+      const { error } = await supabase.auth.signInWithPassword({
+        email: phone, // Supabase usa 'email' para el login con teléfono
+        password,
+      });
+      
       if (error) {
         if (error.message.includes('Invalid login credentials')) {
           setError('Número de WhatsApp o contraseña incorrectos.');
@@ -25,7 +30,7 @@ const SignInForm: React.FC = () => {
       }
       navigate('/dashboard');
     } catch (err) {
-      // Error is already handled and set in the state, just log it for debugging
+      // El error ya está manejado y Seteado en el estado, solo se loggea para debug
       console.error('Sign in failed:', err);
     } finally {
       setLoading(false);

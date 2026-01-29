@@ -2,52 +2,34 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { getAccessToken } from '../../lib/paypal/client.ts'; // Import from the new client module
 
 console.log('Función "create-paypal-subscription" iniciada.');
 
-// Necesitarás estas variables de entorno en tu proyecto de Supabase
-// PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_PLAN_ID
-// PAYPAL_API_URL (ej: https://api-m.sandbox.paypal.com)
+// --- Configuración ---
+const PAYPAL_API_URL = Deno.env.get('PAYPAL_API_URL') || 'https://api-m.sandbox.paypal.com';
 
-/**
- * Obtiene un token de acceso de la API de PayPal.
- */
-async function getPayPalAccessToken() {
-  const PAYPAL_CLIENT_ID = Deno.env.get('PAYPAL_CLIENT_ID');
-  const PAYPAL_CLIENT_SECRET = Deno.env.get('PAYPAL_CLIENT_SECRET');
-  const PAYPAL_API_URL = Deno.env.get('PAYPAL_API_URL');
-
-  if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET || !PAYPAL_API_URL) {
-    throw new Error('Faltan las credenciales de PayPal o la URL de la API como variables de entorno.');
-  }
-
-  const auth = btoa(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`);
-  
-  const response = await fetch(`${PAYPAL_API_URL}/v1/oauth2/token`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${auth}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'grant_type=client_credentials',
-  });
-
-  if (!response.ok) {
-    throw new Error('No se pudo obtener el token de acceso de PayPal.');
-  }
-
-  const data = await response.json();
-  return data.access_token;
+// --- Interfaces ---
+interface SubscriptionRequestBody {
+  planType: 'standard' | 'full'; // Esperamos el tipo de plan elegido por el usuario
 }
 
+// --- SERVIDOR PRINCIPAL ---
 serve(async (req) => {
   // Manejar la solicitud pre-vuelo (pre-flight) de CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Método no permitido' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 405,
+    });
+  }
+
   try {
-    // 1. Crear un cliente de Supabase para obtener el usuario autenticado
+    // 1. Obtener el usuario autenticado
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -62,16 +44,36 @@ serve(async (req) => {
       });
     }
 
-    // 2. Obtener el token de acceso de PayPal
-    const accessToken = await getPayPalAccessToken();
-    const PAYPAL_API_URL = Deno.env.get('PAYPAL_API_URL');
-    const PAYPAL_PLAN_ID = Deno.env.get('PAYPAL_PLAN_ID');
-
-    if (!PAYPAL_PLAN_ID) {
-      throw new Error('Falta la variable de entorno PAYPAL_PLAN_ID.');
+    // 2. Obtener el planType del cuerpo de la solicitud
+    const { planType }: SubscriptionRequestBody = await req.json();
+    if (!planType || !['standard', 'full'].includes(planType)) {
+      return new Response(JSON.stringify({ error: 'planType inválido. Debe ser "standard" o "full".' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
     }
 
-    // 3. Crear la suscripción en PayPal
+    // 3. Obtener el token de acceso de PayPal
+    const accessToken = await getAccessToken();
+
+    // 4. Determinar el PAYPAL_PLAN_ID correcto basado en el planType
+    let PAYPAL_PLAN_ID: string;
+    if (planType === 'standard') {
+      PAYPAL_PLAN_ID = Deno.env.get('PAYPAL_PLAN_ID_STANDARD');
+    } else { // planType === 'full'
+      PAYPAL_PLAN_ID = Deno.env.get('PAYPAL_PLAN_ID_FULL');
+    }
+    
+    if (!PAYPAL_PLAN_ID) {
+      throw new Error(`Falta la variable de entorno para el plan PayPal '${planType}': PAYPAL_PLAN_ID_${planType.toUpperCase()}.`);
+    }
+    console.log(`Usando PayPal Plan ID: ${PAYPAL_PLAN_ID} para el plan: ${planType}`);
+
+    // 5. Configurar URLs de retorno y cancelación (idealmente dinámicas)
+    const returnUrl = `${Deno.env.get('APP_FRONTEND_URL') || 'http://localhost:5173'}/dashboard?paypal=success`;
+    const cancelUrl = `${Deno.env.get('APP_FRONTEND_URL') || 'http://localhost:5173'}/dashboard?paypal=cancel`;
+
+    // 6. Crear la suscripción en PayPal
     const subscriptionResponse = await fetch(`${PAYPAL_API_URL}/v1/billing/subscriptions`, {
       method: 'POST',
       headers: {
@@ -79,32 +81,31 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        plan_id: PAYPAL_PLAN_ID,
+        plan_id: PAYPAL_PLAN_ID, // Usar el ID de plan correcto
         subscriber: {
           name: {
-            given_name: user.email?.split('@')[0] || 'Usuario', // Usar el email como nombre por defecto
+            given_name: user.email?.split('@')[0] || 'Usuario',
             surname: 'Tiender'
           },
           email_address: user.email,
         },
-        // URLs a las que PayPal redirigirá al usuario después de la aprobación o cancelación
         application_context: {
-          return_url: `${Deno.env.get('SUPABASE_URL')}/dashboard?paypal=success`,
-          cancel_url: `${Deno.env.get('SUPABASE_URL')}/dashboard?paypal=cancel`,
+          return_url: returnUrl,
+          cancel_url: cancelUrl,
         },
       }),
     });
 
     if (!subscriptionResponse.ok) {
         const errorDetails = await subscriptionResponse.json();
-        console.error('Error al crear la suscripción en PayPal:', errorDetails);
-        throw new Error('No se pudo crear la suscripción en PayPal.');
+        console.error(`Error al crear la suscripción en PayPal para el plan ${planType} (ID: ${PAYPAL_PLAN_ID}):`, errorDetails);
+        throw new Error(`No se pudo crear la suscripción en PayPal. Detalles: ${JSON.stringify(errorDetails)}`);
     }
 
     const subscriptionData = await subscriptionResponse.json();
 
-    // 4. Encontrar el enlace de aprobación y enviarlo al frontend
-    const approveUrl = subscriptionData.links.find(link => link.rel === 'approve')?.href;
+    // 7. Encontrar el enlace de aprobación y enviarlo al frontend
+    const approveUrl = subscriptionData.links.find((link: { rel: string }) => link.rel === 'approve')?.href;
 
     if (!approveUrl) {
       throw new Error('No se encontró el enlace de aprobación en la respuesta de PayPal.');
@@ -116,7 +117,8 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('Error fatal en create-paypal-subscription:', (error as Error).message);
+    return new Response(JSON.stringify({ error: (error as Error).message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });

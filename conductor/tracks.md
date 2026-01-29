@@ -16,4 +16,12 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
+## In Progress Tracks
+
+- **[ ] Track: Configuración de PayPal v1.**
+  - *Descripción: Documenta la configuración de credenciales, planes y webhooks de PayPal.*
+  - *Link: [./conductor/tracks/paypal_setup_20260125/](./conductor/tracks/paypal_setup_20260125/)*
+
+---
+
 *Nota: La documentación anterior ha sido movida a la carpeta `./conductor/tracks/archive/` para preservar el historial.*

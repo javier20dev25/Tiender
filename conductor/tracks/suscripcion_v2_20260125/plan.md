@@ -28,15 +28,16 @@
 
 ---
 
-### **Fase 2: Interfaz de Usuario y Navegación**
+### **Fase 2: Interfaz de Usuario y Gestión de Cuenta**
 
 *Meta: Mejorar la experiencia de usuario y la gestión de la cuenta.*
 
-*   **[ ] Tarea: Crear un Sidebar de navegación en el Dashboard.**
-    *   **Acción:** Implementar un sidebar persistente con opciones claras para "Cerrar Sesión" y "Gestionar Suscripción".
-*   **[ ] Tarea: Crear la página de gestión de suscripción (`UpgradePage.tsx`).**
-
----
+*   **[ ] Tarea: Implementar Menú de Usuario Desplegable.**
+    *   **Acción:** Añadir un botón (icono "hamburguesa") en el Dashboard. Al hacer clic, se abrirá un menú lateral con dos opciones:
+        1.  **Cerrar Sesión:** Debe llamar a la función `signOut`.
+        2.  **Cancelar Suscripción:** Debe abrir un modal de confirmación para cancelar el plan.
+*   **[ ] Tarea: Crear la página de visualización de suscripción (`UpgradePage.tsx`).**
+    *   **Acción:** Esta página mostrará el estado del plan actual. En el futuro, podría contener el botón para cambiar de plan.
 
 ### **Fase 3: Lógica de Backend para Pagos (En Pausa)**
 

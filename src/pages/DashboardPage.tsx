@@ -7,6 +7,7 @@ import AddProductForm from '../components/AddProductForm';
 import EditProductForm from '../components/EditProductForm';
 import EditStoreForm from '../components/EditStoreForm';
 import AnalyticsSummary, { type AnalyticsData } from '../components/AnalyticsSummary';
+import MobileMenu from '../components/MobileMenu'; // Importar el futuro componente
 
 type Store = {
   id: string;
@@ -41,6 +42,7 @@ const DashboardPage: React.FC = () => {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false); // Estado para el menú
 
   // State for Analytics
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
@@ -98,12 +100,13 @@ const DashboardPage: React.FC = () => {
         throw new Error('No se pudo cargar la analítica.');
       }
       setAnalyticsData(data);
-    } catch (err: any) {
-      setAnalyticsError(err.message);
-    } finally {
-      setLoadingAnalytics(false);
-    }
-  }, []);
+    } catch (error: unknown) {
+        console.error('Error fetching analytics:', error);
+        setAnalyticsError((error as Error).message);
+      } finally {
+        setLoadingAnalytics(false);
+      }
+    }, []);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -153,7 +156,8 @@ const DashboardPage: React.FC = () => {
       }
       // Refresh both product list and analytics
       await Promise.all([fetchDashboardData(), store ? fetchAnalytics(store.id) : Promise.resolve()]);
-    } catch (err: any) {
+    } catch (error: unknown) {
+      console.error("Error deleting product:", error);
       setError('No se pudo eliminar el producto.');
     } finally {
       setIsSubmitting(false);
@@ -172,8 +176,8 @@ const DashboardPage: React.FC = () => {
       } else {
         throw new Error('No se recibió la URL de aprobación de PayPal.');
       }
-    } catch (err: any) {
-      console.error('Error invoking subscription function:', err);
+    } catch (error: unknown) {
+      console.error('Error invoking subscription function:', error);
       setError('No se pudo iniciar el proceso de mejora de plan. Inténtalo de nuevo.');
       setIsSubmitting(false);
     }
@@ -218,8 +222,8 @@ const DashboardPage: React.FC = () => {
         navigator.clipboard.writeText(shareUrl);
         alert('El enlace para compartir se ha copiado a tu portapapeles. ¡Pégalo en tus redes sociales!');
       }
-    } catch (err: any) {
-      console.error("Share failed:", err);
+    } catch (error: unknown) {
+      console.error("Share failed:", error);
       setError("No se pudo generar el enlace para compartir. Inténtalo de nuevo.");
     } finally {
       setIsSharing(false);
@@ -361,7 +365,18 @@ const DashboardPage: React.FC = () => {
     <>
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-100px)]">
         <div className="p-8 bg-white rounded-lg shadow-lg text-center w-full max-w-4xl">
-          <h1 className="text-3xl font-bold mb-6">Panel del Vendedor</h1>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold">Panel del Vendedor</h1>
+            <button 
+              onClick={() => setIsMenuOpen(true)} 
+              className="p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              aria-label="Abrir menú"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-4 6h4" />
+              </svg>
+            </button>
+          </div>
           {renderContent()}
         </div>
       </div>
@@ -395,6 +410,7 @@ const DashboardPage: React.FC = () => {
           }}
         />
       )}
+      <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
     </>
   );
 };

@@ -4,12 +4,16 @@ import SocialStorePage from './SocialStorePage';
 import { supabase } from '../lib/supabaseClient';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
-// 1. Mock de Supabase y Hooks
+// 1. Mock de Supabase, incluyendo functions.invoke
 vi.mock('../lib/supabaseClient', () => ({
   supabase: {
     from: vi.fn(),
+    functions: {
+      invoke: vi.fn(), // Añadido para espiar logEvent
+    },
     storage: {
       from: vi.fn(() => ({
+        // El mock de getPublicUrl no es crítico aquí, pero se mantiene por si acaso
         getPublicUrl: vi.fn(() => ({ data: { publicUrl: 'http://fake-img.com/1.jpg' } })),
       })),
     },
@@ -17,7 +21,7 @@ vi.mock('../lib/supabaseClient', () => ({
 }));
 
 // Datos de prueba simulados
-const mockStore = { id: 'store_123', name: 'Tienda Astaroth', logo_url: null };
+const mockStore = { id: 'store_123', name: 'Tienda Astaroth', logo_url: 'http://fake-logo.com/logo.png', whatsapp_number: '123456789' };
 const mockProducts = [
   {
     id: 'prod_1',
@@ -36,12 +40,35 @@ const mockProducts = [
 // Type-safe mock
 const mockedSupabase = vi.mocked(supabase);
 
-describe('Integración: SocialStorePage (Flujo de Compra)', () => {
+describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    
+    // Configuración del mock de la base de datos para todas las pruebas del describe
+    mockedSupabase.from.mockImplementation((tableName: string) => {
+      if (tableName === 'stores') {
+        const singleMock = vi.fn().mockResolvedValue({ data: mockStore, error: null });
+        const eqMock = vi.fn(() => ({ single: singleMock }));
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: eqMock,
+        };
+      }
+      if (tableName === 'products') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({ data: mockProducts, error: null }),
+        };
+      }
+      return { select: vi.fn() };
+    });
+
+    // Mock para la invocación de la función (logEvent)
+    mockedSupabase.functions.invoke.mockResolvedValue({ data: { success: true }, error: null });
   });
 
-  // Helper para renderizar con Router (necesario para useParams)
+  // Helper para renderizar con Router
   const renderWithRouter = () => {
     render(
       <MemoryRouter initialEntries={['/store/store_123']}>
@@ -52,71 +79,92 @@ describe('Integración: SocialStorePage (Flujo de Compra)', () => {
     );
   };
 
-  it('debe cargar los productos y permitir el flujo completo de compra', async () => {
-    // A. Configurar Mocks para devolver datos
-    mockedSupabase.from.mockImplementation((tableName: string) => {
-      if (tableName === 'stores') {
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn(() => ({
-            single: vi.fn().mockResolvedValue({ data: mockStore, error: null }),
-          })),
-        } as any;
-      }
-      if (tableName === 'products') {
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          order: vi.fn().mockResolvedValue({ data: mockProducts, error: null }),
-        } as any;
-      }
-      return { select: vi.fn() } as any;
-    });
+  it('debe registrar un evento de "like" cuando el usuario hace clic en el corazón', async () => {
+    renderWithRouter();
+    await waitFor(() => expect(screen.getByText('Camisa React')).toBeInTheDocument());
 
-    // B. Renderizar
+    const likeButton = screen.getByRole('button', { name: 'Like this product' });
+    fireEvent.click(likeButton);
+
+    await waitFor(() => {
+      expect(mockedSupabase.functions.invoke).toHaveBeenCalledWith('log-product-event', 
+        expect.objectContaining({
+          body: expect.objectContaining({ event_type: 'LIKE', product_id: 'prod_1' })
+        })
+      );
+    });
+  });
+
+  it('debe registrar un evento de "dislike" y avanzar al siguiente producto', async () => {
+    renderWithRouter();
+    await waitFor(() => expect(screen.getByText('Camisa React')).toBeInTheDocument());
+
+    const dislikeButton = screen.getByRole('button', { name: 'Dislike this product' });
+    fireEvent.click(dislikeButton);
+
+    await waitFor(() => {
+      // 1. Verificar que el producto cambió
+      expect(screen.getByText('Gorra JS')).toBeInTheDocument();
+      // 2. Verificar el evento de "dislike"
+      expect(mockedSupabase.functions.invoke).toHaveBeenCalledWith('log-product-event', 
+        expect.objectContaining({
+          body: expect.objectContaining({ event_type: 'DISLIKE', product_id: 'prod_1' })
+        })
+      );
+    });
+  });
+
+  it('debe registrar un evento de "add_to_cart" y permitir el flujo completo de compra', async () => {
     renderWithRouter();
 
-    // C. Verificar carga inicial
+    // A. Verificar carga inicial y el evento de visita
     await waitFor(() => {
       expect(screen.getByText('Tienda Astaroth')).toBeInTheDocument();
+      expect(mockedSupabase.functions.invoke).toHaveBeenCalledWith('log-product-event',
+        expect.objectContaining({
+          body: expect.objectContaining({ event_type: 'VISIT' })
+        })
+      );
     });
     expect(screen.getByText('Camisa React')).toBeInTheDocument();
-    expect(screen.getByText('$25.00')).toBeInTheDocument();
 
-    // D. Interacción: Añadir al Carrito
+    // B. Interacción: Añadir al Carrito
     const addToCartBtn = screen.getByText(/AÑADIR AL CARRITO/i);
     fireEvent.click(addToCartBtn);
 
-    // E. Verificar que el badge del carrito se actualizó
+    // C. Verificar registro del evento "add_to_cart"
     await waitFor(() => {
-      const cartBadge = screen.getByText('1');
-      expect(cartBadge).toBeInTheDocument();
+      expect(mockedSupabase.functions.invoke).toHaveBeenCalledWith('log-product-event', 
+        expect.objectContaining({
+          body: expect.objectContaining({ event_type: 'ADD_TO_CART', product_id: 'prod_1' })
+        })
+      );
     });
-    
-    // El segundo producto (Gorra JS) debería estar visible ahora
-    expect(screen.getByText('Gorra JS')).toBeInTheDocument();
 
-    // F. Abrir el Carrito
-    const openCartBtn = screen.getByText('1').closest('button');
+    // D. Verificar que el badge del carrito se actualizó
+        const cartBadge = await screen.findByText('1', { selector: 'span.cart-badge' });
+    expect(cartBadge).toBeInTheDocument();
+    
+    // E. Abrir el Carrito
+    const openCartBtn = screen.getByText('1', { selector: 'span.cart-badge' }).closest('button');
     expect(openCartBtn).not.toBeNull();
     fireEvent.click(openCartBtn!);
 
-    // G. Verificar contenido del Modal del Carrito
+    // F. Verificar contenido del Modal del Carrito
     await waitFor(() => {
       expect(screen.getByText('Tu Pedido')).toBeInTheDocument();
     });
-
-    // Se busca el elemento que contiene el texto "Total" y se verifica que su contenedor padre también incluya el precio.
-    // Esto evita la ambigüedad si el precio aparece en otros lugares.
+    
     const totalContainer = screen.getByText(/Total/i).parentElement;
     expect(totalContainer).toHaveTextContent('$25.00');
     
-    // H. Verificar Enlace de WhatsApp
+    // G. Verificar Enlace de WhatsApp
     const whatsappBtn = screen.getByText(/Hacer Pedido por WhatsApp/i);
     expect(whatsappBtn).toBeInTheDocument();
-    expect(whatsappBtn.closest('a')).toHaveAttribute('target', '_blank');
+    const link = whatsappBtn.closest('a');
+    expect(link).toHaveAttribute('target', '_blank');
     
-    const href = whatsappBtn.closest('a')?.getAttribute('href');
+    const href = link?.getAttribute('href');
     expect(href).toContain('wa.me');
     expect(href).toContain(encodeURIComponent('Camisa React'));
     expect(href).toContain(encodeURIComponent('Total: $25.00'));

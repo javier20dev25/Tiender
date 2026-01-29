@@ -49,6 +49,6 @@ serve(async (req) => {
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   } catch (err) {
     console.error(err);
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500 });
   }
 });

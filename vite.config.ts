@@ -15,4 +15,5 @@ export default defineConfig({
       'supabase/functions/**', // Excluir los tests de Deno
     ],
   },
+
 })

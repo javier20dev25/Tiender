@@ -43,11 +43,20 @@ describe('DashboardPage - Product CRUD', () => {
   });
 
   it('should display existing products and allow opening the add form', async () => {
-    // ARRANGE: Mock para devolver tienda y productos
     mockedSupabase.from.mockImplementation((tableName) => {
-        if (tableName === 'stores') return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: mockStore, error: null }) } as any;
-        if (tableName === 'products') return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), order: vi.fn().mockResolvedValue({ data: mockProducts, error: null }) } as any;
-        return {} as any;
+      const baseMock = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn(),
+        order: vi.fn(),
+      };
+      if (tableName === 'stores') {
+        baseMock.single.mockResolvedValue({ data: mockStore, error: null });
+      }
+      if (tableName === 'products') {
+        baseMock.order.mockResolvedValue({ data: mockProducts, error: null });
+      }
+      return baseMock;
     });
 
     // ACT
@@ -64,9 +73,20 @@ describe('DashboardPage - Product CRUD', () => {
     const eqMock = vi.fn().mockResolvedValue({ error: null });
     const deleteMock = vi.fn().mockReturnValue({ eq: eqMock });
     mockedSupabase.from.mockImplementation((tableName) => {
-        if (tableName === 'stores') return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: mockStore, error: null }) } as any;
-        if (tableName === 'products') return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), order: vi.fn().mockResolvedValue({ data: mockProducts, error: null }), delete: deleteMock } as any;
-        return {} as any;
+      const baseMock = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn(),
+        order: vi.fn(),
+        delete: deleteMock,
+      };
+      if (tableName === 'stores') {
+        baseMock.single.mockResolvedValue({ data: mockStore, error: null });
+      }
+      if (tableName === 'products') {
+        baseMock.order.mockResolvedValue({ data: mockProducts, error: null });
+      }
+      return baseMock;
     });
       
     // ACT
@@ -83,9 +103,19 @@ describe('DashboardPage - Product CRUD', () => {
   it('should allow opening the edit product form', async () => {
     // ARRANGE
     mockedSupabase.from.mockImplementation((tableName) => {
-        if (tableName === 'stores') return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: mockStore, error: null }) } as any;
-        if (tableName === 'products') return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), order: vi.fn().mockResolvedValue({ data: mockProducts, error: null }) } as any;
-        return {} as any;
+      const baseMock = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn(),
+        order: vi.fn(),
+      };
+      if (tableName === 'stores') {
+        baseMock.single.mockResolvedValue({ data: mockStore, error: null });
+      }
+      if (tableName === 'products') {
+        baseMock.order.mockResolvedValue({ data: mockProducts, error: null });
+      }
+      return baseMock;
     });
 
     // ACT
@@ -104,15 +134,16 @@ describe('DashboardPage - Product CRUD', () => {
     // ARRANGE
     const insertMock = vi.fn().mockResolvedValue({ data: [mockStore], error: null });
     mockedSupabase.from.mockImplementation((tableName) => {
-        if (tableName === 'stores') {
-            return {
-                select: vi.fn().mockReturnThis(),
-                eq: vi.fn().mockReturnThis(),
-                single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }), // No store
-                insert: insertMock,
-            } as any;
-        }
-        return {} as any;
+      const baseMock = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn(),
+        insert: insertMock,
+      };
+      if (tableName === 'stores') {
+        baseMock.single.mockResolvedValue({ data: null, error: { code: 'PGRST116' } }); // No store
+      }
+      return baseMock;
     });
     
     // ACT

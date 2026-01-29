@@ -1,0 +1,1 @@
+{"root":["./_shared/cors.ts","./create-paypal-subscription/index.ts","./generate-backup-codes/index.ts","./generate-share-image/index.ts","./log-product-event/index.ts","./optimize-image/index.ts","./orchestrate-signup/index.ts","./orchestrate-signup/orchestrate-signup.test.ts","./serve-share-page/index.ts","./verify-backup-code/index.ts"],"errors":true,"version":"5.9.3"}

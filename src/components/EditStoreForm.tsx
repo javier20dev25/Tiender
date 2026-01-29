@@ -79,9 +79,13 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
       onStoreUpdated();
       onClose();
 
-    } catch (err: any) {
-      console.error('Error updating store:', err);
-      setError(err.message || 'Ocurrió un error al actualizar la tienda.');
+    } catch (error: unknown) {
+      console.error('Error updating store:', error);
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Ocurrió un error al actualizar la tienda.');
+      }
     } finally {
       setIsSubmitting(false);
     }

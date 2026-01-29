@@ -40,21 +40,20 @@ describe('App Routing', () => {
 
     // Mockear dinámicamente según el nombre de la tabla
     mockedSupabase.from.mockImplementation((tableName: string) => {
+      const implementation = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn(),
+        order: vi.fn(),
+      };
+
       if (tableName === 'stores') {
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockStore, error: null }),
-        } as any;
+        implementation.single.mockResolvedValue({ data: mockStore, error: null });
+      } else if (tableName === 'products') {
+        implementation.order.mockResolvedValue({ data: mockProducts, error: null });
       }
-      if (tableName === 'products') {
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          order: vi.fn().mockResolvedValue({ data: mockProducts, error: null }), // Añadir el mock para .order()
-        } as any;
-      }
-      return vi.fn() as any;
+      
+      return implementation;
     });
 
     // Act: Renderizar el componente

@@ -2,11 +2,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { compare } from 'https://deno.land/x/bcrypt@v0.4.1/mod.ts'; // For comparing hashes
 import { corsHeaders } from '../_shared/cors.ts';
 
-interface VerifyCodePayload {
-  userId: string;
-  code: string;
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -38,7 +33,7 @@ Deno.serve(async (req) => {
 
     // 2. Compare the provided code against the stored hashes
     let codeIsValid = false;
-    let updatedHashedCodes = [...hashedCodes]; // Copy array to modify
+    const updatedHashedCodes = [...hashedCodes]; // Copy array to modify
 
     for (let i = 0; i < hashedCodes.length; i++) {
       const isMatch = await compare(code, hashedCodes[i]);
