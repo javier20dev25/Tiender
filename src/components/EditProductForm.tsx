@@ -1,13 +1,7 @@
 // src/components/EditProductForm.tsx
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-
-interface Product {
-  id: string;
-  title: string;
-  price: number;
-  image_url: string | null;
-}
+import { Product } from '../types';
 
 interface EditProductFormProps {
   product: Product;
@@ -18,6 +12,8 @@ interface EditProductFormProps {
 const EditProductForm: React.FC<EditProductFormProps> = ({ product, onClose, onProductUpdated }) => {
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
+  const [externalLink, setExternalLink] = useState('');
+  const [videoLink, setVideoLink] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -25,6 +21,8 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onClose, onP
     if (product) {
       setTitle(product.title);
       setPrice(product.price.toString());
+      setExternalLink(product.external_link || '');
+      setVideoLink(product.video_link || '');
     }
   }, [product]);
 
@@ -40,13 +38,13 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onClose, onP
     setIsSubmitting(true);
 
     try {
-      // Por ahora, solo actualizamos los datos de texto/precio.
-      // La actualización de la imagen se puede añadir en el futuro.
       const { error: updateError } = await supabase
         .from('products')
         .update({
           title,
           price: parseFloat(price),
+          external_link: externalLink || null,
+          video_link: videoLink || null,
         })
         .eq('id', product.id);
 
@@ -54,7 +52,6 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onClose, onP
         throw updateError;
       }
 
-      // Éxito: refrescar y cerrar
       onProductUpdated();
       onClose();
 
@@ -83,11 +80,16 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onClose, onP
             <label htmlFor="price" className="block text-sm font-medium text-gray-700 text-left">Precio (USD)</label>
             <input id="price" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required />
           </div>
-          {/* Campo de imagen deshabilitado por ahora para simplicidad */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-500 text-left">Imagen del Producto</label>
-            <p className="text-sm text-gray-600 mt-1">La edición de imágenes no está disponible en esta versión.</p>
+          
+          <div className="mb-4">
+            <label htmlFor="externalLink" className="block text-sm font-medium text-gray-700 text-left">Enlace Externo (Tienda)</label>
+            <input id="externalLink" type="url" value={externalLink} onChange={(e) => setExternalLink(e.target.value)} placeholder="https://ejemplo.com/producto" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
           </div>
+          <div className="mb-6">
+            <label htmlFor="videoLink" className="block text-sm font-medium text-gray-700 text-left">Enlace de Video (YouTube, etc.)</label>
+            <input id="videoLink" type="url" value={videoLink} onChange={(e) => setVideoLink(e.target.value)} placeholder="https://youtube.com/watch?v=..." className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+          </div>
+
           {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
           <div className="flex items-center justify-end space-x-4">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">

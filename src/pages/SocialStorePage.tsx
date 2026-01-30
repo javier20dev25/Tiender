@@ -2,22 +2,10 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
+import { Store, Product } from '../types'; // Utilizando tipos centralizados
 
 // --- Types ---
-type Store = {
-  id: string;
-  name: string;
-  logo_url: string | null;
-  whatsapp_number: string;
-};
-
-type Product = {
-  id: string;
-  title: string;
-  price: number;
-  image_url: string | null;
-};
-
+// El tipo CartItem ahora se deriva de los tipos importados
 type CartItem = Product & { quantity: number };
 
 // --- Main Component ---
@@ -47,11 +35,11 @@ const SocialStorePage: React.FC = () => {
         .single();
 
       if (storeError) throw new Error('No se pudo cargar la tienda.');
-      setStore(storeData);
+      setStore(storeData as Store);
 
       const { data: productsData, error: productsError } = await supabase
         .from('products')
-        .select('id, title, price, image_url')
+        .select('id, title, price, image_url, external_link, video_link') // Campos añadidos
         .eq('store_id', storeData.id)
         .order('created_at', { ascending: false });
 
@@ -70,7 +58,7 @@ const SocialStorePage: React.FC = () => {
     fetchStoreAndProducts();
   }, [fetchStoreAndProducts]);
 
-  // --- Analytics ---
+  // --- Analytics (sin cambios) ---
   const getSessionId = () => {
     let sessionId = sessionStorage.getItem('sessionId');
     if (!sessionId) {
@@ -107,7 +95,6 @@ const SocialStorePage: React.FC = () => {
   }, [storeId, currentIndex, products]);
 
   useEffect(() => {
-    // Log a single visit event once the store is loaded for the first time.
     if (store && !hasLoggedVisit.current) {
       logEvent('VISIT');
       hasLoggedVisit.current = true;
@@ -115,58 +102,38 @@ const SocialStorePage: React.FC = () => {
   }, [store, logEvent]);
 
 
-  // --- Cart Logic ---
+  // --- Lógica de UI y Carrito (sin cambios) ---
   const setCartQuantity = (product: Product, newQuantity: number) => {
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.id === product.id);
-
-      if (newQuantity <= 0) {
-        if (existingItem) {
-          return prevCart.filter(item => item.id !== product.id);
-        }
-        return prevCart;
-      }
-
-      if (existingItem) {
-        return prevCart.map(item =>
-          item.id === product.id ? { ...item, quantity: newQuantity } : item
-        );
-      }
+      if (newQuantity <= 0) return prevCart.filter(item => item.id !== product.id);
+      if (existingItem) return prevCart.map(item => item.id === product.id ? { ...item, quantity: newQuantity } : item);
       return [...prevCart, { ...product, quantity: newQuantity }];
     });
   };
 
-  // --- UI Handlers ---
-  const handleNextProduct = () => {
-    setCurrentIndex(prev => (prev + 1) % products.length);
-  };
-  
-  const handlePreviousProduct = () => {
-    setCurrentIndex(prev => (prev - 1 + products.length) % products.length);
-  };
+  const handleNextProduct = () => setCurrentIndex(prev => (prev + 1) % products.length);
+  const handlePreviousProduct = () => setCurrentIndex(prev => (prev - 1 + products.length) % products.length);
   
   const handleLike = () => {
     const currentProduct = products[currentIndex];
     if (!currentProduct) return;
-
     logEvent('LIKE');
     setProductInteractions(prev => ({...prev, [currentProduct.id]: 'liked'}));
-    setCurrentIndex(prev => (prev + 1) % products.length);
+    handleNextProduct();
   };
   
   const handleDislike = () => {
     const currentProduct = products[currentIndex];
     if (!currentProduct) return;
-
     logEvent('DISLIKE');
     setProductInteractions(prev => ({...prev, [currentProduct.id]: 'disliked'}));
-    setCurrentIndex(prev => (prev + 1) % products.length);
+    handleNextProduct();
   };
 
   const handleAddToCart = () => {
     if (products.length === 0) return;
     const currentProduct = products[currentIndex];
-    
     setCartQuantity(currentProduct, 1);
     logEvent('ADD_TO_CART');
   };
@@ -184,12 +151,11 @@ const SocialStorePage: React.FC = () => {
     setCartQuantity(currentProduct, currentQuantity - 1);
   };
 
-  // --- Render Functions ---
+  // --- Renderizado ---
   if (loading) return <div className="flex justify-center items-center min-h-screen">Cargando tienda...</div>;
   if (error) return <div className="flex justify-center items-center min-h-screen text-red-500">{error}</div>;
   if (!store) return <div className="flex justify-center items-center min-h-screen">Tienda no encontrada.</div>;
 
-  // Validate that the store is properly configured before showing it
   if (!store.name || !store.logo_url) {
     return (
       <div className="flex flex-col justify-center items-center min-h-screen text-center p-4">
@@ -199,20 +165,17 @@ const SocialStorePage: React.FC = () => {
     );
   }
 
-
   const currentProduct = products[currentIndex];
   const currentQuantity = currentProduct ? (cart.find(item => item.id === currentProduct.id)?.quantity || 0) : 0;
   const interaction = currentProduct ? productInteractions[currentProduct.id] : null;
 
   return (
     <div className="container mx-auto p-4 max-w-lg">
-      {/* Store Header */}
-      <div className="text-center mb-6">
+      <header className="text-center mb-6">
         {store.logo_url && <img src={store.logo_url} alt="Logo" className="mx-auto h-24 w-24 rounded-full object-cover mb-4 shadow-lg" />}
         <h1 className="text-4xl font-bold text-gray-800">{store.name}</h1>
-      </div>
+      </header>
 
-      {/* Product Tinder Card */}
       {products.length > 0 && currentProduct ? (
         <div className="relative">
           <div className="bg-white rounded-lg shadow-xl overflow-hidden mb-6 aspect-square">
@@ -220,10 +183,37 @@ const SocialStorePage: React.FC = () => {
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/50 to-transparent p-4">
               <h3 className="text-2xl font-bold text-white">{currentProduct.title}</h3>
               <p className="text-xl font-semibold text-green-300">${currentProduct.price.toFixed(2)}</p>
+              
+              {/* --- NUEVOS ENLACES --- */}
+              <div className="flex items-center space-x-4 mt-2">
+                {currentProduct.external_link && (
+                  <a
+                    href={currentProduct.external_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()} // Evita la interacción con la tarjeta
+                    className="text-white text-2xl hover:text-green-300 transition-colors"
+                    aria-label="Ver producto en otra tienda"
+                  >
+                    🛒
+                  </a>
+                )}
+                {currentProduct.video_link && (
+                  <a
+                    href={currentProduct.video_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()} // Evita la interacción con la tarjeta
+                    className="text-white text-2xl hover:text-red-400 transition-colors"
+                    aria-label="Ver video del producto"
+                  >
+                    ▶️
+                  </a>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Add to Cart / Quantity Control */}
           <div className="relative z-10 flex justify-center items-center mb-4 h-16">
             {currentQuantity === 0 ? (
                 <button onClick={handleAddToCart} className="px-8 py-4 bg-blue-600 text-white font-bold rounded-lg shadow-lg transform hover:scale-105 transition-transform">AÑADIR AL CARRITO</button>
@@ -236,63 +226,28 @@ const SocialStorePage: React.FC = () => {
             )}
           </div>
 
-          {/* Action & Navigation Buttons */}
           <div className="relative z-10 flex justify-around items-center">
-            <button
-              onClick={handlePreviousProduct}
-              disabled={products.length <= 1}
-              className="p-3 bg-white rounded-full shadow-lg text-gray-700 text-2xl transition-transform hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              ⬅️
-            </button>
-            <button
-              onClick={handleDislike}
-              disabled={!!interaction}
-              aria-label="Dislike this product"
-              className={`p-4 rounded-full shadow-lg text-3xl transition-transform hover:scale-110 disabled:opacity-75 disabled:cursor-not-allowed ${
-                interaction === 'disliked' ? 'bg-red-500 text-white' : 'bg-white text-red-500'
-              }`}
-            >
-              ❌
-            </button>
-            <button
-              onClick={handleLike}
-              disabled={!!interaction}
-              aria-label="Like this product"
-              className={`p-4 rounded-full shadow-lg text-3xl transition-transform hover:scale-110 disabled:opacity-75 disabled:cursor-not-allowed ${
-                interaction === 'liked' ? 'bg-green-500 text-white' : 'bg-white text-green-500'
-              }`}
-            >
-              ❤️
-            </button>
-            <button
-              onClick={handleNextProduct}
-              disabled={products.length <= 1}
-              className="p-3 bg-white rounded-full shadow-lg text-gray-700 text-2xl transition-transform hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              ➡️
-            </button>
+            <button onClick={handlePreviousProduct} disabled={products.length <= 1} className="p-3 bg-white rounded-full shadow-lg text-gray-700 text-2xl transition-transform hover:scale-110 disabled:opacity-50">⬅️</button>
+            <button onClick={handleDislike} disabled={!!interaction} aria-label="Dislike this product" className={`p-4 rounded-full shadow-lg text-3xl transition-transform hover:scale-110 disabled:opacity-75 ${interaction === 'disliked' ? 'bg-red-500 text-white' : 'bg-white text-red-500'}`}>❌</button>
+            <button onClick={handleLike} disabled={!!interaction} aria-label="Like this product" className={`p-4 rounded-full shadow-lg text-3xl transition-transform hover:scale-110 disabled:opacity-75 ${interaction === 'liked' ? 'bg-green-500 text-white' : 'bg-white text-green-500'}`}>❤️</button>
+            <button onClick={handleNextProduct} disabled={products.length <= 1} className="p-3 bg-white rounded-full shadow-lg text-gray-700 text-2xl transition-transform hover:scale-110 disabled:opacity-50">➡️</button>
           </div>
         </div>
       ) : (
         <p className="text-center text-gray-500 py-20">¡Esta tienda aún no tiene productos!</p>
       )}
       
-      {/* Cart Bubble */}
       {cart.length > 0 && (
         <button onClick={() => setIsCartOpen(true)} className="fixed bottom-4 right-4 bg-blue-600 text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-2xl">
-          🛒
-          <span className="cart-badge absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
+          🛒<span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
         </button>
       )}
 
-      {/* Cart Modal */}
-      {isCartOpen && <CartModal cart={cart} storeName={store.name} sellerPhone={store.whatsapp_number} onClose={() => setIsCartOpen(false)} />}
+      {isCartOpen && <CartModal cart={cart} storeName={store.name} sellerPhone={store.whatsapp_number || ''} onClose={() => setIsCartOpen(false)} />}
     </div>
   );
 };
 
-// --- Cart Modal Component ---
 const CartModal: React.FC<{ cart: CartItem[], storeName: string, sellerPhone: string, onClose: () => void }> = ({ cart, storeName, sellerPhone, onClose }) => {
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
