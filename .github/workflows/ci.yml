@@ -36,8 +36,8 @@ jobs:
         with:
           deno-version: v1.x
 
-      - name: Setup Supabase CLI
-        uses: supabase/cli-action@v1.4.1
+      - name: Install Supabase CLI
+        run: npm install -D supabase
 
       - name: Verify Supabase Secrets for PayPal Integration
         run: |
@@ -59,7 +59,7 @@ jobs:
             exit 1
           fi
 
-          # Set Supabase CLI environment variables
+          # Set Supabase CLI environment variables using npx
           export SUPABASE_ACCESS_TOKEN="${{ secrets.SUPABASE_ACCESS_TOKEN }}"
           export SUPABASE_PROJECT_REF="$PROJECT_ID"
 
@@ -70,9 +70,8 @@ jobs:
           MISSING_SECRETS=""
 
           for secret in "${REQUIRED_SECRETS[@]}"; do
-            # Use 'supabase secrets list' to get secrets and grep to check for each one.
-            # The output of 'supabase secrets list' is typically one secret name per line.
-            if ! supabase secrets list --project-ref "$PROJECT_ID" | grep -q "^$secret$"; then
+            # Use 'npx supabase secrets list' to get secrets and grep to check for each one.
+            if ! npx supabase secrets list --project-ref "$PROJECT_ID" | grep -q "^$secret$"; then
               MISSING_SECRETS+="$secret "
             fi
           done
