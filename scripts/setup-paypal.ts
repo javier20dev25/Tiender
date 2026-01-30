@@ -10,7 +10,6 @@ import { getAccessToken, listProducts, createProduct, listPlans, createPlan } fr
 // --- Constantes ---
 const TIENDER_PRODUCT_NAME = 'Suscripción Tiender';
 const TIENDER_PLAN_NAME = 'Plan Full';
-const TIENDER_PLAN_PRICE = '9.99';
 
 // --- Flujo Principal ---
 async function main() {

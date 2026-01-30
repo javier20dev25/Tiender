@@ -1,5 +1,4 @@
 // src/components/AnalyticsSummary.tsx
-import React from 'react';
 
 // --- Types ---
 

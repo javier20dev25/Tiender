@@ -1,5 +1,5 @@
 // src/components/AddProductForm.tsx
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { v4 as uuidv4 } from 'uuid'; // Para generar nombres de archivo únicos
 

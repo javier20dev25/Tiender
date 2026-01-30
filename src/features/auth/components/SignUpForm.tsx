@@ -1,5 +1,5 @@
 // src/features/auth/components/SignUpForm.tsx
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabaseClient';
 import type { BusinessErrorCode } from '../services/authContracts';
@@ -17,7 +17,6 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
   const [useEmail, setUseEmail] = useState(false); // State to toggle between email/phone
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [, setBusinessErrorCode] = useState<BusinessErrorCode | null>(null);
   
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);

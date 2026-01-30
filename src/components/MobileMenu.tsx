@@ -1,15 +1,13 @@
-// src/components/MobileMenu.tsx
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 interface MobileMenuProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenCancelModal: () => void;
+  onOpenCancelModal: () => void; // Nueva prop para abrir el modal de cancelación
 }
 
-const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, onOpenCancelModal }) => {
+const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, onOpenCancelModal }) => { // Destructurar la nueva prop
   const { signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -18,9 +16,10 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, onOpenCancelMo
     navigate('/auth');
   };
   
-  const handleCancelSubscription = () => {
-    onOpenCancelModal(); // Abre el modal de cancelación
-    onClose(); // Cierra el menú
+  // Esta función ahora activa el modal y cierra el menú
+  const handleCancelSubscriptionClick = () => {
+    onOpenCancelModal(); // Llama a la función que abre el modal
+    onClose(); // Cierra el menú desplegable
   };
 
   if (!isOpen) {
@@ -55,7 +54,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, onOpenCancelMo
             <ul className="space-y-2">
               <li>
                 <button
-                  onClick={handleCancelSubscription}
+                  onClick={handleCancelSubscriptionClick} // Llama a la nueva función
                   className="w-full text-left rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                 >
                   Cancelar Suscripción
