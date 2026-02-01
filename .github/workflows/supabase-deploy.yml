@@ -23,40 +23,6 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
 
-      - name: Repair Renamed Migrations (One-time fix)
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: |
-          supabase migration repair --status reverted 001
-          supabase migration repair --status applied 20250101000100
-          supabase migration repair --status reverted 002
-          supabase migration repair --status applied 20250101000200
-          supabase migration repair --status reverted 003
-          supabase migration repair --status applied 20250101000300
-          supabase migration repair --status reverted 004
-          supabase migration repair --status applied 20250101000400
-          supabase migration repair --status reverted 005
-          supabase migration repair --status applied 20250101000500
-          supabase migration repair --status reverted 006
-          supabase migration repair --status applied 20250101000600
-          supabase migration repair --status reverted 007
-          supabase migration repair --status applied 20250101000700
-          supabase migration repair --status reverted 008
-          supabase migration repair --status applied 20250101000800
-          supabase migration repair --status reverted 009
-          supabase migration repair --status applied 20250101000900
-          supabase migration repair --status reverted 010
-          supabase migration repair --status applied 20250101001000
-          supabase migration repair --status reverted 011
-          supabase migration repair --status applied 20250101001100
-          supabase migration repair --status reverted 012
-          supabase migration repair --status applied 20250101001200
-          supabase migration repair --status reverted 013
-          supabase migration repair --status applied 20250101001300
-          supabase migration repair --status reverted 014
-          supabase migration repair --status applied 20250101001400
-
       - name: Apply DB migrations
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
