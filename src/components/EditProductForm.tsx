@@ -1,7 +1,7 @@
 // src/components/EditProductForm.tsx
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Product } from '../types';
+import type { Product } from '../types';
 
 interface EditProductFormProps {
   product: Product;

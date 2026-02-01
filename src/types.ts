@@ -7,14 +7,14 @@ export interface Product {
   id: string;
   title: string; // Coincide con la columna de la DB
   price: number;
-  description?: string | null;
-  image_url?: string | null;
+  description: string | null;
+  image_url: string | null;
   store_id: string;
   created_at: string;
   
   // Nuevos campos para enlaces externos
-  external_link?: string | null;
-  video_link?: string | null;
+  external_link: string | null;
+  video_link: string | null;
 }
 
 /**
@@ -24,8 +24,9 @@ export interface Store {
   id: string;
   name: string;
   slug: string;
-  logo_url?: string | null;
+  logo_url: string | null;
+  whatsapp_number: string | null;
   user_id: string;
   created_at: string;
-  trial_ends_at?: string | null;
+  trial_ends_at: string | null;
 }

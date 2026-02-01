@@ -14,13 +14,13 @@ This file tracks all major tracks for the project. Each track has its own detail
   - *Descripción: Define los diferentes planes, aplica límites de productos y gestiona el proceso de mejora de plan con PayPal.*
   - *Link: [./conductor/tracks/plans_and_billing_20260117/](./conductor/tracks/plans_and_billing_20260117/)*
 
+- **[x] Track: Configuración de PayPal v1.**
+  - *Descripción: Documenta la configuración de credenciales, planes y webhooks de PayPal.*
+  - *Link: [./conductor/tracks/paypal_setup_20260125/](./conductor/tracks/paypal_setup_20260125/)*
+
 ---
 
 ## In Progress Tracks
-
-- **[ ] Track: Configuración de PayPal v1.**
-  - *Descripción: Documenta la configuración de credenciales, planes y webhooks de PayPal.*
-  - *Link: [./conductor/tracks/paypal_setup_20260125/](./conductor/tracks/paypal_setup_20260125/)*
 
 ---
 

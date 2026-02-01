@@ -43,7 +43,7 @@ const mockAnalytics = {
 // --- Mock Client ---
 // This is a more robust, chainable mock
 const fromImplementation = (tableName: string) => {
-  const query = {
+  const query: any = {
     select: vi.fn().mockReturnThis(),
     insert: vi.fn().mockReturnThis(),
     update: vi.fn().mockReturnThis(),
@@ -55,17 +55,20 @@ const fromImplementation = (tableName: string) => {
     single: vi.fn(), // Not returning this, will be the final call
   };
 
+  let promise;
+
   if (tableName === 'stores') {
     query.single.mockResolvedValue({ data: mockStoreStandard, error: null });
-    // Default for non-single queries on stores
-    vi.mocked(query).mockResolvedValue({ data: [mockStoreStandard], error: null } as never);
+    promise = Promise.resolve({ data: [mockStoreStandard], error: null });
   } else if (tableName === 'products') {
-     // Default for queries on products
-    vi.mocked(query).mockResolvedValue({ data: mockProducts, error: null } as never);
+    promise = Promise.resolve({ data: mockProducts, error: null });
   } else {
     // Default for any other table
-    vi.mocked(query).mockResolvedValue({ data: [], error: null } as never);
+    promise = Promise.resolve({ data: [], error: null });
   }
+  
+  // Make the query object thenable to simulate awaiting a query
+  query.then = (onfulfilled: any, onrejected: any) => promise.then(onfulfilled, onrejected);
   
   return query;
 };

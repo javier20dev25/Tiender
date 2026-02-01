@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { Store, Product } from '../types'; // Utilizando tipos centralizados
+import type { Store, Product } from '../types'; // Utilizando tipos centralizados
 
 // --- Types ---
 // El tipo CartItem ahora se deriva de los tipos importados
@@ -30,16 +30,16 @@ const SocialStorePage: React.FC = () => {
     try {
       const { data: storeData, error: storeError } = await supabase
         .from('stores')
-        .select('id, name, logo_url, whatsapp_number')
+        .select('id, name, logo_url, whatsapp_number, slug, user_id, created_at, trial_ends_at')
         .eq('id', storeId)
         .single();
 
       if (storeError) throw new Error('No se pudo cargar la tienda.');
-      setStore(storeData as Store);
+      setStore(storeData);
 
       const { data: productsData, error: productsError } = await supabase
         .from('products')
-        .select('id, title, price, image_url, external_link, video_link') // Campos añadidos
+        .select('id, title, price, image_url, external_link, video_link, store_id, created_at, description')
         .eq('store_id', storeData.id)
         .order('created_at', { ascending: false });
 

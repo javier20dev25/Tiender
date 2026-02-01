@@ -2,13 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
-
-interface Store {
-  id: string;
-  name: string;
-  logo_url: string | null;
-  // whatsapp_number is not editable via this form
-}
+import type { Store } from '../types';
 
 interface EditStoreFormProps {
   store: Store & { whatsapp_number: string };

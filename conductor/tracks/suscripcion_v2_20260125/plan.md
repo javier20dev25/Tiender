@@ -22,7 +22,7 @@
 *   **[x] Tarea: Actualizar la BD para el trial.**
     *   **Acción:** Añadir una columna `trial_ends_at`.
 *   **[ ] Tarea: Garantizar que el trial/plan Standard ofrecen 30 productos.**
-    *   **Acción:** Revisar la lógica de limitación de productos y asegurarse de que el límite sea 30, no 10.
+    *   **Acción:** Revisar la lógica de limitación de productos (probablemente en la tabla `stores` o en la función `get_store_analytics`) y asegurarse de que el límite sea 30 para el plan Standard y el período de prueba.
 *   **[ ] Tarea: Implementar el bloqueo post-trial.**
 *   **[ ] Tarea: Crear/Automatizar la política de eliminación de cuentas inactivas.**
 
@@ -33,17 +33,19 @@
 *Meta: Mejorar la experiencia de usuario y la gestión de la cuenta.*
 
 *   **[ ] Tarea: Implementar Menú de Usuario Desplegable.**
-    *   **Acción:** Añadir un botón (icono "hamburguesa") en el Dashboard. Al hacer clic, se abrirá un menú lateral con dos opciones:
-        1.  **Cerrar Sesión:** Debe llamar a la función `signOut`.
+    *   **Acción:** Añadir un botón (icono "hamburguesa") en el Dashboard. Al hacer clic, se abrirá un menú lateral (drawer) con las siguientes opciones:
+        1.  **Cerrar Sesión:** Debe llamar a la función `signOut` del AuthContext.
         2.  **Cancelar Suscripción:** Debe abrir un modal de confirmación para cancelar el plan.
 *   **[ ] Tarea: Crear la página de visualización de suscripción (`UpgradePage.tsx`).**
     *   **Acción:** Esta página mostrará el estado del plan actual. En el futuro, podría contener el botón para cambiar de plan.
 
-### **Fase 3: Lógica de Backend para Pagos (En Pausa)**
+### **Fase 3: Lógica de Backend para Pagos y Cancelaciones**
 
 *Meta: Implementar la lógica de servidor para manejar la creación y cancelación de suscripciones.*
 
 *   **[ ] Tarea: Configurar los Secrets en Supabase.**
+*   **[ ] Tarea: Crear la función backend `cancel-paypal-subscription`.**
+    *   **Acción:** Desarrollar una función Edge en Supabase que reciba la solicitud del frontend, encuentre la suscripción activa del usuario y la cancele a través de la API de PayPal.
 *   **[ ] Tarea: Definir e implementar la política de cancelación.**
 *   **[ ] Tarea: Revisar y extender el manejador de webhooks de PayPal.**
 
@@ -57,7 +59,14 @@
     *   **Acción:** Identificar la función SQL que calcula el ranking y cambiar el `LIMIT 5` por `LIMIT 10`.
 
 2.  **[ ] Tarea: Implementar enlaces externos en productos.**
-    *   **Acción:** Añadir campos a los productos para URLs de YouTube, tiendas externas (Shein, Shopify), etc., y mostrarlos en la tienda del usuario. El usuario (Astaroth) proveerá más detalles en este punto.
+    *   **Acción:**
+        1.  **Base de datos:** Añadir las columnas `url_video` y `url_tienda_web` (tipo TEXT, nullable) a la tabla `products`.
+        2.  **Formularios:** Modificar `AddProductForm.tsx` y `EditProductForm.tsx` para incluir campos opcionales para la URL de video y la URL de tienda web.
+        3.  **Vista de Tienda (`SocialStorePage.tsx`):**
+            *   Modificar la tarjeta de producto para mostrar iconos/tags dentro de la imagen del producto.
+            *   Si existe `url_video`, mostrar un icono de YouTube que enlace a esa URL.
+            *   Si existe `url_tienda_web`, mostrar un icono genérico de tienda/enlace que enlace a esa URL.
+            *   Los iconos deben abrir la URL en una nueva pestaña.
 
 3.  **[ ] Tarea: Implementar Chat de IA (Copiloto para la tienda).**
     *   **Acción:** Desarrollar una interfaz de chat que actúe como un asistente para que el dueño de la tienda gestione sus productos o analíticas.

@@ -22,11 +22,11 @@ const ReportModal: React.FC<ReportModalProps> = ({ report, onClose }) => {
             </svg>
           </button>
         </div>
-        <div 
-          className="prose prose-sm sm:prose-base max-w-none"
-          dangerouslySetInnerHTML={{ __html: report.replace(/\n/g, '<br />') }}
-        />
-      </div>
+                <div className="prose prose-sm sm:prose-base max-w-none">
+                  <pre className="whitespace-pre-wrap font-sans text-sm">
+                    {report}
+                  </pre>
+                </div>      </div>
     </div>
   );
 };

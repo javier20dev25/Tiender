@@ -25,8 +25,6 @@ export interface PayPalPlan {
 }
 
 // --- Configuration ---
-const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || Deno.env.get('PAYPAL_CLIENT_ID');
-const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET || Deno.env.get('PAYPAL_CLIENT_SECRET');
 const PAYPAL_API_URL = process.env.PAYPAL_API_URL || Deno.env.get('PAYPAL_API_URL') || 'https://api-m.sandbox.paypal.com'; // Default to sandbox
 
 const TIENDER_PRODUCT_NAME = 'Suscripción Tiender';
@@ -36,6 +34,9 @@ const TIENDER_PLAN_PRICE = '9.99';
 // --- PayPal API Client Functions ---
 
 export async function getAccessToken(): Promise<string> {
+  const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || Deno.env.get('PAYPAL_CLIENT_ID');
+  const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET || Deno.env.get('PAYPAL_CLIENT_SECRET');
+
   if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
     throw new Error('PayPal Client ID or Secret not configured.');
   }

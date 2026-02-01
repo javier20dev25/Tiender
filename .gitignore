@@ -31,3 +31,4 @@ supabase.deb
 .env
 .env
 .env
+.env*.local
