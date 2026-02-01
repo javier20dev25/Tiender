@@ -40,7 +40,7 @@ jobs:
         uses: supabase/setup-cli@v1
 
       - name: Set PayPal Secrets in Supabase
-        if: ${{ secrets.PAYPAL_CLIENT_ID != '' && secrets.PAYPAL_CLIENT_SECRET != '' && secrets.PAYPAL_PLAN_ID != '' && secrets.PAYPAL_WEBHOOK_ID != '' && secrets.PAYPAL_API_URL != '' }}
+        if: ${{ secrets.PAYPAL_CLIENT_ID }}
         run: |
           echo "Setting PayPal secrets in Supabase project..."
           supabase secrets set \

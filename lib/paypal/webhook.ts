@@ -1,5 +1,5 @@
 // lib/paypal/webhook.ts
-import { getAccessToken } from './client'; // Import from the client module
+import { getAccessToken } from './client.ts'; // Import from the client module
 
 // --- Configuration ---
 // These should be available as environment variables where the webhook is deployed (e.g., Supabase Functions)
