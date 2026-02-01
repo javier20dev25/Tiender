@@ -23,6 +23,15 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
 
+      - name: Repair Migration History
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase migration repair 012_add_product_images_policies --status applied
+          supabase migration repair 013_create_rpc_get_user_id --status applied
+          supabase migration repair 014_add_userid_to_subscriptions --status applied
+
       - name: Apply DB migrations
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
