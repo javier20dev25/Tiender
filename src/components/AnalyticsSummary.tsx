@@ -70,7 +70,7 @@ const AnalyticsSummary: React.FC<AnalyticsSummaryProps> = ({ data, loading, erro
 
       {/* Top Products */}
       <div>
-        <h3 className="text-xl font-semibold text-gray-700 mb-4">Top 5 Productos</h3>
+        <h3 className="text-xl font-semibold text-gray-700 mb-4">Top 10 Productos</h3>
         {data.top_products && data.top_products.length > 0 ? (
           <ul className="space-y-4">
             {data.top_products.map((product, index) => (
