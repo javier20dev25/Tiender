@@ -1,7 +1,7 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
-import { createSupabaseClient } from '../_shared/supabase-client.ts';
 
 console.log(`🚀 Function 'generate-store-report' up and running!`);
 
@@ -13,7 +13,12 @@ serve(async (req) => {
 
   try {
     // Create a Supabase client with the Auth context of the logged-in user.
-    const supabase = createSupabaseClient(req);
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+    );
+
 
     // Get the user from the request.
     const { data: { user } } = await supabase.auth.getUser();
