@@ -7,7 +7,7 @@ import type { Product, Store } from '../types'; // Using centralized types
 import AddProductForm from '../components/AddProductForm';
 import EditProductForm from '../components/EditProductForm';
 import EditStoreForm from '../components/EditStoreForm';
-import AnalyticsSummary, { type AnalyticsData } from '../components/AnalyticsSummary';
+import { WeeklyAnalytics } from '../components/WeeklyAnalytics';
 import MobileMenu from '../components/MobileMenu';
 import CancellationModal from '../components/CancellationModal';
 import ReportModal from '../components/ReportModal'; // Import the new modal
@@ -16,6 +16,12 @@ import ReportModal from '../components/ReportModal'; // Import the new modal
 type DashboardStore = Store & {
   plan_type: string;
   product_limit: number;
+};
+
+type WeeklyAnalyticsData = {
+  heatmap_data: any[];
+  product_summary: any[];
+  total_summary: { total_visits: number; total_adds_to_cart: number; };
 };
 
 const DashboardPage: React.FC = () => {
@@ -39,9 +45,16 @@ const DashboardPage: React.FC = () => {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false); // Estado para el modal de cancelación
 
   // State for Analytics
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
-  const [loadingAnalytics, setLoadingAnalytics] = useState(true);
-  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [weeklyAnalyticsData, setWeeklyAnalyticsData] = useState<WeeklyAnalyticsData | null>(null);
+  const [loadingWeeklyAnalytics, setLoadingWeeklyAnalytics] = useState(true);
+  const [weeklyAnalyticsError, setWeeklyAnalyticsError] = useState<string | null>(null);
+  const [endDate, setEndDate] = useState(new Date());
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 6); // Default to last 7 days
+    return date;
+  });
+
 
   // State for AI Report
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -87,25 +100,29 @@ const DashboardPage: React.FC = () => {
     setLoading(false);
   }, [user]);
 
-  const fetchAnalytics = useCallback(async (storeId: string) => {
-    setLoadingAnalytics(true);
-    setAnalyticsError(null);
+  const fetchWeeklyAnalytics = useCallback(async (storeId: string, start: Date, end: Date) => {
+    setLoadingWeeklyAnalytics(true);
+    setWeeklyAnalyticsError(null);
     try {
-      const { data, error } = await supabase
-        .rpc('get_store_analytics', { target_store_id: storeId });
-
-      if (error) {
-        console.error('Error fetching analytics:', error);
-        throw new Error('No se pudo cargar la analítica.');
+      const { data, error: rpcError } = await supabase
+        .rpc('get_weekly_heatmap_analytics', { 
+          target_store_id: storeId,
+          start_date: start.toISOString(),
+          end_date: end.toISOString()
+        });
+  
+      if (rpcError) {
+        console.error('Error fetching weekly analytics:', rpcError);
+        throw new Error('No se pudo cargar la analítica semanal.');
       }
-      setAnalyticsData(data);
-    } catch (error: unknown) {
-        console.error('Error fetching analytics:', error);
-        setAnalyticsError((error as Error).message);
+      setWeeklyAnalyticsData(data);
+    } catch (err: unknown) {
+        console.error('Error fetching weekly analytics:', err);
+        setWeeklyAnalyticsError((err as Error).message);
       } finally {
-        setLoadingAnalytics(false);
+        setLoadingWeeklyAnalytics(false);
       }
-    }, []);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -117,9 +134,13 @@ const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     if (store?.id) {
-      fetchAnalytics(store.id);
+      if (startDate <= endDate) {
+        fetchWeeklyAnalytics(store.id, startDate, endDate);
+      } else {
+          setWeeklyAnalyticsError("La fecha de inicio no puede ser posterior a la fecha de fin.");
+      }
     }
-  }, [store, fetchAnalytics]);
+  }, [store, startDate, endDate, fetchWeeklyAnalytics]);
   
   const handleGenerateReport = async () => {
     setIsGeneratingReport(true);
@@ -179,7 +200,7 @@ const DashboardPage: React.FC = () => {
         }
       }
       // Refresh both product list and analytics
-      await Promise.all([fetchDashboardData(), store ? fetchAnalytics(store.id) : Promise.resolve()]);
+      await Promise.all([fetchDashboardData(), store ? fetchWeeklyAnalytics(store.id, startDate, endDate) : Promise.resolve()]);
     } catch (error: unknown) {
       console.error("Error deleting product:", error);
       setError('No se pudo eliminar el producto.');
@@ -216,8 +237,9 @@ const DashboardPage: React.FC = () => {
   };
   
   const handleShare = async () => {
-    if (!store || !analyticsData?.top_products) {
-      alert("No hay suficientes datos de analítica para compartir.");
+    // This function might need re-evaluation as it depends on top_products from old analytics
+    if (!store) {
+      alert("No hay tienda para compartir.");
       return;
     }
     
@@ -237,8 +259,8 @@ const DashboardPage: React.FC = () => {
       // Step 3: Use the Web Share API
       if (navigator.share) {
         await navigator.share({
-          title: `¡Mira el Top 5 de ${store.name}!`,
-          text: `Estos son los productos más populares de nuestra tienda. ¡Échales un vistazo!`,
+          title: `¡Mira los productos de ${store.name}!`,
+          text: `Estos son los productos de nuestra tienda. ¡Échales un vistazo!`,
           url: shareUrl,
         });
       } else {
@@ -289,9 +311,9 @@ const DashboardPage: React.FC = () => {
               <button
                 onClick={handleShare}
                 className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-blue-400"
-                disabled={isSubmitting || isSharing || !analyticsData?.top_products?.length}
+                disabled={isSubmitting || isSharing}
               >
-                {isSharing ? 'Generando...' : 'Compartir Top 5'}
+                {isSharing ? 'Generando...' : 'Compartir Tienda'}
               </button>
               <button
                 onClick={() => setShowEditStoreForm(true)}
@@ -310,21 +332,52 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
           
-          <AnalyticsSummary
-            data={analyticsData}
-            loading={loadingAnalytics}
-            error={analyticsError}
-            onRefresh={() => {
-              if (store?.id) {
-                fetchAnalytics(store.id);
-              }
-            }}
-          />
+          <div className="my-6 p-4 bg-gray-100 rounded-lg text-gray-800">
+            <h3 className="font-bold text-lg mb-2">Seleccionar Rango de Fechas</h3>
+            <div className="flex items-center space-x-4">
+              <div>
+                <label htmlFor="start-date" className="text-sm font-medium">Desde:</label>
+                <input
+                  type="date"
+                  id="start-date"
+                  value={startDate.toISOString().split('T')[0]}
+                  onChange={(e) => setStartDate(new Date(e.target.value))}
+                  className="ml-2 p-2 border rounded-md"
+                />
+              </div>
+              <div>
+                <label htmlFor="end-date" className="text-sm font-medium">Hasta:</label>
+                <input
+                  type="date"
+                  id="end-date"
+                  value={endDate.toISOString().split('T')[0]}
+                  onChange={(e) => setEndDate(new Date(e.target.value))}
+                  className="ml-2 p-2 border rounded-md"
+                />
+              </div>
+            </div>
+            {weeklyAnalyticsError && <p className="text-red-500 text-sm mt-2">{weeklyAnalyticsError}</p>}
+          </div>
+
+          {weeklyAnalyticsData ? (
+            <WeeklyAnalytics
+              heatmapData={weeklyAnalyticsData.heatmap_data || []}
+              productSummary={weeklyAnalyticsData.product_summary || []}
+              totalSummary={weeklyAnalyticsData.total_summary || { total_visits: 0, total_adds_to_cart: 0 }}
+              isLoading={loadingWeeklyAnalytics}
+              startDate={startDate}
+            />
+          ) : (
+            <div className="text-center p-8 bg-gray-100 rounded-lg">
+              {loadingWeeklyAnalytics ? 'Cargando analíticas...' : 'No hay datos de analíticas para el rango seleccionado.'}
+            </div>
+          )}
+
 
           <div className="mt-6 text-center">
             <button
               onClick={handleGenerateReport}
-              disabled={isGeneratingReport || !analyticsData?.top_products?.length}
+              disabled={isGeneratingReport}
               className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed"
             >
               {isGeneratingReport ? 'Generando Informe...' : 'Generar Informe con IA'}
@@ -421,7 +474,7 @@ const DashboardPage: React.FC = () => {
           onClose={() => setShowAddProductForm(false)}
           onProductAdded={async () => {
             await fetchDashboardData();
-            if (store) await fetchAnalytics(store.id);
+            if (store) await fetchWeeklyAnalytics(store.id, startDate, endDate);
           }}
         />
       )}
@@ -431,7 +484,7 @@ const DashboardPage: React.FC = () => {
           onClose={() => setEditingProduct(null)}
           onProductUpdated={async () => {
             await fetchDashboardData();
-            if (store) await fetchAnalytics(store.id);
+            if (store) await fetchWeeklyAnalytics(store.id, startDate, endDate);
           }}
         />
       )}
@@ -441,7 +494,7 @@ const DashboardPage: React.FC = () => {
           onClose={() => setShowEditStoreForm(false)}
           onStoreUpdated={async () => {
             await fetchDashboardData();
-            if (store) await fetchAnalytics(store.id);
+            if (store) await fetchWeeklyAnalytics(store.id, startDate, endDate);
           }}
         />
       )}
