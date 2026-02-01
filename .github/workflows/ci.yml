@@ -37,7 +37,7 @@ jobs:
           deno-version: v1.x
 
       - name: Setup Supabase CLI
-        uses: supabase/cli-action@v1.4.1
+        uses: supabase/setup-cli@v1
 
       - name: Verify Supabase Secrets for PayPal Integration
         run: |

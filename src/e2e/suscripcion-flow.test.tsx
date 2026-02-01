@@ -23,7 +23,12 @@ describe('Flujo de Suscripción E2E', () => {
   const upgradedStore = { ...initialStore, plan_type: 'full', product_limit: 100 };
 
   // --- Fully Chainable Mock Builder ---
-  const createChainableMock = (dataToResolve: any) => ({
+  interface SupabaseMockResponse<T> {
+    data: T;
+    error: Error | null;
+  }
+
+  const createChainableMock = <T>(dataToResolve: SupabaseMockResponse<T>) => ({
       select: vi.fn().mockReturnThis(),
       insert: vi.fn().mockReturnThis(),
       update: vi.fn().mockReturnThis(),

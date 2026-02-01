@@ -35,9 +35,13 @@ const UpgradePage: React.FC = () => {
         setSuccess('Solicitud de cambio de plan procesada. Revisa tu estado en unos momentos.');
       }
 
-    } catch (e: any) {
+    } catch (e) {
       console.error('Error al cambiar el plan de suscripción:', e);
-      setError(`Error al procesar el cambio de plan: ${e.message}`);
+      let errorMessage = 'Ocurrió un error inesperado.';
+      if (e instanceof Error) {
+        errorMessage = e.message;
+      }
+      setError(`Error al procesar el cambio de plan: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
