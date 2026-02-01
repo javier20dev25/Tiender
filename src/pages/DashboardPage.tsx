@@ -3,33 +3,25 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import type { Product, Store } from '../types'; // Using centralized types
 import AddProductForm from '../components/AddProductForm';
 import EditProductForm from '../components/EditProductForm';
 import EditStoreForm from '../components/EditStoreForm';
 import AnalyticsSummary, { type AnalyticsData } from '../components/AnalyticsSummary';
 import MobileMenu from '../components/MobileMenu';
 import CancellationModal from '../components/CancellationModal';
+import ReportModal from '../components/ReportModal'; // Import the new modal
 
-type Store = {
-  id: string;
-  name: string;
-  logo_url: string | null;
-  whatsapp_number: string;
+// Extend the Store type for dashboard-specific properties
+type DashboardStore = Store & {
   plan_type: string;
   product_limit: number;
-};
-
-type Product = {
-  id: string;
-  title: string;
-  price: number;
-  image_url: string | null;
 };
 
 const DashboardPage: React.FC = () => {
   // Triggering redeployment to apply new environment variables.
   const { user, loading: authLoading } = useAuth();
-  const [store, setStore] = useState<Store | null>(null);
+  const [store, setStore] = useState<DashboardStore | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -51,6 +43,11 @@ const DashboardPage: React.FC = () => {
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
 
+  // State for AI Report
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [report, setReport] = useState<string | null>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
+
 
   const fetchDashboardData = useCallback(async () => {
     if (!user) return;
@@ -62,7 +59,7 @@ const DashboardPage: React.FC = () => {
 
     const { data: storeData, error: storeError } = await supabase
       .from('stores')
-      .select('id, name, logo_url, whatsapp_number, plan_type, product_limit')
+      .select('id, name, slug, logo_url, whatsapp_number, user_id, created_at, trial_ends_at, plan_type, product_limit')
       .eq('user_id', user.id)
       .single();
 
@@ -77,7 +74,7 @@ const DashboardPage: React.FC = () => {
     if (storeData) {
       const { data: productsData, error: productsError } = await supabase
         .from('products')
-        .select('id, title, price, image_url')
+        .select('id, title, price, description, image_url, store_id, created_at, external_link, video_link')
         .eq('store_id', storeData.id)
         .order('created_at', { ascending: false });
 
@@ -123,6 +120,31 @@ const DashboardPage: React.FC = () => {
       fetchAnalytics(store.id);
     }
   }, [store, fetchAnalytics]);
+  
+  const handleGenerateReport = async () => {
+    setIsGeneratingReport(true);
+    setReport(null);
+    setReportError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-store-report');
+      
+      if (error) {
+        throw error;
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setReport(data.report);
+
+    } catch (err: unknown) {
+      console.error('Error generating AI report:', err);
+      setReportError('Hubo un error al generar el informe. Por favor, inténtalo de nuevo.');
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
 
   const handleCreateStore = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -299,6 +321,17 @@ const DashboardPage: React.FC = () => {
             }}
           />
 
+          <div className="mt-6 text-center">
+            <button
+              onClick={handleGenerateReport}
+              disabled={isGeneratingReport || !analyticsData?.top_products?.length}
+              className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed"
+            >
+              {isGeneratingReport ? 'Generando Informe...' : 'Generar Informe con IA'}
+            </button>
+            {reportError && <p className="text-red-500 text-sm mt-2">{reportError}</p>}
+          </div>
+
           {atProductLimit && (
             <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md" role="alert">
               <p className="font-bold">Límite de productos alcanzado</p>
@@ -320,7 +353,7 @@ const DashboardPage: React.FC = () => {
                     <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                       <button onClick={() => setEditingProduct(product)} className="text-sm px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 disabled:bg-gray-300" disabled={isSubmitting}>Editar</button>
                       <button
-                        onClick={() => handleDeleteProduct(product.id, product.image_url)}
+                        onClick={() => handleDeleteProduct(product.id, product.image_url || null)}
                         className="text-sm px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:bg-gray-300"
                         disabled={isSubmitting}
                       >
@@ -402,9 +435,9 @@ const DashboardPage: React.FC = () => {
           }}
         />
       )}
-      {showEditStoreForm && store && (
+      {showEditStoreForm && store && store.whatsapp_number && (
         <EditStoreForm
-          store={store}
+          store={store as DashboardStore & { whatsapp_number: string }}
           onClose={() => setShowEditStoreForm(false)}
           onStoreUpdated={async () => {
             await fetchDashboardData();
@@ -426,6 +459,12 @@ const DashboardPage: React.FC = () => {
           fetchDashboardData(); // Re-fetch data para reflejar cualquier cambio de estado inmediato
         }}
       />
+      {report && (
+        <ReportModal 
+          report={report} 
+          onClose={() => setReport(null)} 
+        />
+      )}
     </>
   );
 };
