@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabaseClient';
-import type { BusinessErrorCode } from '../services/authContracts';
+
 import BackupCodesModal from './BackupCodesModal';
 import html2canvas from 'html2canvas';
 
@@ -45,7 +45,6 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
-    setBusinessErrorCode(null);
     setLoading(true);
 
     // Show loading modal immediately
@@ -80,8 +79,8 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
         const { error: signInError } = await supabase.auth.signInWithPassword(credentials);
 
         if (signInError) {
-            setErrorMessage('Tu cuenta fue creada, pero no pudimos iniciar sesión. Intenta manualmente.');
-            setBusinessErrorCode('MANUAL_SIGN_IN_REQUIRED');
+            setErrorMessage('Tu cuenta fue creada, pero no pudimos iniciar sesión. Intenta manually.');
+
             // Keep modal open but stop code loading indicator
             setIsLoadingCodes(false);
             return;

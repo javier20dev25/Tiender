@@ -28,7 +28,7 @@ describe('Flujo de Suscripción E2E', () => {
     error: Error | null;
   }
 
-  const createChainableMock = <T>(dataToResolve: SupabaseMockResponse<T>) => ({
+  const createChainableMock = <T,>(dataToResolve: SupabaseMockResponse<T>) => ({
       select: vi.fn().mockReturnThis(),
       insert: vi.fn().mockReturnThis(),
       update: vi.fn().mockReturnThis(),
