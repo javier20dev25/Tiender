@@ -244,6 +244,12 @@ const SocialStorePage: React.FC = () => {
       )}
 
       {isCartOpen && <CartModal cart={cart} storeName={store.name} sellerPhone={store.whatsapp_number || ''} onClose={() => setIsCartOpen(false)} />}
+
+      <footer className="text-center mt-8 py-4">
+        <a href="/" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
+          Crea tu tienda con Tiender
+        </a>
+      </footer>
     </div>
   );
 };
