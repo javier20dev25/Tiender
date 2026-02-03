@@ -478,9 +478,10 @@ const DashboardPage: React.FC = () => {
           }}
         />
       )}
-      {editingProduct && (
+      {editingProduct && store && (
         <EditProductForm
           product={editingProduct}
+          plan_type={store.plan_type}
           onClose={() => setEditingProduct(null)}
           onProductUpdated={async () => {
             await fetchDashboardData();

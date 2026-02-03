@@ -5,15 +5,17 @@ import type { Product } from '../types';
 
 interface EditProductFormProps {
   product: Product;
+  plan_type: string;
   onClose: () => void;
   onProductUpdated: () => void;
 }
 
-const EditProductForm: React.FC<EditProductFormProps> = ({ product, onClose, onProductUpdated }) => {
+const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, onClose, onProductUpdated }) => {
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [externalLink, setExternalLink] = useState('');
   const [videoLink, setVideoLink] = useState('');
+  const [hashtags, setHashtags] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -23,6 +25,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onClose, onP
       setPrice(product.price.toString());
       setExternalLink(product.external_link || '');
       setVideoLink(product.video_link || '');
+      setHashtags(product.hashtags ? product.hashtags.join(', ') : '');
     }
   }, [product]);
 
@@ -38,6 +41,8 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onClose, onP
     setIsSubmitting(true);
 
     try {
+      const hashtagsArray = hashtags.split(',').map(h => h.trim()).filter(h => h);
+
       const { error: updateError } = await supabase
         .from('products')
         .update({
@@ -45,6 +50,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onClose, onP
           price: parseFloat(price),
           external_link: externalLink || null,
           video_link: videoLink || null,
+          hashtags: hashtagsArray.length > 0 ? hashtagsArray : null,
         })
         .eq('id', product.id);
 
@@ -89,6 +95,13 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onClose, onP
             <label htmlFor="videoLink" className="block text-sm font-medium text-gray-700 text-left">Enlace de Video (YouTube, etc.)</label>
             <input id="videoLink" type="url" value={videoLink} onChange={(e) => setVideoLink(e.target.value)} placeholder="https://youtube.com/watch?v=..." className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
           </div>
+
+          {plan_type === 'full' && (
+            <div className="mb-6">
+              <label htmlFor="hashtags" className="block text-sm font-medium text-gray-700 text-left">Hashtags (separados por coma)</label>
+              <input id="hashtags" type="text" value={hashtags} onChange={(e) => setHashtags(e.target.value)} placeholder="#verano, #oferta, #nuevo" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+            </div>
+          )}
 
           {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
           <div className="flex items-center justify-end space-x-4">

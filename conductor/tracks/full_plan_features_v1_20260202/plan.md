@@ -9,7 +9,7 @@ Este documento detalla el plan técnico para implementar las nuevas funcionalida
 ---
 ## Checklist de Implementación
 
-- [ ] **CTA a Grupo/Canal al Finalizar**
+- [x] **CTA a Grupo/Canal al Finalizar**
 - [ ] **Hashtags por Producto**
 - [ ] **Indicador de "Producto Caliente" (🔥) y Priorización**
 - [ ] **Oferta por Inactividad del Usuario**

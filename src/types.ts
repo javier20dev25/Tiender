@@ -15,6 +15,9 @@ export interface Product {
   // Nuevos campos para enlaces externos
   external_link: string | null;
   video_link: string | null;
+
+  // Nuevos campos para Plan Full
+  hashtags?: string[] | null;
 }
 
 /**

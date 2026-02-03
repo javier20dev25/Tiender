@@ -39,7 +39,7 @@ const SocialStorePage: React.FC = () => {
 
       const { data: productsData, error: productsError } = await supabase
         .from('products')
-        .select('id, title, price, image_url, external_link, video_link, store_id, created_at, description')
+        .select('id, title, price, image_url, external_link, video_link, store_id, created_at, description, hashtags')
         .eq('store_id', storeData.id)
         .order('created_at', { ascending: false });
 
@@ -190,6 +190,16 @@ const SocialStorePage: React.FC = () => {
               <h3 className="text-2xl font-bold text-white">{currentProduct.title}</h3>
               <p className="text-xl font-semibold text-green-300">${currentProduct.price.toFixed(2)}</p>
               
+              {store.plan_type === 'full' && currentProduct.hashtags && currentProduct.hashtags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {currentProduct.hashtags.map((tag, index) => (
+                    <span key={index} className="text-xs font-semibold text-white bg-white/20 px-2 py-1 rounded-full">
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {/* --- NUEVOS ENLACES --- */}
               <div className="flex items-center space-x-4 mt-2">
                 {currentProduct.external_link && (
