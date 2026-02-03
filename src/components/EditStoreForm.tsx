@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Store } from '../types';
 
 interface EditStoreFormProps {
-  store: Store & { whatsapp_number: string };
+  store: Store & { whatsapp_number: string; plan_type: string; community_link?: string | null; };
   onClose: () => void;
   onStoreUpdated: () => void;
 }
@@ -14,6 +14,7 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
   const [name, setName] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
+  const [communityLink, setCommunityLink] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,6 +22,7 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
     if (store) {
       setName(store.name);
       setCurrentLogoUrl(store.logo_url);
+      setCommunityLink(store.community_link || '');
     }
   }, [store]);
 
@@ -62,6 +64,7 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
         .update({
           name: name.trim(),
           logo_url: newLogoUrl,
+          community_link: communityLink.trim(),
         })
         .eq('id', store.id);
 
@@ -109,6 +112,14 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
             <input id="logo" type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files ? e.target.files[0] : null)} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
             {!currentLogoUrl && !logoFile && <p className="text-sm text-gray-500 mt-1">Sube un logo para tu tienda.</p>}
           </div>
+
+          {store.plan_type === 'full' && (
+            <div className="mb-6">
+              <label htmlFor="communityLink" className="block text-sm font-medium text-gray-700 text-left">Enlace a tu Comunidad (Opcional)</label>
+              <p className="text-xs text-gray-500 text-left mb-1">Añade un enlace a tu grupo de WhatsApp, Telegram, etc. para capturar clientes.</p>
+              <input id="communityLink" type="url" value={communityLink} onChange={(e) => setCommunityLink(e.target.value)} placeholder="https://chat.whatsapp.com/..." className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+            </div>
+          )}
           
           {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
           

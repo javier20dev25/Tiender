@@ -7,6 +7,15 @@ Este documento detalla el plan técnico para implementar las nuevas funcionalida
 **Regla de Oro:** Todas las funcionalidades aquí descritas deben estar estrictamente limitadas a los usuarios con un plan 'full'. La verificación se hará principalmente en el frontend (`if (store.plan_type === 'full')`) para la UI, y en el backend (RLS) si se crean nuevas tablas o endpoints sensibles.
 
 ---
+## Checklist de Implementación
+
+- [ ] **CTA a Grupo/Canal al Finalizar**
+- [ ] **Hashtags por Producto**
+- [ ] **Indicador de "Producto Caliente" (🔥) y Priorización**
+- [ ] **Oferta por Inactividad del Usuario**
+- [ ] **Ventas al por Mayor (Wholesale)**
+
+---
 
 ### 1. Indicador de "Producto Caliente" (🔥) y Priorización
 

@@ -30,7 +30,7 @@ const SocialStorePage: React.FC = () => {
     try {
       const { data: storeData, error: storeError } = await supabase
         .from('stores')
-        .select('id, name, logo_url, whatsapp_number, slug, user_id, created_at, trial_ends_at')
+        .select('id, name, logo_url, whatsapp_number, slug, user_id, created_at, trial_ends_at, plan_type, community_link')
         .eq('id', storeId)
         .single();
 
@@ -168,6 +168,12 @@ const SocialStorePage: React.FC = () => {
   const currentProduct = products[currentIndex];
   const currentQuantity = currentProduct ? (cart.find(item => item.id === currentProduct.id)?.quantity || 0) : 0;
   const interaction = currentProduct ? productInteractions[currentProduct.id] : null;
+  
+  const showCommunityCTA = store && 
+                           store.plan_type === 'full' && 
+                           store.community_link && 
+                           cart.length === 0 && 
+                           currentIndex === products.length - 1;
 
   return (
     <div className="container mx-auto p-4 max-w-lg">
@@ -232,6 +238,21 @@ const SocialStorePage: React.FC = () => {
             <button onClick={handleLike} disabled={!!interaction} aria-label="Like this product" className={`p-4 rounded-full shadow-lg text-3xl transition-transform hover:scale-110 disabled:opacity-75 ${interaction === 'liked' ? 'bg-green-500 text-white' : 'bg-white text-green-500'}`}>❤️</button>
             <button onClick={handleNextProduct} disabled={products.length <= 1} className="p-3 bg-white rounded-full shadow-lg text-gray-700 text-2xl transition-transform hover:scale-110 disabled:opacity-50">➡️</button>
           </div>
+
+          {showCommunityCTA && (
+            <div className="mt-8 text-center p-4 bg-gray-100 rounded-lg">
+              <h4 className="font-bold text-lg mb-2">¿Te gustó lo que viste?</h4>
+              <p className="text-gray-600 mb-4">Únete a nuestra comunidad para no perderte las novedades.</p>
+              <a
+                href={store.community_link as string}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block px-6 py-3 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 transition-transform hover:scale-105"
+              >
+                Unirse al Grupo
+              </a>
+            </div>
+          )}
         </div>
       ) : (
         <p className="text-center text-gray-500 py-20">¡Esta tienda aún no tiene productos!</p>
@@ -260,9 +281,9 @@ const CartModal: React.FC<{ cart: CartItem[], storeName: string, sellerPhone: st
   const generateWhatsAppMessage = () => {
     let message = `¡Hola ${storeName}! Quisiera hacer un pedido:\n\n`;
     cart.forEach(item => {
-      message += `- ${item.title} (x${item.quantity}) - $${(item.price * item.quantity).toFixed(2)}\n`;
+      message += `- ${item.title} (x${item.quantity}) - ${(item.price * item.quantity).toFixed(2)}\n`;
     });
-    message += `\n*Total: $${total.toFixed(2)}*`;
+    message += `\n*Total: ${total.toFixed(2)}*`;
     return encodeURIComponent(message);
   };
 

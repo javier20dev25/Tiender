@@ -29,4 +29,6 @@ export interface Store {
   user_id: string;
   created_at: string;
   trial_ends_at: string | null;
+  plan_type: string;
+  community_link: string | null;
 }
