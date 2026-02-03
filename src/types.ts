@@ -18,6 +18,15 @@ export interface Product {
 
   // Nuevos campos para Plan Full
   hashtags?: string[] | null;
+  is_hot?: boolean;
+
+  // Oferta por inactividad
+  discount_timer_seconds?: number | null;
+  discount_percentage?: number | null;
+
+  // Ventas al por Mayor
+  wholesale_threshold?: number | null;
+  wholesale_price?: number | null;
 }
 
 /**

@@ -16,6 +16,9 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
   const [externalLink, setExternalLink] = useState('');
   const [videoLink, setVideoLink] = useState('');
   const [hashtags, setHashtags] = useState('');
+  const [isDiscountActive, setIsDiscountActive] = useState(false);
+  const [discountTimerSeconds, setDiscountTimerSeconds] = useState('');
+  const [discountPercentage, setDiscountPercentage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -26,6 +29,11 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
       setExternalLink(product.external_link || '');
       setVideoLink(product.video_link || '');
       setHashtags(product.hashtags ? product.hashtags.join(', ') : '');
+
+      const hasDiscount = !!product.discount_percentage && !!product.discount_timer_seconds;
+      setIsDiscountActive(hasDiscount);
+      setDiscountTimerSeconds(hasDiscount ? String(product.discount_timer_seconds) : '');
+      setDiscountPercentage(hasDiscount ? String(product.discount_percentage) : '');
     }
   }, [product]);
 
@@ -43,15 +51,27 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
     try {
       const hashtagsArray = hashtags.split(',').map(h => h.trim()).filter(h => h);
 
+      const updatePayload: Partial<Product> = {
+        title,
+        price: parseFloat(price),
+        external_link: externalLink || null,
+        video_link: videoLink || null,
+        hashtags: hashtagsArray.length > 0 ? hashtagsArray : null,
+      };
+
+      if (plan_type === 'full') {
+        if (isDiscountActive) {
+          updatePayload.discount_timer_seconds = discountTimerSeconds ? parseInt(discountTimerSeconds, 10) : null;
+          updatePayload.discount_percentage = discountPercentage ? parseInt(discountPercentage, 10) : null;
+        } else {
+          updatePayload.discount_timer_seconds = null;
+          updatePayload.discount_percentage = null;
+        }
+      }
+
       const { error: updateError } = await supabase
         .from('products')
-        .update({
-          title,
-          price: parseFloat(price),
-          external_link: externalLink || null,
-          video_link: videoLink || null,
-          hashtags: hashtagsArray.length > 0 ? hashtagsArray : null,
-        })
+        .update(updatePayload)
         .eq('id', product.id);
 
       if (updateError) {
@@ -97,14 +117,35 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
           </div>
 
           {plan_type === 'full' && (
-            <div className="mb-6">
-              <label htmlFor="hashtags" className="block text-sm font-medium text-gray-700 text-left">Hashtags (separados por coma)</label>
-              <input id="hashtags" type="text" value={hashtags} onChange={(e) => setHashtags(e.target.value)} placeholder="#verano, #oferta, #nuevo" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
-            </div>
+            <>
+              <div className="mb-6">
+                <label htmlFor="hashtags" className="block text-sm font-medium text-gray-700 text-left">Hashtags (separados por coma)</label>
+                <input id="hashtags" type="text" value={hashtags} onChange={(e) => setHashtags(e.target.value)} placeholder="#verano, #oferta, #nuevo" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+              </div>
+
+              <div className="border-t border-gray-200 pt-6">
+                <div className="flex items-center">
+                  <input id="discountToggle" type="checkbox" checked={isDiscountActive} onChange={() => setIsDiscountActive(!isDiscountActive)} className="h-4 w-4 text-blue-600 border-gray-300 rounded" />
+                  <label htmlFor="discountToggle" className="ml-2 block text-sm font-medium text-gray-700">Activar oferta por inactividad</label>
+                </div>
+                {isDiscountActive && (
+                  <div className="mt-4 grid grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="discountTimer" className="block text-xs font-medium text-gray-700">Espera (segundos)</label>
+                      <input id="discountTimer" type="number" value={discountTimerSeconds} onChange={(e) => setDiscountTimerSeconds(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+                    </div>
+                    <div>
+                      <label htmlFor="discountPercentage" className="block text-xs font-medium text-gray-700">Descuento (%)</label>
+                      <input id="discountPercentage" type="number" value={discountPercentage} onChange={(e) => setDiscountPercentage(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-          <div className="flex items-center justify-end space-x-4">
+          <div className="flex items-center justify-end space-x-4 mt-6">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
               Cancelar
             </button>

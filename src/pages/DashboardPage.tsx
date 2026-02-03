@@ -471,6 +471,7 @@ const DashboardPage: React.FC = () => {
       {showAddProductForm && store && (
         <AddProductForm 
           storeId={store.id}
+          plan_type={store.plan_type}
           onClose={() => setShowAddProductForm(false)}
           onProductAdded={async () => {
             await fetchDashboardData();
