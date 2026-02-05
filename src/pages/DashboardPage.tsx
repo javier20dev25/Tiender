@@ -213,11 +213,13 @@ const DashboardPage: React.FC = () => {
     setIsSubmitting(true);
     setError('');
     try {
-      const { data, error } = await supabase.functions.invoke('create-paypal-subscription');
+      const { data, error } = await supabase.functions.invoke('create-paypal-subscription', {
+        body: { planType: 'full' },
+      });
       if (error) throw error;
       
-      if (data.approve_url) {
-        window.location.href = data.approve_url;
+      if (data.approvalUrl) {
+        window.location.href = data.approvalUrl;
       } else {
         throw new Error('No se recibió la URL de aprobación de PayPal.');
       }
@@ -292,9 +294,11 @@ const DashboardPage: React.FC = () => {
                 <h2 className="text-2xl font-bold">Tu Tienda: {store.name}</h2>
                 <div className="flex items-center space-x-2">
                     <span className="text-sm font-semibold capitalize px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full">{store.plan_type}</span>
-                    <button onClick={handleUpgrade} disabled={isSubmitting} className="text-sm text-blue-600 hover:underline disabled:text-gray-500">
-                      {isSubmitting ? 'Procesando...' : 'Mejorar Plan'}
-                    </button>
+                    {store.plan_type !== 'full' && (
+                      <button onClick={handleUpgrade} disabled={isSubmitting} className="text-sm text-blue-600 hover:underline disabled:text-gray-500">
+                        {isSubmitting ? 'Procesando...' : 'Mejorar Plan'}
+                      </button>
+                    )}
                 </div>
               </div>
             </div>

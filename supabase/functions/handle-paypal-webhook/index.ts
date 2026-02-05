@@ -107,36 +107,27 @@ serve(async (req) => {
       let subscriptionStatus = 'active';
       let trialEndsAt: string | null = null;
 
-      // Lógica específica para el plan Standard que tiene un trial
-      if (planId === standardPlanId) {
-        console.log('Suscripción al plan Standard detectada. Aplicando lógica de período de prueba.');
-        subscriptionStatus = 'trialing';
-        const trialEndDate = new Date();
-        trialEndDate.setDate(trialEndDate.getDate() + 7);
-        trialEndsAt = trialEndDate.toISOString();
-        
-        // Actualizar la tienda con la fecha de fin de prueba y el límite de productos
-        const { error: storeUpdateError } = await supabaseAdmin
-          .from('stores')
-          .update({ 
-            plan_type: planType, 
-            trial_ends_at: trialEndsAt,
-            product_limit: 30 // Límite de productos para el plan standard/trial
-          })
-          .eq('user_id', userId);
-
-        if (storeUpdateError) throw new Error(`Error al actualizar la tienda con el fin de prueba: ${storeUpdateError.message}`);
-        console.log(`Tienda del usuario ${userId} actualizada a plan '${planType}' en modo trial (límite: 30 prod), finaliza en: ${trialEndsAt}.`);
+      // Lógica de prueba para TODOS los planes
+      console.log(`Aplicando lógica de período de prueba de 7 días para el plan '${planType}'.`);
+      subscriptionStatus = 'trialing';
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 7);
+      trialEndsAt = trialEndDate.toISOString();
       
-      } else {
-        // Lógica para otros planes (ej. Full) que no tienen trial
-        const { error: storeUpdateError } = await supabaseAdmin
-          .from('stores')
-          .update({ plan_type: planType, trial_ends_at: null }) // Asegurarse que no haya fecha de trial
-          .eq('user_id', userId);
-        if (storeUpdateError) throw new Error(`Error al actualizar la tienda a ${planType}: ${storeUpdateError.message}`);
-        console.log(`Tienda del usuario ${userId} actualizada a plan '${planType}'.`);
-      }
+      const productLimit = planType === 'full' ? 60 : 30;
+
+      // Actualizar la tienda con la fecha de fin de prueba y el límite de productos
+      const { error: storeUpdateError } = await supabaseAdmin
+        .from('stores')
+        .update({ 
+          plan_type: planType, 
+          trial_ends_at: trialEndsAt,
+          product_limit: productLimit
+        })
+        .eq('user_id', userId);
+
+      if (storeUpdateError) throw new Error(`Error al actualizar la tienda con el fin de prueba: ${storeUpdateError.message}`);
+      console.log(`Tienda del usuario ${userId} actualizada a plan '${planType}' en modo trial (límite: ${productLimit} prod), finaliza en: ${trialEndsAt}.`);
 
       // Registrar/Actualizar la suscripción en nuestra tabla
       await supabaseAdmin.from('subscriptions').upsert([
