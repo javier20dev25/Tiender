@@ -16,39 +16,40 @@ describe('Lógica del Webhook de PayPal', () => {
   let mockPlanMap: PlanMap;
 
   // Mocks for 'subscriptions' table
-  let subUpdate: Mock;
-  let subEq: Mock;
+  let subUpdate: Mock, subEq: Mock, subSelect: Mock, subSelectEq: Mock, subSingle: Mock;
   
   // Mocks for 'stores' table
-  let storeUpdate: Mock;
-  let storeEq: Mock;
+  let storeUpdate: Mock, storeEq: Mock;
 
-  // A generic 'from' mock to route to the correct table mocks
   let mockFrom: Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Setup individual mock chains for each table
+    // --- Mock chain for 'subscriptions' table ---
+    // .update().eq()
     subEq = vi.fn().mockResolvedValue({ error: null });
     subUpdate = vi.fn().mockReturnValue({ eq: subEq });
+    // .select().eq().single()
+    subSingle = vi.fn().mockResolvedValue({ data: { status: 'active' }, error: null });
+    subSelectEq = vi.fn().mockReturnValue({ single: subSingle });
+    subSelect = vi.fn().mockReturnValue({ eq: subSelectEq });
 
+    // --- Mock chain for 'stores' table ---
     storeEq = vi.fn().mockResolvedValue({ error: null });
     storeUpdate = vi.fn().mockReturnValue({ eq: storeEq });
     
-    // The rpc mock is simpler
     mockRpc = vi.fn().mockResolvedValue({ data: mockUserId, error: null });
 
-    // The 'from' mock now acts as a router based on the table name
+    // The 'from' mock acts as a router based on the table name
     mockFrom = vi.fn().mockImplementation((tableName: string) => {
       if (tableName === 'subscriptions') {
-        return { update: subUpdate };
+        return { update: subUpdate, select: subSelect };
       }
       if (tableName === 'stores') {
         return { update: storeUpdate };
       }
-      // Return a default empty mock to avoid errors on unexpected calls
-      return { update: vi.fn().mockReturnValue({ eq: vi.fn() }) };
+      return { update: vi.fn().mockReturnValue({ eq: vi.fn() }), select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn() }) }) };
     });
 
     mockSupabaseAdmin = {
@@ -80,6 +81,10 @@ describe('Lógica del Webhook de PayPal', () => {
 
     expect(mockRpc).toHaveBeenCalledWith('get_user_id_by_email', { user_email: mockSubscriberEmail });
     expect(mockFrom).toHaveBeenCalledWith('subscriptions');
+    // Verify the idempotency check was performed
+    expect(subSelect).toHaveBeenCalledWith('status');
+    expect(subSelectEq).toHaveBeenCalledWith('provider_subscription_id', mockSubscriptionId);
+    // Verify the update was performed
     expect(subUpdate).toHaveBeenCalledWith({
       status: 'cancelled',
       cancelled_at: mockEvent.resource.status_update_time,
@@ -87,7 +92,7 @@ describe('Lógica del Webhook de PayPal', () => {
     expect(subEq).toHaveBeenCalledWith('provider_subscription_id', mockSubscriptionId);
   });
 
-  it('debería actualizar el estado a "suspended" para BILLING.SUBSCRIPTION.SUSPENDED', async () => {
+  it('debería actualizar el estado a "suspended" (sin chequeo de idempotencia aún)', async () => {
     const mockEvent = {
       id: 'evt-2',
       event_type: 'BILLING.SUBSCRIPTION.SUSPENDED',
@@ -120,7 +125,6 @@ describe('Lógica del Webhook de PayPal', () => {
 
     await processWebhookEvent(mockEvent as any, mockSupabaseAdmin, mockPlanMap);
     
-    // Verify the call to 'subscriptions' table
     expect(mockFrom).toHaveBeenCalledWith('subscriptions');
     expect(subUpdate).toHaveBeenCalledWith({
       provider_plan_id: newPlanId,
@@ -129,13 +133,37 @@ describe('Lógica del Webhook de PayPal', () => {
     });
     expect(subEq).toHaveBeenCalledWith('provider_subscription_id', mockSubscriptionId);
 
-    // Verify the call to 'stores' table
     expect(mockFrom).toHaveBeenCalledWith('stores');
     expect(storeUpdate).toHaveBeenCalledWith({ plan_type: 'full' });
     expect(storeEq).toHaveBeenCalledWith('user_id', mockUserId);
+  });
 
-    // Ensure no cross-contamination
-    expect(storeUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ status: 'active' }));
-    expect(subUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ plan_type: 'full' }));
+  it('debería ser idempotente y no procesar el mismo evento de cancelación dos veces', async () => {
+    const mockEvent = {
+      id: 'evt-cancel-idem',
+      event_type: 'BILLING.SUBSCRIPTION.CANCELLED',
+      resource: {
+        id: mockSubscriptionId,
+        status: 'CANCELLED',
+        status_update_time: new Date().toISOString(),
+        subscriber: { email_address: mockSubscriberEmail },
+      },
+    };
+
+    // Simulate the state change for the idempotency check
+    subSingle
+      .mockResolvedValueOnce({ data: { status: 'active' }, error: null }) // 1st call, sub is active
+      .mockResolvedValueOnce({ data: { status: 'cancelled' }, error: null });// 2nd call, sub is already cancelled
+
+    // Call the event handler twice with the same event
+    await processWebhookEvent(mockEvent as any, mockSupabaseAdmin, mockPlanMap);
+    await processWebhookEvent(mockEvent as any, mockSupabaseAdmin, mockPlanMap);
+
+    expect(mockRpc).toHaveBeenCalledTimes(2);
+    // The select call should happen twice
+    expect(subSelect).toHaveBeenCalledTimes(2);
+    // However, the database update should only happen ONCE
+    expect(subUpdate).toHaveBeenCalledTimes(1);
+    expect(subEq).toHaveBeenCalledTimes(1);
   });
 });

@@ -41,11 +41,26 @@ export async function processWebhookEvent(
 
   if (event.event_type === 'BILLING.SUBSCRIPTION.CANCELLED') {
     console.log(`Procesando CANCELLED para subscripción ${subscriptionId}`);
-    const { error } = await supabaseAdmin
+
+    // IDEMPOTENCY CHECK
+    const { data: currentSub, error: selectError } = await supabaseAdmin
       .from('subscriptions')
-      .update({ status: 'cancelled', cancelled_at: event.resource.status_update_time })
-      .eq('provider_subscription_id', subscriptionId);
-    if (error) throw error;
+      .select('status')
+      .eq('provider_subscription_id', subscriptionId)
+      .single();
+      
+    if (selectError) throw selectError;
+
+    // Only update if the status is not already 'cancelled'
+    if (currentSub?.status !== 'cancelled') {
+        const { error } = await supabaseAdmin
+          .from('subscriptions')
+          .update({ status: 'cancelled', cancelled_at: event.resource.status_update_time })
+          .eq('provider_subscription_id', subscriptionId);
+        if (error) throw error;
+    } else {
+        console.log(`Idempotency check: La subscripción ${subscriptionId} ya está cancelada. No se necesita acción.`);
+    }
   } else if (event.event_type === 'BILLING.SUBSCRIPTION.SUSPENDED') {
       console.log(`Procesando SUSPENDED para subscripción ${subscriptionId}`);
       const { error } = await supabaseAdmin
