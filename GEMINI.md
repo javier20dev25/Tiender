@@ -81,6 +81,28 @@ Esto casi siempre significa que **el trabajo ya está hecho, commiteado y subido
 
 ### Conclusión
 Si ambos casos se cumplen, puedes estar seguro de que tu cambio ya fue desplegado. Ignora otros archivos no relacionados en `git status` y continúa con el siguiente paso.
+
+---
+
+### Higiene del Directorio de Trabajo: Archivos "Untracked"
+
+#### Escenario
+Después de trabajar en una tarea, `git status` muestra una lista de archivos en la sección "Untracked files" que no esperabas. Algunos pueden ser archivos que no recuerdas haber creado (`helper.ts`, `config.ts`), mientras que otros pueden ser directorios que contienen tu trabajo (`src/tests/`).
+
+#### Diagnóstico y Protocolo
+Esto puede ser confuso, pero es importante no añadir ciegamente todos los archivos (`git add .`).
+
+1.  **Investiga los Archivos Inesperados:**
+    *   Usa `cat` o `read_file` para inspeccionar el contenido de cada archivo inesperado.
+    *   **Pregúntate:** ¿Es este archivo parte de la solución final, o fue un artefacto de una prueba o un enfoque abandonado?
+    *   **Acción:** Si son artefactos (código de prueba, borradores), **elimínalos** con `rm <archivo>` antes de hacer el commit. Mantener un directorio de trabajo limpio es crucial.
+
+2.  **Entiende los Directorios "Untracked":**
+    *   Si `git status` muestra un directorio entero como "untracked" (e.g., `src/tests/`), significa que el directorio en sí es nuevo para Git.
+    *   **Acción:** Esto es a menudo normal. Si los archivos dentro de ese directorio son parte de tu trabajo (e.g., `src/tests/paypal-webhooks.test.ts`), puedes añadir el directorio o el archivo específico (`git add src/tests/` o `git add src/tests/paypal-webhooks.test.ts`) sin problemas.
+
+#### Conclusión
+Un `git status` con archivos "untracked" es una señal para hacer una pausa y limpiar, no para añadir todo automáticamente. Elimina los artefactos y añade solo los archivos que forman parte de la solución final.
 He actualizado GEMINI.md con las lecciones aprendidas. Esto nos ayudará a
 mantener un código más robusto y a evitar errores similares en el
 futuro.Excelente. He integrado las lecciones aprendidas en GEMINI.md.
