@@ -1,71 +1,50 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SocialStorePage from './SocialStorePage';
-import { supabase } from '../lib/supabaseClient';
+import { getSupabase } from '../lib/supabaseClient';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
-// 1. Mock de Supabase, incluyendo functions.invoke
-vi.mock('../lib/supabaseClient', () => ({
-  supabase: {
-    from: vi.fn(),
-    functions: {
-      invoke: vi.fn(), // Añadido para espiar logEvent
-    },
-    storage: {
-      from: vi.fn(() => ({
-        // El mock de getPublicUrl no es crítico aquí, pero se mantiene por si acaso
-        getPublicUrl: vi.fn(() => ({ data: { publicUrl: 'http://fake-img.com/1.jpg' } })),
-      })),
-    },
-  },
-}));
+// --- MOCKING supabaseClient ---
+vi.mock('../lib/supabaseClient');
 
-// Datos de prueba simulados
+// --- Test Data ---
 const mockStore = { id: 'store_123', name: 'Tienda Astaroth', logo_url: 'http://fake-logo.com/logo.png', whatsapp_number: '123456789' };
 const mockProducts = [
-  {
-    id: 'prod_1',
-    title: 'Camisa React',
-    price: 25.0,
-    image_url: 'camisa.jpg',
-  },
-  {
-    id: 'prod_2',
-    title: 'Gorra JS',
-    price: 15.0,
-    image_url: 'gorra.jpg',
-  },
+  { id: 'prod_1', title: 'Camisa React', price: 25.0, image_url: 'camisa.jpg' },
+  { id: 'prod_2', title: 'Gorra JS', price: 15.0, image_url: 'gorra.jpg' },
 ];
 
-// Type-safe mock
-const mockedSupabase = vi.mocked(supabase);
-
 describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
+
   beforeEach(() => {
-    vi.resetAllMocks();
-    
-    // Configuración del mock de la base de datos para todas las pruebas del describe
-    mockedSupabase.from.mockImplementation((tableName: string) => {
-      if (tableName === 'stores') {
-        const singleMock = vi.fn().mockResolvedValue({ data: mockStore, error: null });
-        const eqMock = vi.fn(() => ({ single: singleMock }));
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: eqMock,
-        };
+    vi.clearAllMocks();
+
+    // --- Setup Mocks for this test file ---
+
+    // 1. Mock for `from('stores').select().eq().single()`
+    const storesSingleMock = vi.fn().mockResolvedValue({ data: mockStore, error: null });
+    const storesEqMock = vi.fn().mockReturnValue({ single: storesSingleMock });
+    const storesSelectMock = vi.fn().mockReturnValue({ eq: storesEqMock });
+
+    // 2. Mock for RPC `get_store_products`
+    const rpcMock = vi.fn().mockImplementation(async (fnName) => {
+      if (fnName === 'get_store_products') {
+        return { data: mockProducts, error: null };
       }
-      if (tableName === 'products') {
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          order: vi.fn().mockResolvedValue({ data: mockProducts, error: null }),
-        };
-      }
-      return { select: vi.fn() };
+      return { data: null, error: new Error('RPC not mocked') };
     });
 
-    // Mock para la invocación de la función (logEvent)
-    mockedSupabase.functions.invoke.mockResolvedValue({ data: { success: true }, error: null });
+    // 3. Mock for `functions.invoke`
+    const invokeMock = vi.fn().mockResolvedValue({ data: { success: true }, error: null });
+
+    // 4. Assign mocks to the imported supabase object
+    (supabase as any).from = vi.fn((tableName: string) => {
+        if (tableName === 'stores') {
+            return { select: storesSelectMock };
+        }
+    });
+    (supabase as any).rpc = rpcMock;
+    (supabase as any).functions = { invoke: invokeMock };
   });
 
   // Helper para renderizar con Router
@@ -83,11 +62,11 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
     renderWithRouter();
     await waitFor(() => expect(screen.getByText('Camisa React')).toBeInTheDocument());
 
-    const likeButton = screen.getByRole('button', { name: 'Like this product' });
+    const likeButton = screen.getByText('❤️');
     fireEvent.click(likeButton);
 
     await waitFor(() => {
-      expect(mockedSupabase.functions.invoke).toHaveBeenCalledWith('log-product-event', 
+      expect(getSupabase().functions.invoke).toHaveBeenCalledWith('log-product-event', 
         expect.objectContaining({
           body: expect.objectContaining({ event_type: 'LIKE', product_id: 'prod_1' })
         })
@@ -99,14 +78,14 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
     renderWithRouter();
     await waitFor(() => expect(screen.getByText('Camisa React')).toBeInTheDocument());
 
-    const dislikeButton = screen.getByRole('button', { name: 'Dislike this product' });
+    const dislikeButton = screen.getByText('❌');
     fireEvent.click(dislikeButton);
 
     await waitFor(() => {
       // 1. Verificar que el producto cambió
       expect(screen.getByText('Gorra JS')).toBeInTheDocument();
       // 2. Verificar el evento de "dislike"
-      expect(mockedSupabase.functions.invoke).toHaveBeenCalledWith('log-product-event', 
+      expect(getSupabase().functions.invoke).toHaveBeenCalledWith('log-product-event', 
         expect.objectContaining({
           body: expect.objectContaining({ event_type: 'DISLIKE', product_id: 'prod_1' })
         })
@@ -120,7 +99,7 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
     // A. Verificar carga inicial y el evento de visita
     await waitFor(() => {
       expect(screen.getByText('Tienda Astaroth')).toBeInTheDocument();
-      expect(mockedSupabase.functions.invoke).toHaveBeenCalledWith('log-product-event',
+      expect(getSupabase().functions.invoke).toHaveBeenCalledWith('log-product-event',
         expect.objectContaining({
           body: expect.objectContaining({ event_type: 'VISIT' })
         })
@@ -134,7 +113,7 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
 
     // C. Verificar registro del evento "add_to_cart"
     await waitFor(() => {
-      expect(mockedSupabase.functions.invoke).toHaveBeenCalledWith('log-product-event', 
+      expect(getSupabase().functions.invoke).toHaveBeenCalledWith('log-product-event', 
         expect.objectContaining({
           body: expect.objectContaining({ event_type: 'ADD_TO_CART', product_id: 'prod_1' })
         })
@@ -142,7 +121,7 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
     });
 
     // D. Verificar que el badge del carrito se actualizó
-        const cartBadge = await screen.findByText('1', { selector: 'span.cart-badge' });
+    const cartBadge = await screen.findByText('1', { selector: 'span.cart-badge' });
     expect(cartBadge).toBeInTheDocument();
     
     // E. Abrir el Carrito

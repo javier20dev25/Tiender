@@ -2,48 +2,40 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-
 interface ProtectedRouteProps {
   children: React.ReactElement;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user, store, loading } = useAuth();
+  const { user, subscription, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
-    return <div>Loading...</div>;
+    // Muestra un indicador de carga mientras se obtiene el estado de autenticación y suscripción
+    return <div>Loading session...</div>;
   }
 
   if (!user) {
-    // Si no hay usuario, redirigir a la página de autenticación
+    // Si no hay usuario, siempre redirigir a la página de autenticación
     return <Navigate to="/auth" replace state={{ from: location }} />;
   }
 
-  // Si el usuario está autenticado, verificar el estado de su tienda y plan
-  if (store) {
-    const isPaidPlan = store.plan_type === 'standard' || store.plan_type === 'full';
-    const trialHasEnded = store.trial_ends_at && new Date(store.trial_ends_at) < new Date();
+  // Define los estados que permiten el acceso a rutas protegidas.
+  const hasActiveSubscription = subscription?.status === 'active' || subscription?.status === 'trialing';
 
-    if (!isPaidPlan && trialHasEnded) {
-      // Si no tiene plan de pago y el trial ha expirado, redirigir a la página de upgrade
-      // Asegurarse de que el usuario no esté ya en la página de upgrade para evitar bucles
-      if (location.pathname !== '/upgrade') {
-        return <Navigate to="/upgrade" replace />;
-      }
-    }
+  if (hasActiveSubscription) {
+    // Si el usuario tiene una suscripción activa o de prueba, permitir el acceso.
+    return children;
   } else {
-    // Si el usuario está autenticado pero no tiene tienda (esto no debería pasar con el nuevo signup, pero como fallback)
-    // Podríamos redirigir a un flujo de setup o a /upgrade también.
-    // Por ahora, asumimos que si hay user, hay store
-    console.warn("User authenticated but store data is missing. Redirecting to upgrade.");
+    // Para cualquier otro caso (past_due, canceled, unpaid, o sin suscripción),
+    // redirigir a la página de "upgrade".
+    // Se previene el bucle de redirección si ya se está en /upgrade.
     if (location.pathname !== '/upgrade') {
-        return <Navigate to="/upgrade" replace />;
+      return <Navigate to="/upgrade" replace />;
     }
+    // Si ya está en /upgrade, permite que la página se renderice.
+    return children;
   }
-
-  // Si tiene un plan de pago o el trial está activo, permitir el acceso
-  return children;
 };
 
 export default ProtectedRoute;

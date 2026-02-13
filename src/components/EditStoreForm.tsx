@@ -1,6 +1,6 @@
 // src/components/EditStoreForm.tsx
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { getSupabase } from '../lib/supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
 import type { Store } from '../types';
 
@@ -46,7 +46,7 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
         const filePath = `${store.id}/${fileName}`;
 
         // Unlike product images, we can upsert/overwrite the store logo
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await getSupabase().storage
           .from('store-logos')
           .upload(filePath, logoFile, { upsert: true });
 
@@ -59,7 +59,7 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
       }
 
       // 2. Update Store Details in Database
-      const { error: updateError } = await supabase
+      const { error: updateError } = await getSupabase()
         .from('stores')
         .update({
           name: name.trim(),

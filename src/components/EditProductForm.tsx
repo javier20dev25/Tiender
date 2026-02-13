@@ -1,6 +1,6 @@
 // src/components/EditProductForm.tsx
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { getSupabase } from '../lib/supabaseClient';
 import type { Product } from '../types';
 
 interface EditProductFormProps {
@@ -69,7 +69,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
         }
       }
 
-      const { error: updateError } = await supabase
+      const { error: updateError } = await getSupabase()
         .from('products')
         .update(updatePayload)
         .eq('id', product.id);

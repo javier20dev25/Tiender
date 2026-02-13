@@ -4,7 +4,7 @@ import { render, screen, fireEvent, waitFor } from '../test-utils';
 import { Route, Routes } from 'react-router-dom';
 import DashboardPage from '../pages/DashboardPage';
 import SocialStorePage from '../pages/SocialStorePage';
-import { supabase } from '../lib/supabaseClient';
+import { getSupabase } from '../lib/supabaseClient';
 
 let mockProducts = [
   { 
@@ -58,10 +58,10 @@ describe('Product Links E2E Flow', () => {
         { route: '/dashboard' }
     );
 
-    const editButton = await screen.findByRole('button', { name: /editar/i });
+    const editButton = await screen.findByRole('button', { name: /Editar Producto/i });
     fireEvent.click(editButton);
 
-    const externalLinkInput = await screen.findByLabelText(/enlace externo/i);
+    const externalLinkInput = await screen.findByLabelText(/Enlace Externo/i);
     const videoLinkInput = screen.getByLabelText(/enlace de video/i);
 
     const testExternalLink = 'https://tienda.com/producto-externo';

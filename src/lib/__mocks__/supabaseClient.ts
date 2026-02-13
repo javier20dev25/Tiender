@@ -1,42 +1,41 @@
 // src/lib/__mocks__/supabaseClient.ts
 import { vi } from 'vitest';
 
-// Este es el mock centralizado para el cliente de Supabase.
-// Vitest lo usará automáticamente en todos los archivos de prueba
-// que llamen a vi.mock('../lib/supabaseClient').
+// This is the manual mock for the supabase client.
+// Vitest will automatically use this file whenever vi.mock('src/lib/supabaseClient') is called.
 
-const from = vi.fn(() => ({
-  select: vi.fn().mockReturnThis(),
-  insert: vi.fn().mockReturnThis(),
-  update: vi.fn().mockReturnThis(),
-  delete: vi.fn().mockReturnThis(),
-  eq: vi.fn().mockReturnThis(),
-  in: vi.fn().mockReturnThis(),
-  order: vi.fn().mockReturnThis(),
-  limit: vi.fn().mockReturnThis(),
-  // single() es una función clave que faltaba en los mocks inconsistentes.
-  // La hacemos una función mock que puede devolver una promesa.
-  single: vi.fn(() => Promise.resolve({ data: null, error: null })),
-}));
-
-const supabase = {
-  auth: {
-    signUp: vi.fn(),
-    signInWithPassword: vi.fn(),
-    signOut: vi.fn(),
-    getSession: vi.fn(() => Promise.resolve({ data: { session: null }, error: null })),
-    onAuthStateChange: vi.fn(() => ({
-      data: { subscription: { unsubscribe: vi.fn() } },
-    })),
-    admin: {
-        deleteUser: vi.fn(),
+const mockAuth = {
+  getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
+  onAuthStateChange: vi.fn((_event, callback) => {
+    if (callback) {
+      callback('INITIAL_SESSION', null);
     }
-  },
-  functions: {
-    invoke: vi.fn(() => Promise.resolve({ data: null, error: null })),
-  },
-  rpc: vi.fn(() => Promise.resolve({ data: null, error: null })),
-  from,
+    return { data: { subscription: { unsubscribe: vi.fn() } } };
+  }),
+  signUp: vi.fn().mockResolvedValue({ data: { user: { id: 'new-user' }, session: {} }, error: null }),
+  signInWithPassword: vi.fn().mockResolvedValue({ data: { user: { id: 'mock-user' }, session: {} }, error: null }),
+  signOut: vi.fn().mockResolvedValue({ error: null }),
 };
 
-export { supabase };
+const mockSupabase = {
+  auth: mockAuth,
+  from: vi.fn(() => ({
+    select: vi.fn().mockReturnThis(),
+    insert: vi.fn().mockReturnThis(),
+    update: vi.fn().mockReturnThis(),
+    delete: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    in: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+    single: vi.fn().mockResolvedValue({ data: {}, error: null }),
+    // Mock thenable for promise-like behavior
+    then: (onfulfilled: any) => onfulfilled({ data: [], error: null }),
+  })),
+  rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+  functions: {
+    invoke: vi.fn().mockResolvedValue({ data: null, error: null }),
+  },
+};
+
+export const supabase = mockSupabase;

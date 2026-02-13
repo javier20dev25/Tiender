@@ -1,20 +1,31 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabaseClient';
+import { getSupabase } from '../lib/supabaseClient';
 
-// Definimos el tipo para la tienda
+// Define our strict subscription status ENUM for the frontend
+type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'unpaid' | 'canceled';
+
+// Define the type for the subscription object
+interface Subscription {
+  status: SubscriptionStatus;
+  current_period_end: string | null;
+  // ... any other subscription fields needed by the frontend
+}
+
+// Define the type for the store object
 interface Store {
   id: string;
   name: string;
   plan_type: 'standard' | 'full' | 'trial' | null;
   trial_ends_at: string | null;
-  // ... otros campos que puedas necesitar
+  // ... other store fields
 }
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  store: Store | null; // Añadimos la tienda al contexto
+  store: Store | null;
+  subscription: Subscription | null; // Add subscription to the context
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -22,7 +33,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
-  store: null, // Valor inicial
+  store: null,
+  subscription: null, // Initial value
   loading: true,
   signOut: async () => {},
 });
@@ -30,56 +42,81 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [store, setStore] = useState<Store | null>(null); // Estado para la tienda
+  const [store, setStore] = useState<Store | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null); // State for subscription
   const [loading, setLoading] = useState(true);
 
+  // Fetches both store and subscription data for a given user
+  const refreshUserSessionData = async (userId: string) => {
+    const { data: refreshedStore, error: storeError } = await getSupabase()
+      .from('stores')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    if (storeError) throw storeError;
+    setStore(refreshedStore as Store | null);
+
+    const { data: refreshedSub, error: subError } = await getSupabase()
+      .from('subscriptions')
+      .select('status, current_period_end')
+      .eq('user_id', userId)
+      .single();
+    if (subError) console.warn('Could not fetch subscription details.', subError); // Not a fatal error if sub doesn't exist
+    setSubscription(refreshedSub as Subscription | null);
+  };
+  
+  // Calls the sync function and then refreshes all user data
+  const syncAndRefreshSession = async (userId: string) => {
+    try {
+      console.log('Iniciando sincronización de suscripción en segundo plano...');
+      const { data, error } = await getSupabase().functions.invoke('sync-paypal-subscription');
+
+      if (error) {
+        throw new Error(`Error en la función de sync: ${error.message}`);
+      }
+
+      if (data?.status === 'reconciled' || data?.status === 'no_subscription_found') {
+        console.log(`Sincronización completada (${data.status}). Refrescando datos de sesión...`);
+        await refreshUserSessionData(userId);
+      } else {
+        console.log(`Suscripción ya estaba sincronizada con PayPal (${data?.status}).`);
+      }
+    } catch (e) {
+      console.error('Error durante la sincronización de la suscripción en segundo plano:', e);
+    }
+  };
+
   useEffect(() => {
-    const getSessionAndStore = async () => {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
+    const getInitialSession = async () => {
+      const { data: { session: currentSession } } = await getSupabase().auth.getSession();
       setSession(currentSession);
       const currentUser = currentSession?.user ?? null;
       setUser(currentUser);
 
       if (currentUser) {
-        // Si hay un usuario, buscamos su tienda
-        const { data: userStore, error } = await supabase
-          .from('stores')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .single();
-
-        if (error) {
-          console.error('Error fetching store:', error);
-        }
-        setStore(userStore as Store | null);
+        await refreshUserSessionData(currentUser.id).catch(err => console.error("Error fetching initial session data:", err));
+        syncAndRefreshSession(currentUser.id); // Sync in background
       }
       setLoading(false);
     };
 
-    getSessionAndStore();
+    getInitialSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(
+    const { data: authListener } = getSupabase().auth.onAuthStateChange(
       async (_event, newSession) => {
         setSession(newSession);
         const newUser = newSession?.user ?? null;
         setUser(newUser);
         
         if (newUser) {
-          // Si el estado de auth cambia y hay un usuario, volvemos a buscar la tienda
-          const { data: userStore, error } = await supabase
-            .from('stores')
-            .select('*')
-            .eq('user_id', newUser.id)
-            .single();
-          if (error) console.error('Error fetching store on auth change:', error);
-          setStore(userStore as Store | null);
+          setLoading(true);
+          await refreshUserSessionData(newUser.id).catch(err => console.error("Error fetching session data on auth change:", err));
+          setLoading(false);
+          syncAndRefreshSession(newUser.id); // Sync in background
         } else {
-          // Si el usuario cierra sesión, limpiamos los datos de la tienda
           setStore(null);
-        }
-        
-        if (loading) {
-            setLoading(false);
+          setSubscription(null);
+          setLoading(false);
         }
       }
     );
@@ -87,17 +124,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [loading]);
+  }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    // Los estados se limpiarán gracias al listener
+    await getSupabase().auth.signOut();
   };
 
   const value = {
     user,
     session,
-    store, // Exponemos la tienda
+    store,
+    subscription, // Expose subscription state
     loading,
     signOut,
   };

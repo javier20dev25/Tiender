@@ -3,17 +3,10 @@ import { getAccessToken } from './client.ts'; // Import from the client module
 
 // --- Configuration ---
 // These should be available as environment variables where the webhook is deployed (e.g., Supabase Functions)
-const PAYPAL_API_URL = process.env.PAYPAL_API_URL || Deno.env.get('PAYPAL_API_URL') || 'https://api-m.sandbox.paypal.com'; // Default to sandbox
-const PAYPAL_WEBHOOK_ID = process.env.PAYPAL_WEBHOOK_ID || Deno.env.get('PAYPAL_WEBHOOK_ID');
-
-/**
- * Verifies the signature of an incoming PayPal webhook request.
- * Requires PAYPAL_API_URL and PAYPAL_WEBHOOK_ID to be set in the environment.
- * @param headers The request headers.
- * @param rawBody The raw request body.
- * @returns Promise<boolean> - True if the signature is valid, false otherwise.
- */
 export async function verifyPayPalWebhookSignature(headers: Headers, rawBody: string): Promise<boolean> {
+  const PAYPAL_API_URL = process.env.PAYPAL_API_URL || (typeof Deno !== 'undefined' && Deno.env.get('PAYPAL_API_URL')) || 'https://api-m.sandbox.paypal.com'; // Default to sandbox
+  const PAYPAL_WEBHOOK_ID = process.env.PAYPAL_WEBHOOK_ID || (typeof Deno !== 'undefined' && Deno.env.get('PAYPAL_WEBHOOK_ID'));
+
   if (!PAYPAL_API_URL || !PAYPAL_WEBHOOK_ID) {
     console.error('PayPal webhook configuration error: PAYPAL_API_URL or PAYPAL_WEBHOOK_ID not set.');
     throw new Error('PayPal webhook configuration is incomplete.');

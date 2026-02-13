@@ -27,7 +27,7 @@ vi.mock('@supabase/supabase-js', () => {
 });
 
 // Import the client which will now be mocked
-import { supabase } from '../../../lib/supabaseClient';
+import { getSupabase } from '../../../lib/supabaseClient';
 
 describe('SignUpForm', () => {
   const mockOnSwitch = vi.fn();
@@ -35,7 +35,7 @@ describe('SignUpForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    vi.mocked(supabase.auth.signUp).mockResolvedValue({
+    vi.mocked(getSupabase().auth.signUp).mockResolvedValue({
       data: {
         user: { id: 'test-user-id' },
         session: { access_token: 'test-access-token' }
@@ -43,7 +43,7 @@ describe('SignUpForm', () => {
       error: null,
     });
     
-    vi.mocked(supabase.functions.invoke).mockImplementation(async (functionName) => {
+    vi.mocked(getSupabase().functions.invoke).mockImplementation(async (functionName) => {
       if (functionName === 'generate-backup-codes') {
         return Promise.resolve({
           data: { plain_codes: ['code1', 'code2'] },
@@ -73,7 +73,7 @@ describe('SignUpForm', () => {
 
   it('debería mostrar un error si el registro falla', async () => {
     // Mock failing signup response for this specific test
-    vi.mocked(supabase.auth.signUp).mockResolvedValueOnce({
+    vi.mocked(getSupabase().auth.signUp).mockResolvedValueOnce({
       data: { user: null, session: null },
       error: { message: 'User already registered' },
     });

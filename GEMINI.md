@@ -268,3 +268,11 @@ Esto casi siempre significa que **el trabajo ya está hecho, commiteado y
 Si ambos casos se cumplen, puedes estar seguro de que tu cambio ya fue
   desplegado. Ignora otros archivos no relacionados en `git status` y
   continúa con el siguiente paso.
+
+---
+
+### Protocolo del Mapa Estructural (Structural Awareness)
+
+1.  **Actualización por Iniciativa de la IA:** Después de realizar cambios que alteren la estructura del código (crear/eliminar archivos, añadir dependencias importantes), la IA debe ejecutar `python3 generate_structural_map.py` para mantener el mapa actualizado.
+2.  **Actualización Manual:** El usuario puede solicitar una actualización en cualquier momento con la instrucción "refresca el mapa".
+3.  **Uso Obligatorio:** Antes de proponer cualquier cambio de código, la IA debe consultar el mapa (`conductor/structural_map.json`) y presentar el bloque de análisis `[STRUCTURAL AWARENESS]`.

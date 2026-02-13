@@ -1,7 +1,7 @@
 // src/features/auth/components/SignUpForm.tsx
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../lib/supabaseClient';
+import { getSupabase } from '../../../lib/supabaseClient';
 
 import BackupCodesModal from './BackupCodesModal';
 import html2canvas from 'html2canvas';
@@ -56,13 +56,13 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
             ? { email, password } 
             : { phone: whatsapp, password };
 
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp(credentials);
+        const { data: signUpData, error: signUpError } = await getSupabase().auth.signUp(credentials);
 
         if (signUpError) throw signUpError;
         if (!signUpData.user) throw new Error("User creation failed without error.");
 
         // Defensive code to handle testing environment issues where invoke resolves to undefined
-        const invokeResponse = await supabase.functions.invoke('generate-backup-codes', {
+        const invokeResponse = await getSupabase().functions.invoke('generate-backup-codes', {
             body: { userId: signUpData.user.id },
         });
         
@@ -76,7 +76,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
         setBackupCodes(codesData.plain_codes);
 
         // Sign in is often automatic after sign up, but let's be explicit
-        const { error: signInError } = await supabase.auth.signInWithPassword(credentials);
+        const { error: signInError } = await getSupabase().auth.signInWithPassword(credentials);
 
         if (signInError) {
             setErrorMessage('Tu cuenta fue creada, pero no pudimos iniciar sesión. Intenta manually.');

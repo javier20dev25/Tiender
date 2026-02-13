@@ -1,7 +1,7 @@
 // src/pages/RecoveryPage.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
+import { getSupabase } from '../lib/supabaseClient';
 
 interface RecoveryPageProps {
   onSwitchToSignIn?: () => void;
@@ -43,7 +43,7 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
 
     try {
       // Call the Supabase function to verify the code
-      const { data, error } = await supabase.functions.invoke('verify-backup-code', {
+      const { data, error } = await getSupabase().functions.invoke('verify-backup-code', {
         body: { phone: whatsapp, code: recoveryCode },
       });
 
@@ -80,7 +80,7 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
       // For now, we simulate success and redirect to the login page.
       
       // Example of what could be here:
-      // const { error } = await supabase.auth.updateUser({ password: newPassword });
+      // const { error } = await getSupabase().auth.updateUser({ password: newPassword });
       // if (error) throw error;
       
       alert("Contraseña restablecida (simulado). Serás redirigido al inicio de sesión.");

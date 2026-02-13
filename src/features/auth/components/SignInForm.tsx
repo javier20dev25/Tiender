@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../lib/supabaseClient'; // Import supabase
+import { getSupabase } from '../../../lib/supabaseClient'; // Import supabase
 
 const SignInForm: React.FC = () => {
   const [phone, setPhone] = useState('');
@@ -15,7 +15,7 @@ const SignInForm: React.FC = () => {
     setLoading(true);
     try {
       // Usar supabase directamente. Asumimos que el "email" es el número de teléfono.
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error } = await getSupabase().auth.signInWithPassword({
         email: phone, // Supabase usa 'email' para el login con teléfono
         password,
       });

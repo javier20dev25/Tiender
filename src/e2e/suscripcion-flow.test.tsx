@@ -1,7 +1,7 @@
 // src/e2e/suscripcion-flow.test.tsx
 // Nota: Este es un test E2E corregido que simula el flujo completo:
 // - Renderiza DashboardPage con plan inicial 'standard'.
-// - Simula clic en "Mejorar Plan", que invoca supabase.functions.invoke directamente (basado en ReadFile de DashboardPage.tsx).
+// - Simula clic en "Mejorar Plan", que invoca getSupabase().functions.invoke directamente (basado en ReadFile de DashboardPage.tsx).
 // - Mockea respuesta de Supabase con 'approvalUrl' en camelCase (para match con código real).
 // - Verifica llamada a invoke y asignación a window.location.href (ajustado a .href ya que el código real podría usar window.location.href = url).
 // - Simula webhook update cambiando el mock de store a 'full' con trial.
@@ -20,7 +20,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
+import { getSupabase } from '../lib/supabaseClient';
 import DashboardPage from '../pages/DashboardPage';
 import { AuthProvider } from '../context/AuthContext'; // Ajusta path si necesario
 
@@ -122,7 +122,7 @@ describe('Flujo de Suscripción E2E en Dashboard', () => {
 
     // Verifica llamada a invoke (asumiendo plan default 'full' o fijo en handleUpgrade)
     await waitFor(() => {
-      expect(supabase.functions.invoke).toHaveBeenCalledWith(
+      expect(getSupabase().functions.invoke).toHaveBeenCalledWith(
         'create-paypal-subscription',
         { body: { planType: 'full' } }
       );
@@ -132,7 +132,7 @@ describe('Flujo de Suscripción E2E en Dashboard', () => {
     expect(window.location.href).toBe('https://sandbox.paypal.com/approve/fake-url');
 
     // Simula webhook: Cambia mock de from() a upgradedStore persistentemente para re-render
-    vi.mocked(supabase.from).mockImplementation((tableName: string) => {
+    vi.mocked(getSupabase().from).mockImplementation((tableName: string) => {
       if (tableName === 'stores') {
         return createChainableMock({ data: upgradedStore, error: null });
       }
@@ -161,7 +161,7 @@ describe('Flujo de Suscripción E2E en Dashboard', () => {
   });
 
   it('debería manejar error en create-paypal-subscription y mostrar alerta', async () => {
-    vi.mocked(supabase.functions.invoke).mockResolvedValueOnce({
+    vi.mocked(getSupabase().functions.invoke).mockResolvedValueOnce({
       data: null,
       error: new Error('Error de PayPal: Invalid plan'),
     });

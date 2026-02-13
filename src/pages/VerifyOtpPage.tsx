@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
+import { getSupabase } from '../lib/supabaseClient';
 
 const VerifyOtpPage: React.FC = () => {
   const [otp, setOtp] = useState('');
@@ -30,7 +30,7 @@ const VerifyOtpPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.verifyOtp({
+      const { error } = await getSupabase().auth.verifyOtp({
         email,
         token: otp,
         type: 'email',

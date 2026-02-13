@@ -48,3 +48,29 @@ Este documento describe la funcionalidad implementada para la gestión de planes
     4. El frontend redirige al usuario a esta URL de PayPal para que apruebe el pago.
     *(Nota: La lógica para manejar el webhook de PayPal después del pago exitoso aún no está documentada o podría no estar implementada).*
   - **Archivos Clave:** `supabase/functions/create-paypal-subscription/index.ts`
+
+---
+
+## Fase 4: Refuerzo de Seguridad y Ciclo de Vida de Suscripciones [Pendiente]
+
+*Meta: Asegurar la robustez y seguridad de la integración de PayPal mediante la verificación de webhooks y el manejo completo de los eventos de suscripción.*
+
+- **Integración de PayPal confirmada como SANDBOX.** Toda la lógica actual apunta al entorno de pruebas de PayPal.
+- **Seguridad de Credenciales:** Las credenciales de PayPal se manejan vía variables de entorno, no hardcodeadas.
+- **Código de PayPal:** La lógica principal está en `lib/paypal/client.ts` y las operaciones sensibles en las Supabase Functions.
+
+- **[ ] Task: Implementar verificación de firma de Webhooks de PayPal.**
+  - **Descripción:** La función `handle-paypal-webhook` debe ser modificada para incluir la validación criptográfica de cada evento recibido de PayPal. Esto previene eventos falsificados y asegura la autenticidad de las notificaciones. **Esto es crítico para la seguridad.**
+  - **Archivos Clave:** `supabase/functions/handle-paypal-webhook/index.ts` (o archivo equivalente).
+
+- **[ ] Task: Manejar eventos clave del ciclo de vida de suscripciones de PayPal.**
+  - **Descripción:** Añadir lógica para procesar eventos importantes de PayPal como `BILLING.SUBSCRIPTION.ACTIVATED`, `BILLING.SUBSCRIPTION.CANCELLED`, `BILLING.SUBSCRIPTION.SUSPENDED`, y eventos de pago (`PAYMENT.SALE.COMPLETED`/`FAILED`). Esto permitirá actualizar de forma fiable el estado de la suscripción del usuario en la base de datos de Supabase.
+  - **Archivos Clave:** Funciones de Supabase relacionadas con PayPal y `lib/paypal/client.ts`.
+
+---
+
+## Estado Actual de la Compilación
+
+*   **Nota:** El comando `npm run build` está actualmente en ejecución. Su resultado es necesario para confirmar la resolución de errores de compilación y habilitar el despliegue. Su finalización determinará el próximo paso inmediato.
+
+---

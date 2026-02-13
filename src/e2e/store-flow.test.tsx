@@ -71,7 +71,7 @@ describe('Backend RLS and Data Flow Test', () => {
     afterAll(async () => {
         const { supabase } = await import('../lib/supabaseClient'); // Ensure using the mocked supabase
         if (createdUser) {
-            await supabase.auth.admin.deleteUser(createdUser.id);
+            await getSupabase().auth.admin.deleteUser(createdUser.id);
         }
     });
     
@@ -83,7 +83,7 @@ describe('Backend RLS and Data Flow Test', () => {
             email: generateRandomEmail(),
             password: 'Password123!',
         };
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await getSupabase().auth.signUp({
             ...testUser,
             options: { data: {} }
         });
@@ -92,7 +92,7 @@ describe('Backend RLS and Data Flow Test', () => {
         expect(signUpData.user, 'User object should be returned on sign-up').toBeDefined();
         createdUser = signUpData.user;
         
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        const { data: sessionData, error: sessionError } = await getSupabase().auth.getSession();
         expect(sessionError).toBeNull();
         expect(sessionData.session).toBeDefined();
 
@@ -120,7 +120,7 @@ describe('Backend RLS and Data Flow Test', () => {
 
         // 4. ATTEMPT TO FETCH PUBLICLY (THE REAL TEST)
         // Sign out to ensure the client is anonymous
-        await supabase.auth.signOut();
+        await getSupabase().auth.signOut();
 
         // Try to fetch the store
         const { data: publicStoreData, error: publicStoreError } = await supabase

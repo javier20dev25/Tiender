@@ -1,6 +1,6 @@
 // src/components/AddProductForm.tsx
 import { useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { getSupabase } from '../lib/supabaseClient';
 import { v4 as uuidv4 } from 'uuid'; // Para generar nombres de archivo únicos
 import type { Product } from '../types';
 
@@ -44,7 +44,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
       const fileName = `${uuidv4()}.${fileExtension}`;
       const filePath = `${storeId}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await getSupabase().storage
         .from('product-images')
         .upload(filePath, imageFile);
 
@@ -80,7 +80,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
         }
       }
 
-      const { error: insertError } = await supabase
+      const { error: insertError } = await getSupabase()
         .from('products')
         .insert(insertPayload);
 

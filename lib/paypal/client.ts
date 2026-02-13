@@ -24,9 +24,7 @@ export interface PayPalPlan {
   payment_preferences: unknown; // Simplified for this context
 }
 
-// --- Configuration ---
-const PAYPAL_API_URL = process.env.PAYPAL_API_URL || Deno.env.get('PAYPAL_API_URL') || 'https://api-m.sandbox.paypal.com'; // Default to sandbox
-
+// --- Configuration Constants (static) ---
 const TIENDER_PRODUCT_NAME = 'Suscripción Tiender';
 const TIENDER_PLAN_NAME = 'Plan Full';
 const TIENDER_PLAN_PRICE = '9.99';
@@ -34,8 +32,9 @@ const TIENDER_PLAN_PRICE = '9.99';
 // --- PayPal API Client Functions ---
 
 export async function getAccessToken(): Promise<string> {
-  const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || Deno.env.get('PAYPAL_CLIENT_ID');
-  const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET || Deno.env.get('PAYPAL_CLIENT_SECRET');
+  const PAYPAL_API_URL = process.env.PAYPAL_API_URL || (typeof Deno !== 'undefined' && Deno.env.get('PAYPAL_API_URL')) || 'https://api-m.sandbox.paypal.com';
+  const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || (typeof Deno !== 'undefined' && Deno.env.get('PAYPAL_CLIENT_ID'));
+  const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET || (typeof Deno !== 'undefined' && Deno.env.get('PAYPAL_CLIENT_SECRET'));
 
   if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
     throw new Error('PayPal Client ID or Secret not configured.');
@@ -57,6 +56,7 @@ export async function getAccessToken(): Promise<string> {
 }
 
 export async function listProducts(accessToken: string): Promise<PayPalProduct[]> {
+  const PAYPAL_API_URL = process.env.PAYPAL_API_URL || (typeof Deno !== 'undefined' && Deno.env.get('PAYPAL_API_URL')) || 'https://api-m.sandbox.paypal.com';
   const response = await fetch(`${PAYPAL_API_URL}/v1/catalogs/products?page_size=20`, {
     headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
   });
@@ -65,6 +65,7 @@ export async function listProducts(accessToken: string): Promise<PayPalProduct[]
 }
 
 export async function createProduct(accessToken: string): Promise<PayPalProduct> {
+    const PAYPAL_API_URL = process.env.PAYPAL_API_URL || (typeof Deno !== 'undefined' && Deno.env.get('PAYPAL_API_URL')) || 'https://api-m.sandbox.paypal.com';
     console.log(`\n--- Creating PayPal Product "${TIENDER_PRODUCT_NAME}" ---`);
     const response = await fetch(`${PAYPAL_API_URL}/v1/catalogs/products`, {
         method: 'POST',
@@ -85,6 +86,7 @@ export async function createProduct(accessToken: string): Promise<PayPalProduct>
 }
 
 export async function listPlans(accessToken: string): Promise<PayPalPlan[]> {
+    const PAYPAL_API_URL = process.env.PAYPAL_API_URL || (typeof Deno !== 'undefined' && Deno.env.get('PAYPAL_API_URL')) || 'https://api-m.sandbox.paypal.com';
     const response = await fetch(`${PAYPAL_API_URL}/v1/billing/plans?page_size=20`, {
       headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     });
@@ -93,6 +95,7 @@ export async function listPlans(accessToken: string): Promise<PayPalPlan[]> {
 }
 
 export async function createPlan(accessToken: string, productId: string): Promise<PayPalPlan> {
+    const PAYPAL_API_URL = process.env.PAYPAL_API_URL || (typeof Deno !== 'undefined' && Deno.env.get('PAYPAL_API_URL')) || 'https://api-m.sandbox.paypal.com';
     console.log(`--- Creating PayPal Plan "${TIENDER_PLAN_NAME}" for product ${productId}... ---`);
     const response = await fetch(`${PAYPAL_API_URL}/v1/billing/plans`, {
         method: 'POST',

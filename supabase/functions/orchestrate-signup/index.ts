@@ -45,6 +45,44 @@ Deno.serve(async (req) => {
   );
 
   try {
+    // --- INICIO: Lógica de Rate Limiting ---
+    // Obtiene la IP del cliente, manejando el caso de estar detrás de proxies.
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? req.headers.get('host') ?? 'unknown-ip';
+    const MAX_REQUESTS = 10; // Límite de 10 peticiones
+    const TIME_WINDOW_MS = 60 * 60 * 1000; // por 1 hora
+
+    const { data: tracker, error: trackerError } = await supabaseAdmin
+      .from('rate_limit_tracker')
+      .select('*')
+      .eq('identifier', ip)
+      .single();
+
+    if (trackerError && trackerError.code !== 'PGRST116') throw trackerError; // PGRST116 es 'No rows found', lo cual es esperado.
+
+    const now = new Date();
+    if (!tracker) {
+      // Primera vez que vemos esta IP, la registramos.
+      await supabaseAdmin.from('rate_limit_tracker').insert({ identifier: ip, first_request_at: now.toISOString() });
+    } else {
+      const firstRequestAt = new Date(tracker.first_request_at);
+      // Comprobamos si la ventana de tiempo desde la primera petición ya expiró.
+      if (now.getTime() - firstRequestAt.getTime() > TIME_WINDOW_MS) {
+        // Si expiró, reseteamos el contador y el tiempo.
+        await supabaseAdmin.from('rate_limit_tracker').update({ request_count: 1, first_request_at: now.toISOString() }).eq('identifier', ip);
+      } else {
+        // Si todavía estamos dentro de la ventana de tiempo.
+        if (tracker.request_count >= MAX_REQUESTS) {
+          // Y se ha excedido el límite, registramos el evento y bloqueamos la petición.
+          await logEvent(supabaseAdmin, 'RATE_LIMIT_EXCEEDED', { payload: { ip } });
+          return new Response(JSON.stringify({ error_code: 'TOO_MANY_REQUESTS', message: 'Límite de peticiones excedido. Intenta de nuevo más tarde.' }), { status: 429, headers: corsHeaders });
+        } else {
+          // Si no se ha excedido, simplemente incrementamos el contador.
+          await supabaseAdmin.from('rate_limit_tracker').update({ request_count: tracker.request_count + 1 }).eq('identifier', ip);
+        }
+      }
+    }
+    // --- FIN: Lógica de Rate Limiting ---
+
     const { phone, password }: SignUpData = await req.json();
     console.log('Iniciando orchestrate-signup con body:', { phone, password: password ? '[REDACTED]' : 'N/A' });
     console.log('Contraseña recibida (longitud):', password?.length);

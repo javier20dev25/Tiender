@@ -1,6 +1,6 @@
 // src/components/CancellationModal.tsx
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { getSupabase } from '../lib/supabaseClient';
 
 interface CancellationModalProps {
   isOpen: boolean;
@@ -16,7 +16,7 @@ const CancellationModal: React.FC<CancellationModalProps> = ({ isOpen, onClose, 
     setLoading(true);
     setError(null);
     try {
-      const { error: funcError } = await supabase.functions.invoke('cancel-paypal-subscription');
+      const { error: funcError } = await getSupabase().functions.invoke('cancel-paypal-subscription');
       if (funcError) {
         throw new Error(funcError.message || 'Ocurrió un error al procesar la cancelación.');
       }

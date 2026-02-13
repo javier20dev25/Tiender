@@ -34,7 +34,7 @@ serve(async (req) => {
       .from('subscriptions')
       .select('provider_subscription_id')
       .eq('user_id', user.id)
-      .in('status', ['active', 'suspended']) // Una suscripción puede estar activa o suspendida por fallos de pago.
+      .in('status', ['active', 'past_due']) // A subscription can be active or have a failed payment.
       .single();
 
     if (subError || !subscription) {

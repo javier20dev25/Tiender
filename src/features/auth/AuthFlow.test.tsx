@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import App from '../../App';
 import { vi } from 'vitest';
-import { supabase } from '../../lib/supabaseClient';
+import { getSupabase } from '../../lib/supabaseClient';
 import { AuthProvider } from '../../context/AuthContext';
 
 vi.mock('../../lib/supabaseClient', () => ({
@@ -78,7 +78,7 @@ describe('Authentication Flow Integration Test', () => {
         }, { timeout: 10000 }); // Generous timeout for backend calls
 
         // Get the user from the current session to enable cleanup
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await getSupabase().auth.getUser();
         const createdUser = user;
 
         // Verify we actually got a user
