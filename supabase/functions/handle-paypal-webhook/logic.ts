@@ -68,6 +68,40 @@ export async function processWebhookEvent(
         .update({ status: 'suspended' })
         .eq('provider_subscription_id', subscriptionId);
       if (error) throw error;
+  } else if (event.event_type === 'BILLING.SUBSCRIPTION.ACTIVATED') {
+    // Evento: La suscripción ha sido activada por el usuario.
+    // Acción: Crear el registro de la suscripción, marcarla como 'active' y 
+    //         actualizar la tienda del usuario para concederle acceso a las funciones pagas.
+    console.log(`Procesando ACTIVATED para subscripción ${subscriptionId}`);
+    const planType = planMap[planId!] || null;
+    if (!planType) {
+      throw new Error(`Plan ID ${planId} no encontrado en el plan map.`);
+    }
+
+    // 1. Usamos 'upsert' en la tabla 'subscriptions' para crear o actualizar el registro.
+    // Esto previene duplicados si el webhook se recibe más de una vez (idempotencia).
+    // El 'provider_subscription_id' de PayPal es nuestro identificador único.
+    const { error: subError } = await supabaseAdmin
+      .from('subscriptions')
+      .upsert({
+        provider_subscription_id: subscriptionId,
+        user_id: userId,
+        status: 'active',
+        provider_plan_id: planId,
+        current_period_end: event.resource.billing_info?.next_billing_time,
+      }, { onConflict: 'provider_subscription_id' });
+
+    if (subError) throw subError;
+
+    // 2. Actualizamos la tabla 'stores' para reflejar el plan activo del usuario.
+    // Esto finaliza el período de prueba (si lo hubiera) y asigna el tipo de plan correcto.
+    const { error: storeError } = await supabaseAdmin
+      .from('stores')
+      .update({ plan_type: planType, trial_ends_at: null })
+      .eq('user_id', userId);
+
+    if (storeError) throw storeError;
+
   } else if (event.event_type === 'BILLING.SUBSCRIPTION.UPDATED') {
     console.log(`Procesando UPDATED para subscripción ${subscriptionId}`);
     const newPlanType = planMap[planId!] || null;
