@@ -12,14 +12,7 @@ interface Subscription {
   // ... any other subscription fields needed by the frontend
 }
 
-// Define the type for the store object
-interface Store {
-  id: string;
-  name: string;
-  plan_type: 'standard' | 'full' | 'trial' | null;
-  trial_ends_at: string | null;
-  // ... other store fields
-}
+import type { Store } from '../types';
 
 interface AuthContextType {
   user: User | null;
@@ -36,7 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   store: null,
   subscription: null, // Initial value
   loading: true,
-  signOut: async () => {},
+  signOut: async () => { },
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -64,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (subError) console.warn('Could not fetch subscription details.', subError); // Not a fatal error if sub doesn't exist
     setSubscription(refreshedSub as Subscription | null);
   };
-  
+
   // Calls the sync function and then refreshes all user data
   const syncAndRefreshSession = async (userId: string) => {
     try {
@@ -107,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(newSession);
         const newUser = newSession?.user ?? null;
         setUser(newUser);
-        
+
         if (newUser) {
           setLoading(true);
           await refreshUserSessionData(newUser.id).catch(err => console.error("Error fetching session data on auth change:", err));

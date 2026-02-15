@@ -3,9 +3,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard, Settings, Plus, Share2, Eye, Copy,
+  LayoutDashboard, Plus, Share2, Eye, Copy,
   ExternalLink, BarChart3, AlertTriangle, PackageOpen,
-  Trash2, Edit3, Menu, FileText, Sparkles
+  Trash2, Edit3, Menu, Sparkles, ShoppingCart
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getSupabase } from '../lib/supabaseClient';
@@ -20,14 +20,10 @@ import ReportModal from '../components/ReportModal';
 import SubscriptionStatusBanner from '../components/SubscriptionStatusBanner';
 import CreateStoreForm from '../components/CreateStoreForm';
 
-type WeeklyAnalyticsData = {
-  heatmap_data: any[];
-  product_summary: any[];
-  total_summary: { total_visits: number; total_adds_to_cart: number; };
-};
+import type { WeeklyAnalyticsData } from '../types';
 
 const DashboardPage: React.FC = () => {
-  const { user, store, subscription, loading: authLoading } = useAuth();
+  const { store, subscription, loading: authLoading } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
@@ -46,9 +42,8 @@ const DashboardPage: React.FC = () => {
   // Analytics State
   const [weeklyAnalyticsData, setWeeklyAnalyticsData] = useState<WeeklyAnalyticsData | null>(null);
   const [loadingWeeklyAnalytics, setLoadingWeeklyAnalytics] = useState(true);
-  const [weeklyAnalyticsError, setWeeklyAnalyticsError] = useState<string | null>(null);
-  const [endDate, setEndDate] = useState(new Date());
-  const [startDate, setStartDate] = useState(() => {
+  const [endDate] = useState(new Date());
+  const [startDate] = useState(() => {
     const date = new Date();
     date.setDate(date.getDate() - 6);
     return date;
@@ -72,7 +67,6 @@ const DashboardPage: React.FC = () => {
 
   const fetchWeeklyAnalytics = useCallback(async (storeId: string, start: Date, end: Date) => {
     setLoadingWeeklyAnalytics(true);
-    setWeeklyAnalyticsError(null);
     try {
       const { data, error } = await getSupabase().rpc('get_weekly_heatmap_analytics', {
         target_store_id: storeId,
@@ -81,8 +75,8 @@ const DashboardPage: React.FC = () => {
       });
       if (error) throw error;
       setWeeklyAnalyticsData(data);
-    } catch (err: any) {
-      setWeeklyAnalyticsError(err.message);
+    } catch (err: unknown) {
+      console.error((err as Error).message);
     } finally {
       setLoadingWeeklyAnalytics(false);
     }
