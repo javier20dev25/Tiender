@@ -45,15 +45,18 @@ vi.mock('./lib/supabaseClient', () => {
   const fromImplementation = (tableName: string) => {
     const query: any = {
       select: vi.fn().mockReturnThis(),
-      insert: vi.fn().mockResolvedValue({ data: [{}], error: null }), // Mock insert response
-      update: vi.fn().mockResolvedValue({ data: [{}], error: null }), // Mock update response
-      delete: vi.fn().mockResolvedValue({ data: {}, error: null }), // Mock delete response
+      insert: vi.fn().mockResolvedValue({ data: [{}], error: null }),
+      update: vi.fn().mockResolvedValue({ data: [{}], error: null }),
+      upsert: vi.fn().mockResolvedValue({ data: [{}], error: null }),
+      delete: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       in: vi.fn().mockReturnThis(),
       order: vi.fn().mockReturnThis(),
       limit: vi.fn().mockReturnThis(),
-      single: vi.fn(),
-      maybeSingle: vi.fn(),
+      single: vi.fn().mockResolvedValue({ data: null, error: null }),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+      range: vi.fn().mockReturnThis(),
+      csv: vi.fn().mockReturnThis(),
     };
 
     let promise;
@@ -63,7 +66,7 @@ vi.mock('./lib/supabaseClient', () => {
       query.maybeSingle.mockResolvedValue({ data: mockStoreStandard, error: null });
       promise = Promise.resolve({ data: [mockStoreStandard], error: null });
     } else if (tableName === 'products') {
-       query.eq.mockImplementation((column, value) => {
+      query.eq.mockImplementation((column, value) => {
         if (column === 'id') {
           const product = mockProducts.find(p => p.id === value);
           query.single.mockResolvedValue({ data: product, error: null });
@@ -72,15 +75,20 @@ vi.mock('./lib/supabaseClient', () => {
         return query;
       });
       promise = Promise.resolve({ data: mockProducts, error: null });
+    } else if (tableName === 'subscriptions') {
+      const mockSubscription = { status: 'active', current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() };
+      query.single.mockResolvedValue({ data: mockSubscription, error: null });
+      query.maybeSingle.mockResolvedValue({ data: mockSubscription, error: null });
+      promise = Promise.resolve({ data: [mockSubscription], error: null });
     } else {
       query.single.mockResolvedValue({ data: null, error: null });
       query.maybeSingle.mockResolvedValue({ data: null, error: null });
       promise = Promise.resolve({ data: [], error: null });
     }
-    
+
     // Make the query object thenable to simulate awaiting a query
     query.then = (onfulfilled: any, onrejected: any) => promise.then(onfulfilled, onrejected);
-    
+
     return query;
   };
 
@@ -95,7 +103,7 @@ vi.mock('./lib/supabaseClient', () => {
         error: null,
       });
     }
-     if (fnName === 'get_store_products') {
+    if (fnName === 'get_store_products') {
       return Promise.resolve({ data: mockProducts, error: null });
     }
     if (fnName === 'log_product_event') {
@@ -105,9 +113,9 @@ vi.mock('./lib/supabaseClient', () => {
   }
 
   const functionsImplementation = (fnName: string, { body }: { body: any }) => {
-     if (fnName === 'create-paypal-subscription') {
+    if (fnName === 'create-paypal-subscription') {
       if (body.planId === 'invalid-plan') {
-         return Promise.resolve({ error: { message: 'Error de PayPal: Invalid plan' } });
+        return Promise.resolve({ error: { message: 'Error de PayPal: Invalid plan' } });
       }
       return Promise.resolve({
         data: { approve_url: 'https://sandbox.paypal.com/approve/fake-url' },

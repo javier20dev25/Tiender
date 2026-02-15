@@ -17,7 +17,7 @@ describe('Lógica del Webhook de PayPal', () => {
 
   // Mocks for 'subscriptions' table
   let subUpdate: Mock, subEq: Mock, subSelect: Mock, subSelectEq: Mock, subSingle: Mock;
-  
+
   // Mocks for 'stores' table
   let storeUpdate: Mock, storeEq: Mock;
 
@@ -38,7 +38,7 @@ describe('Lógica del Webhook de PayPal', () => {
     // --- Mock chain for 'stores' table ---
     storeEq = vi.fn().mockResolvedValue({ error: null });
     storeUpdate = vi.fn().mockReturnValue({ eq: storeEq });
-    
+
     mockRpc = vi.fn().mockResolvedValue({ data: mockUserId, error: null });
 
     // The 'from' mock acts as a router based on the table name
@@ -58,7 +58,7 @@ describe('Lógica del Webhook de PayPal', () => {
     };
 
     (createClient as any).mockReturnValue(mockSupabaseAdmin);
-    
+
     mockPlanMap = {
       'P-12345STD': 'standard',
       'P-67890FULL': 'full',
@@ -86,8 +86,7 @@ describe('Lógica del Webhook de PayPal', () => {
     expect(subSelectEq).toHaveBeenCalledWith('provider_subscription_id', mockSubscriptionId);
     // Verify the update was performed
     expect(subUpdate).toHaveBeenCalledWith({
-      status: 'cancelled',
-      cancelled_at: mockEvent.resource.status_update_time,
+      status: 'canceled',
     });
     expect(subEq).toHaveBeenCalledWith('provider_subscription_id', mockSubscriptionId);
   });
@@ -105,7 +104,7 @@ describe('Lógica del Webhook de PayPal', () => {
     await processWebhookEvent(mockEvent as any, mockSupabaseAdmin, mockPlanMap);
 
     expect(mockFrom).toHaveBeenCalledWith('subscriptions');
-    expect(subUpdate).toHaveBeenCalledWith({ status: 'suspended' });
+    expect(subUpdate).toHaveBeenCalledWith({ status: 'past_due' });
     expect(subEq).toHaveBeenCalledWith('provider_subscription_id', mockSubscriptionId);
   });
 
@@ -124,7 +123,7 @@ describe('Lógica del Webhook de PayPal', () => {
     };
 
     await processWebhookEvent(mockEvent as any, mockSupabaseAdmin, mockPlanMap);
-    
+
     expect(mockFrom).toHaveBeenCalledWith('subscriptions');
     expect(subUpdate).toHaveBeenCalledWith({
       provider_plan_id: newPlanId,
@@ -153,7 +152,7 @@ describe('Lógica del Webhook de PayPal', () => {
     // Simulate the state change for the idempotency check
     subSingle
       .mockResolvedValueOnce({ data: { status: 'active' }, error: null }) // 1st call, sub is active
-      .mockResolvedValueOnce({ data: { status: 'cancelled' }, error: null });// 2nd call, sub is already cancelled
+      .mockResolvedValueOnce({ data: { status: 'canceled' }, error: null });// 2nd call, sub is already cancelled
 
     // Call the event handler twice with the same event
     await processWebhookEvent(mockEvent as any, mockSupabaseAdmin, mockPlanMap);

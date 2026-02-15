@@ -1,8 +1,8 @@
 // src/components/SubscriptionStatusBanner.tsx
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { AlertTriangle, XCircle, Clock, ExternalLink } from 'lucide-react';
 
-// Define the types locally as this component is self-contained
 type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'unpaid' | 'canceled';
 interface Subscription {
   status: SubscriptionStatus;
@@ -14,68 +14,78 @@ interface SubscriptionStatusBannerProps {
 }
 
 const SubscriptionStatusBanner: React.FC<SubscriptionStatusBannerProps> = ({ subscription }) => {
-  if (!subscription) {
-    return null; // No subscription, no banner
-  }
+  if (!subscription) return null;
 
   const { status, current_period_end } = subscription;
 
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'una fecha no especificada';
+    if (!dateString) return 'pronto';
     return new Date(dateString).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric',
     });
   };
 
+  const containerClasses = "p-5 rounded-[25px] border flex items-start gap-4 mb-8 shadow-2xl relative overflow-hidden";
+  const iconBoxClasses = "p-3 rounded-2xl flex-shrink-0";
+
   switch (status) {
     case 'past_due':
       return (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md w-full" role="alert">
-          <p className="font-bold">Error en el Pago</p>
-          <p>
-            Tu último pago ha fallado. Por favor,{' '}
-            <Link to="/upgrade" className="font-bold underline hover:text-red-800">
-              actualiza tu información de facturación
-            </Link>{' '}
-            para mantener tu cuenta activa.
-          </p>
-        </div>
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className={`${containerClasses} bg-red-500/10 border-red-500/20`}>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 blur-[50px] -z-10"></div>
+          <div className={`${iconBoxClasses} bg-red-500/20 text-red-500`}>
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div className="flex-grow">
+            <h4 className="text-sm font-black text-white uppercase tracking-widest mb-1 italic">Atención: Pago Fallido</h4>
+            <p className="text-xs text-zinc-400 font-medium leading-relaxed">
+              Tu último pago no pudo procesarse. Por favor, revisa tus datos para evitar interrupciones en tu tienda.
+            </p>
+          </div>
+          <button className="px-4 py-2 bg-red-500 text-white text-[10px] font-black uppercase rounded-xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-all">
+            Actualizar <ExternalLink className="w-3 h-3" />
+          </button>
+        </motion.div>
       );
 
     case 'unpaid':
-        return (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md w-full" role="alert">
-            <p className="font-bold">Suscripción Inactiva</p>
-            <p>
-              Tu suscripción está inactiva debido a un pago fallido. Para reactivarla, por favor{' '}
-              <Link to="/upgrade" className="font-bold underline hover:text-red-800">
-                realiza un nuevo pago
-              </Link>.
-            </p>
+      return (
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className={`${containerClasses} bg-red-500/5 border-red-500/30`}>
+          <div className={`${iconBoxClasses} bg-red-500/20 text-red-500`}>
+            <XCircle className="w-6 h-6" />
           </div>
-        );
+          <div className="flex-grow">
+            <h4 className="text-sm font-black text-white uppercase tracking-widest mb-1">Suscripción Suspendida</h4>
+            <p className="text-xs text-zinc-500 font-medium">No hemos podido cobrar tu mensualidad. Tu tienda ya no es visible para el público.</p>
+          </div>
+          <button className="px-6 py-2.5 bg-white text-black text-[10px] font-black uppercase rounded-xl transition-transform hover:scale-105">
+            Reactivar Ahora
+          </button>
+        </motion.div>
+      );
 
     case 'canceled':
       return (
-        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-md w-full" role="alert">
-          <p className="font-bold">Suscripción Cancelada</p>
-          <p>
-            Tu suscripción ha sido cancelada y terminará el{' '}
-            <strong>{formatDate(current_period_end)}</strong>. Puedes{' '}
-            <Link to="/upgrade" className="font-bold underline hover:text-yellow-800">
-              volver a suscribirte
-            </Link>{' '}
-            en cualquier momento.
-          </p>
-        </div>
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className={`${containerClasses} bg-brand-yellow/5 border-brand-yellow/20`}>
+          <div className={`${iconBoxClasses} bg-brand-yellow/20 text-brand-yellow`}>
+            <Clock className="w-6 h-6" />
+          </div>
+          <div className="flex-grow">
+            <h4 className="text-sm font-black text-white uppercase tracking-widest mb-1 italic">Suscripción Finaliza Pronto</h4>
+            <p className="text-xs text-zinc-400 font-medium">
+              Tu plan Full vence el <span className="text-brand-yellow font-bold">{formatDate(current_period_end)}</span>. Conservarás tus funciones premium hasta entonces.
+            </p>
+          </div>
+          <button className="px-6 py-2 bg-brand-yellow/10 text-brand-yellow border border-brand-yellow/30 text-[10px] font-black uppercase rounded-xl transition-all hover:bg-brand-yellow hover:text-brand-dark">
+            Renovar
+          </button>
+        </motion.div>
       );
 
     case 'active':
     case 'trialing':
     default:
-      // No banner for active or trialing states
       return null;
   }
 };

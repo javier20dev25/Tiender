@@ -1,34 +1,14 @@
 // src/e2e/suscripcion-flow.test.tsx
-// Nota: Este es un test E2E corregido que simula el flujo completo:
-// - Renderiza DashboardPage con plan inicial 'standard'.
-// - Simula clic en "Mejorar Plan", que invoca getSupabase().functions.invoke directamente (basado en ReadFile de DashboardPage.tsx).
-// - Mockea respuesta de Supabase con 'approvalUrl' en camelCase (para match con código real).
-// - Verifica llamada a invoke y asignación a window.location.href (ajustado a .href ya que el código real podría usar window.location.href = url).
-// - Simula webhook update cambiando el mock de store a 'full' con trial.
-// - Re-renderiza DashboardPage y verifica UI actualizada con 'full'.
-// - Agrega cobertura para error case (invoke falla y muestra mensaje de error en UI).
-// - Usa mocks persistentes: redefine el mock de from() para la segunda render para asegurar que use upgradedStore.
-// - Selectores robustos con matcher de tag y content.
-// - Importa componentes reales.
-
-// Ajustes basados en errores previos:
-// - Usa 'approvalUrl' en camelCase (no 'approve_url') para evitar "No se recibió la URL".
-// - Mock de window.location.href en lugar de .assign, para match con posible implementación real.
-// - Evita genéricos ambiguos; define interfaz separada.
-// - No usa Routes/UpgradePage explícito ya que ReadFile muestra que handleUpgrade en Dashboard invoca directamente sin nav a Upgrade (asumiendo selección de plan fija o default).
+// Test E2E para el flujo de suscripción en el Dashboard.
+// Verifica: upgrade de plan, redirect a PayPal, y manejo de errores.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { getSupabase } from '../lib/supabaseClient';
 import DashboardPage from '../pages/DashboardPage';
-import { AuthProvider } from '../context/AuthContext'; // Ajusta path si necesario
 
-vi.mock('../lib/supabaseClient');
-
-// Datos mock
+// --- Mock Data ---
 const mockUser = { id: 'user-123', email: 'test@example.com' };
-const mockSession = { access_token: 'fake-token', user: mockUser };
 const initialStore = {
   id: 'store-456',
   user_id: 'user-123',
@@ -36,52 +16,70 @@ const initialStore = {
   plan_type: 'standard',
   product_limit: 10,
   trial_ends_at: null,
-};
-const upgradedStore = {
-  ...initialStore,
-  plan_type: 'full',
-  product_limit: 60,
-  trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  whatsapp_number: '+1234567890',
+  logo_url: null,
 };
 
-// Interfaz para mock response
-interface SupabaseMockResponse<T> {
-  data: T;
-  error: Error | null;
-}
+// --- Mock Supabase ---
+const mockFrom = vi.fn();
+const mockFunctionsInvoke = vi.fn();
+const mockRpc = vi.fn().mockResolvedValue({ data: null, error: null });
 
-// Helper para chainable mock
-const createChainableMock = <T,>(response: SupabaseMockResponse<T>) => ({
-  select: vi.fn().mockReturnThis(),
-  insert: vi.fn().mockReturnThis(),
-  update: vi.fn().mockReturnThis(),
-  upsert: vi.fn().mockReturnThis(),
-  eq: vi.fn().mockReturnThis(),
-  in: vi.fn().mockReturnThis(),
-  single: vi.fn().mockResolvedValue(response),
-  order: vi.fn().mockResolvedValue(response),
-});
+vi.mock('../lib/supabaseClient', () => ({
+  getSupabase: vi.fn(() => ({
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+      signOut: vi.fn(),
+      getUser: vi.fn().mockResolvedValue({ data: { user: mockUser }, error: null }),
+    },
+    from: mockFrom,
+    functions: { invoke: mockFunctionsInvoke },
+    rpc: mockRpc,
+    storage: { from: vi.fn().mockReturnValue({ remove: vi.fn().mockResolvedValue({ error: null }) }) },
+  })),
+}));
+
+// Mock useAuth to provide store and subscription data directly
+vi.mock('../context/AuthContext', () => ({
+  useAuth: vi.fn(),
+}));
+
+import { useAuth } from '../context/AuthContext';
+const mockUseAuth = useAuth as vi.Mock;
 
 // Mock window.location.href
 let mockLocationHref = '';
 const originalLocation = window.location;
+
 beforeEach(() => {
   vi.clearAllMocks();
-  const mockedSupabase = vi.mocked(supabase);
 
-  mockedSupabase.auth.getSession.mockResolvedValue({ data: { session: mockSession }, error: null });
-
-  // Mock inicial de store
-  mockedSupabase.from.mockImplementation((tableName: string) => {
-    if (tableName === 'stores') {
-      return createChainableMock({ data: initialStore, error: null });
-    }
-    return createChainableMock({ data: [], error: null });
+  // Default: user with standard plan, active subscription
+  mockUseAuth.mockReturnValue({
+    user: mockUser,
+    store: initialStore,
+    subscription: { status: 'active', current_period_end: null },
+    loading: false,
+    signOut: vi.fn(),
   });
 
-  // Mock invoke happy path con camelCase
-  mockedSupabase.functions.invoke.mockResolvedValue({
-    data: { approvalUrl: 'https://sandbox.paypal.com/approve/fake-url' },
+  // Default from() mock
+  mockFrom.mockImplementation((tableName: string) => {
+    const chain: any = {};
+    chain.select = vi.fn().mockReturnValue(chain);
+    chain.eq = vi.fn().mockReturnValue(chain);
+    chain.order = vi.fn().mockResolvedValue({ data: [], error: null });
+    chain.single = vi.fn().mockResolvedValue({ data: null, error: null });
+    chain.insert = vi.fn().mockResolvedValue({ data: [], error: null });
+    chain.update = vi.fn().mockReturnValue(chain);
+    chain.delete = vi.fn().mockReturnValue(chain);
+    return chain;
+  });
+
+  // Default invoke mock (PayPal approval URL)
+  mockFunctionsInvoke.mockResolvedValue({
+    data: { approve_url: 'https://sandbox.paypal.com/approve/fake-url' },
     error: null,
   });
 
@@ -102,87 +100,86 @@ afterEach(() => {
 
 describe('Flujo de Suscripción E2E en Dashboard', () => {
   it('debería mejorar el plan y reflejar el cambio en la UI', async () => {
-    const { unmount } = render(
+    render(
       <MemoryRouter>
-        <AuthProvider>
-          <DashboardPage />
-        </AuthProvider>
+        <DashboardPage />
       </MemoryRouter>
     );
 
-    // Verificación inicial: Plan 'standard'
+    // Wait for dashboard to render with the store name
     await waitFor(() => {
-      expect(screen.getByText((content, element) =>
-        element?.tagName.toLowerCase() === 'span' && content === 'standard'
-      )).toBeInTheDocument();
+      expect(screen.getByText('Panel del Vendedor')).toBeInTheDocument();
+    });
+
+    // Find and click the upgrade button
+    const upgradeButton = screen.getByRole('button', { name: /mejorar plan/i });
+    fireEvent.click(upgradeButton);
+
+    // Verify invoke was called with correct arguments
+    await waitFor(() => {
+      expect(mockFunctionsInvoke).toHaveBeenCalledWith(
+        'create-paypal-subscription',
+        expect.objectContaining({ body: expect.objectContaining({ planType: 'full' }) })
+      );
+    });
+
+    // Verify redirect to PayPal
+    expect(window.location.href).toBe('https://sandbox.paypal.com/approve/fake-url');
+
+    // --- Simulate webhook callback: Plan upgraded ---
+    const upgradedStore = { ...initialStore, plan_type: 'full', trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() };
+    mockUseAuth.mockReturnValue({
+      user: mockUser,
+      store: upgradedStore,
+      subscription: { status: 'active', current_period_end: null },
+      loading: false,
+      signOut: vi.fn(),
+    });
+
+    // Re-render (cleanup first to avoid duplicate DOM elements)
+    cleanup();
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Panel del Vendedor')).toBeInTheDocument();
+    });
+
+    // The upgrade button should no longer be visible for 'full' plan
+    expect(screen.queryByRole('button', { name: /mejorar plan/i })).not.toBeInTheDocument();
+  });
+
+  it('debería manejar error en create-paypal-subscription y mostrar alerta', async () => {
+    mockFunctionsInvoke.mockResolvedValueOnce({
+      data: null,
+      error: new Error('Error de PayPal: Invalid plan'),
+    });
+
+    // Spy on window.alert
+    vi.spyOn(window, 'alert').mockImplementation(() => { });
+
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Panel del Vendedor')).toBeInTheDocument();
     });
 
     const upgradeButton = screen.getByRole('button', { name: /mejorar plan/i });
     fireEvent.click(upgradeButton);
 
-    // Verifica llamada a invoke (asumiendo plan default 'full' o fijo en handleUpgrade)
+    // Verify error message appears in the UI (DashboardPage uses setError, not window.alert)
     await waitFor(() => {
-      expect(getSupabase().functions.invoke).toHaveBeenCalledWith(
-        'create-paypal-subscription',
-        { body: { planType: 'full' } }
-      );
+      expect(screen.getByText(/no se pudo iniciar la mejora de plan/i)).toBeInTheDocument();
     });
 
-    // Verifica redirect simulado
-    expect(window.location.href).toBe('https://sandbox.paypal.com/approve/fake-url');
-
-    // Simula webhook: Cambia mock de from() a upgradedStore persistentemente para re-render
-    vi.mocked(getSupabase().from).mockImplementation((tableName: string) => {
-      if (tableName === 'stores') {
-        return createChainableMock({ data: upgradedStore, error: null });
-      }
-      return createChainableMock({ data: [], error: null });
-    });
-
-    // Re-render DashboardPage
-    unmount();
-    render(
-      <MemoryRouter>
-        <AuthProvider>
-          <DashboardPage />
-        </AuthProvider>
-      </MemoryRouter>
-    );
-
-    // Verificación final: Plan 'full'
-    await waitFor(() => {
-      expect(screen.getByText((content, element) =>
-        element?.tagName.toLowerCase() === 'span' && content === 'full'
-      )).toBeInTheDocument();
-    });
-
-    // Botón de upgrade no visible
-    expect(screen.queryByRole('button', { name: /mejorar plan/i })).not.toBeInTheDocument();
-  });
-
-  it('debería manejar error en create-paypal-subscription y mostrar alerta', async () => {
-    vi.mocked(getSupabase().functions.invoke).mockResolvedValueOnce({
-      data: null,
-      error: new Error('Error de PayPal: Invalid plan'),
-    });
-
-    render(
-      <MemoryRouter>
-        <AuthProvider>
-          <DashboardPage />
-        </AuthProvider>
-      </MemoryRouter>
-    );
-
-    const upgradeButton = await screen.findByRole('button', { name: /mejorar plan/i });
-    fireEvent.click(upgradeButton);
-
-    // Verifica mensaje de error en UI (ajusta texto exacto basado en DOM dump)
-    await waitFor(() => {
-      expect(screen.getByText(/No se pudo iniciar el proceso de mejora de plan/i)).toBeInTheDocument();
-    });
-
-    // No redirect
+    // No redirect should happen
     expect(window.location.href).toBe('');
   });
 });

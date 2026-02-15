@@ -1,6 +1,9 @@
+// src/features/auth/components/SignInForm.tsx
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getSupabase } from '../../../lib/supabaseClient'; // Import supabase
+import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Phone, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { getSupabase } from '../../../lib/supabaseClient';
 
 const SignInForm: React.FC = () => {
   const [phone, setPhone] = useState('');
@@ -14,12 +17,11 @@ const SignInForm: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      // Usar supabase directamente. Asumimos que el "email" es el número de teléfono.
       const { error } = await getSupabase().auth.signInWithPassword({
-        email: phone, // Supabase usa 'email' para el login con teléfono
+        email: phone,
         password,
       });
-      
+
       if (error) {
         if (error.message.includes('Invalid login credentials')) {
           setError('Número de WhatsApp o contraseña incorrectos.');
@@ -30,57 +32,73 @@ const SignInForm: React.FC = () => {
       }
       navigate('/dashboard');
     } catch (err) {
-      // El error ya está manejado y Seteado en el estado, solo se loggea para debug
       console.error('Sign in failed:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  const inputClasses = "w-full bg-zinc-800/50 border border-white/5 rounded-2xl px-12 py-4 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-neon/50 focus:border-brand-neon/50 transition-all text-sm";
+  const iconClasses = "absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-600 group-focus-within:text-brand-neon transition-colors";
+
   return (
-    <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold text-center text-gray-900">Iniciar Sesión</h1>
+    <div className="w-full space-y-8">
+      <div className="text-center">
+        <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">Bienvenido de vuelta</h2>
+        <p className="text-zinc-500 text-xs font-medium mt-1">Ingresa tus credenciales para continuar</p>
+      </div>
+
       <form className="space-y-6" onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-            Número de WhatsApp
-          </label>
-          <input
-            id="phone"
-            name="phone"
-            type="tel"
-            autoComplete="tel"
-            required
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full px-3 py-2 mt-1 text-gray-900 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
+        <div className="space-y-4">
+          <div className="relative group">
+            <Phone className={iconClasses} />
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              placeholder="Número de WhatsApp"
+              required
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className={inputClasses}
+            />
+          </div>
+          <div className="relative group">
+            <Lock className={iconClasses} />
+            <input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="Tu Contraseña"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputClasses}
+            />
+          </div>
         </div>
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-            Contraseña
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3 py-2 mt-1 text-gray-900 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-          />
+
+        <div className="flex justify-end">
+          <Link to="/recovery" className="text-[10px] font-black uppercase tracking-widest text-zinc-600 hover:text-brand-neon transition-colors">
+            ¿Olvidaste tu contraseña?
+          </Link>
         </div>
-        {error && <p className="text-sm text-red-600 text-center">{error}</p>}
-        <div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400"
-          >
-            {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-          </button>
-        </div>
+
+        {error && (
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-500 text-[10px] font-black uppercase">
+            <AlertCircle className="w-4 h-4" />
+            {error}
+          </motion.div>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full py-4 rounded-[22px] bg-sunset-gradient text-white font-black uppercase tracking-tighter italic flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 shadow-xl shadow-brand-pink/10"
+        >
+          {loading ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" /> : <ArrowRight className="w-5 h-5" />}
+          <span>{loading ? 'Entrando' : 'Entrar a mi Tienda'}</span>
+        </button>
       </form>
     </div>
   );

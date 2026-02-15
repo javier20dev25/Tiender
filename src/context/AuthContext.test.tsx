@@ -1,46 +1,32 @@
 import { render, screen, act, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AuthProvider, useAuth } from './AuthContext';
-import { getSupabase } from '../lib/supabaseClient'; // Import to be mocked
 import type { Session } from '@supabase/supabase-js';
 
-// --- MOCKING supabaseClient ---
-// This is a full, local, self-contained mock for the supabase client.
-// It solves the test suite's core problem by not relying on a broken global setup.
-vi.mock('../lib/supabaseClient', () => {
-  const from = vi.fn().mockReturnThis();
-  const select = vi.fn().mockReturnThis();
-  const eq = vi.fn().mockReturnThis();
-  const single = vi.fn().mockResolvedValue({ data: { id: 'store-123', plan_type: 'full' }, error: null });
-
-  const getSession = vi.fn();
-  const onAuthStateChange = vi.fn((_event, callback) => {
-    // Proporciona una implementación por defecto que siempre devuelve la estructura esperada
-    if (callback) {
-      callback('INITIAL_SESSION', null);
-    }
-    return { data: { subscription: { unsubscribe: vi.fn() } } };
-  });
-
-  return {
-    supabase: {
-      auth: {
-        getSession,
-        onAuthStateChange,
-      },
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            single: single,
-          })),
-        })),
-      })),
-    },
-  };
+// --- Mock Supabase Client ---
+const mockFrom = vi.fn();
+const mockGetSession = vi.fn();
+const mockSignOut = vi.fn().mockResolvedValue({ error: null });
+let onAuthStateChangeCallback: ((event: string, session: Session | null) => void) | null = null;
+const mockOnAuthStateChange = vi.fn((callback) => {
+  onAuthStateChangeCallback = callback;
+  return { data: { subscription: { unsubscribe: vi.fn() } } };
 });
+const mockFunctionsInvoke = vi.fn().mockResolvedValue({ data: { status: 'in_sync' }, error: null });
 
+vi.mock('../lib/supabaseClient', () => ({
+  getSupabase: vi.fn(() => ({
+    auth: {
+      getSession: mockGetSession,
+      onAuthStateChange: mockOnAuthStateChange,
+      signOut: mockSignOut,
+    },
+    from: mockFrom,
+    functions: { invoke: mockFunctionsInvoke },
+  })),
+}));
 
-// --- TEST SETUP ---
+// --- Test Data ---
 const mockSession: Session = {
   access_token: 'mock-access-token',
   refresh_token: 'mock-refresh-token',
@@ -57,33 +43,47 @@ const mockSession: Session = {
   expires_at: Date.now() / 1000 + 3600,
 };
 
-const TestComponent = () => {
-  const { user, session, loading, store } = useAuth();
+const mockStore = { id: 'store-123', name: 'Test Store', plan_type: 'full', trial_ends_at: null, user_id: 'mock-user-id' };
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+// Helper to set up from() mock for store and subscription queries
+const setupFromMock = (storeData: any = mockStore, subData: any = null) => {
+  mockFrom.mockImplementation((table: string) => ({
+    select: vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({
+          data: table === 'stores' ? storeData : subData,
+          error: table === 'stores' && !storeData ? { code: 'PGRST116' } : (table === 'subscriptions' && !subData ? { code: 'PGRST116' } : null),
+        }),
+      }),
+    }),
+  }));
+};
+
+// --- Test Component ---
+const TestComponent = () => {
+  const { user, session, loading, store, subscription } = useAuth();
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div>
       <div data-testid="user">{user ? user.email : 'No User'}</div>
       <div data-testid="session">{session ? 'Has Session' : 'No Session'}</div>
       <div data-testid="store">{store ? `Store: ${store.id}` : 'No Store'}</div>
+      <div data-testid="subscription">{subscription ? `Sub: ${subscription.status}` : 'No Sub'}</div>
     </div>
   );
 };
 
 describe('AuthContext', () => {
-
   beforeEach(() => {
     vi.clearAllMocks();
+    onAuthStateChangeCallback = null;
   });
 
   it('should provide user, session, and store when authenticated', async () => {
-    (getSupabase().auth.getSession as Mock).mockResolvedValue({
-      data: { session: mockSession },
-      error: null,
-    });
+    mockGetSession.mockResolvedValue({ data: { session: mockSession }, error: null });
+    setupFromMock(mockStore, { status: 'active', current_period_end: null });
 
     render(
       <AuthProvider>
@@ -99,10 +99,7 @@ describe('AuthContext', () => {
   });
 
   it('should provide null user and session when not authenticated', async () => {
-    (getSupabase().auth.getSession as Mock).mockResolvedValue({
-      data: { session: null },
-      error: null,
-    });
+    mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
 
     render(
       <AuthProvider>
@@ -118,8 +115,9 @@ describe('AuthContext', () => {
   });
 
   it('should show loading state initially', () => {
-    (getSupabase().auth.getSession as Mock).mockResolvedValue({ data: { session: null }, error: null });
-    
+    // Never resolve getSession so we stay in loading
+    mockGetSession.mockReturnValue(new Promise(() => { }));
+
     render(
       <AuthProvider>
         <TestComponent />
@@ -130,27 +128,24 @@ describe('AuthContext', () => {
   });
 
   it('should update auth state on onAuthStateChange', async () => {
-    (getSupabase().auth.getSession as Mock).mockResolvedValue({ data: { session: null }, error: null });
-
-    let onAuthStateChangeCallback: (event: string, session: Session | null) => void;
-
-    (getSupabase().auth.onAuthStateChange as Mock).mockImplementation((callback) => {
-      onAuthStateChangeCallback = callback;
-      return { data: { subscription: { unsubscribe: vi.fn() } } };
-    });
+    mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
+    setupFromMock(mockStore, null);
 
     render(
       <AuthProvider>
         <TestComponent />
       </AuthProvider>
     );
-    
+
     await waitFor(() => expect(screen.getByTestId('user')).toHaveTextContent('No User'));
 
+    // Simulate a sign-in event via the captured callback
     await act(async () => {
-      onAuthStateChangeCallback('SIGNED_IN', mockSession);
+      if (onAuthStateChangeCallback) {
+        onAuthStateChangeCallback('SIGNED_IN', mockSession);
+      }
     });
-    
+
     await waitFor(() => expect(screen.getByTestId('user')).toHaveTextContent('test@example.com'));
   });
 });

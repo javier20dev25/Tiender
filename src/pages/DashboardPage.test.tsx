@@ -10,20 +10,31 @@ vi.mock('../context/AuthContext');
 
 // Mockear componentes hijos para aislar el test al DashboardPage
 vi.mock('../components/AddProductForm', () => ({
-  default: ({ onProductAdded, onClose }) => (
+  default: ({ onProductAdded, onClose }: any) => (
     <div data-testid="add-product-form"><button onClick={onProductAdded}>Simulate Add</button><button onClick={onClose}>Close</button></div>
   ),
 }));
 vi.mock('../components/EditProductForm', () => ({
-  default: ({ product, onProductUpdated, onClose }) => (
+  default: ({ product, onProductUpdated, onClose }: any) => (
     <div data-testid="edit-product-form"><h2>Edit: {product.title}</h2><button onClick={onProductUpdated}>Simulate Update</button><button onClick={onClose}>Close</button></div>
   ),
 }));
 
 // 2. Mocks y datos de prueba
 const mockedUseAuth = vi.mocked(useAuth);
-const mockUser = { id: 'user-123', phone: '+1234567890' };
-const mockStore = { id: 'store-abc', name: 'Mi Tienda Test', whatsapp_number: '1234567890' };
+const mockUser = { id: 'user-123', phone: '+1234567890', app_metadata: {}, user_metadata: {}, aud: 'authenticated', created_at: new Date().toISOString() };
+const mockStore = {
+  id: 'store-abc',
+  name: 'Mi Tienda Test',
+  whatsapp_number: '1234567890',
+  plan_type: 'standard' as const,
+  trial_ends_at: null,
+  user_id: 'user-123',
+  created_at: new Date().toISOString(),
+  slug: 'mi-tienda-test',
+  logo_url: null,
+  community_link: null
+};
 const mockProducts = [{ id: 'prod-1', title: 'P1', price: 10, image_url: 'url1' }];
 
 // 3. Función de renderizado simplificada
@@ -42,6 +53,9 @@ const createMockSupabase = () => ({
   single: vi.fn().mockResolvedValue({ data: null, error: null }),
   order: vi.fn().mockResolvedValue({ data: [], error: null }),
   rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+  auth: {
+    getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null }),
+  },
 });
 
 describe('DashboardPage - Product CRUD', () => {
@@ -51,32 +65,35 @@ describe('DashboardPage - Product CRUD', () => {
     vi.resetAllMocks();
     mockSupabase = createMockSupabase();
     vi.mocked(getSupabase).mockReturnValue(mockSupabase);
-    
-    window.confirm = vi.fn(() => true); 
-    mockedUseAuth.mockReturnValue({ user: mockUser, loading: false, store: mockStore, session: null, signOut: vi.fn(), setStore: vi.fn() });
-    
+
+    window.confirm = vi.fn(() => true);
+    mockedUseAuth.mockReturnValue({ user: mockUser as any, loading: false, store: mockStore as any, session: null, subscription: null, signOut: vi.fn() });
+
     // Configuración de mock por defecto para 'from'
     mockSupabase.from.mockImplementation((tableName) => {
-        const chain = {
-            select: vi.fn().mockReturnThis(),
-            insert: vi.fn(),
-            update: vi.fn(),
-            delete: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn(),
-            order: vi.fn(),
-        };
-        
-        if (tableName === 'stores') {
-            chain.single.mockResolvedValue({ data: mockStore, error: null });
-        }
-        if (tableName === 'products') {
-            chain.order.mockResolvedValue({ data: mockProducts, error: null });
-        }
+      const query: any = {
+        select: vi.fn(),
+        insert: vi.fn().mockResolvedValue({ data: [], error: null }),
+        update: vi.fn().mockResolvedValue({ data: [], error: null }),
+        delete: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: [], error: null }),
+        single: vi.fn().mockResolvedValue({ data: null, error: null }),
+      };
 
-        chain.delete.mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+      query.select.mockReturnValue(query); // Ensure select returns the same object with eq, order, etc.
 
-        return chain;
+      if (tableName === 'stores') {
+        query.single.mockResolvedValue({ data: mockStore, error: null });
+      }
+      if (tableName === 'products') {
+        query.order.mockResolvedValue({ data: mockProducts, error: null });
+      }
+
+      // Handle the specific delete chain used in tests
+      query.delete.mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+
+      return query;
     });
 
     mockSupabase.rpc.mockResolvedValue({ data: { weekly_summary: [], top_products: [] }, error: null });
@@ -99,6 +116,7 @@ describe('DashboardPage - Product CRUD', () => {
       if (tableName === 'products') {
         return {
           select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
           order: vi.fn().mockResolvedValue({ data: mockProducts, error: null }),
           delete: vi.fn().mockReturnValue({ eq: eqDeleteMock }),
         };
@@ -112,10 +130,10 @@ describe('DashboardPage - Product CRUD', () => {
       }
       return createMockSupabase(); // fallback
     });
-      
+
     // ACT
     renderDashboard();
-    
+
     // ASSERT
     await waitFor(() => expect(screen.getByText('P1')).toBeInTheDocument());
     fireEvent.click(screen.getAllByText('Eliminar')[0]);
@@ -131,37 +149,38 @@ describe('DashboardPage - Product CRUD', () => {
     await waitFor(() => expect(screen.getByText('P1')).toBeInTheDocument());
     fireEvent.click(screen.getAllByText('Editar')[0]);
     await waitFor(() => {
-        expect(screen.getByTestId('edit-product-form')).toBeInTheDocument();
-        expect(screen.getByText('Edit: P1')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-product-form')).toBeInTheDocument();
+      expect(screen.getByText('Edit: P1')).toBeInTheDocument();
     });
   });
 
   it('should allow creating a store if one does not exist', async () => {
     // ARRANGE
-    mockedUseAuth.mockReturnValue({ user: mockUser, loading: false, store: null, session: null, signOut: vi.fn(), setStore: vi.fn() });
-    
+    mockedUseAuth.mockReturnValue({ user: mockUser as any, loading: false, store: null, session: null, subscription: null, signOut: vi.fn() });
+
     const insertMock = vi.fn().mockResolvedValue({ data: [mockStore], error: null });
     mockSupabase.from.mockImplementation((tableName) => {
       if (tableName === 'stores') {
         return {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
+          order: vi.fn().mockReturnThis(),
           single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
           insert: insertMock,
         };
       }
       return createMockSupabase();
     });
-    
+
     // ACT
     renderDashboard();
-    
+
     // ASSERT
     await waitFor(() => expect(screen.getByText('Crea tu Tienda Social')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Crea tu Tienda Social'));
 
     await waitFor(() => expect(screen.getByPlaceholderText('Ej: Tienda de Ana')).toBeInTheDocument());
-    
+
     const input = screen.getByPlaceholderText('Ej: Tienda de Ana');
     const submitButton = screen.getByText('Crear Tienda');
 
@@ -169,10 +188,12 @@ describe('DashboardPage - Product CRUD', () => {
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-        expect(insertMock).toHaveBeenCalledWith(expect.objectContaining({
-            name: 'Nueva Tienda',
-            user_id: mockUser.id,
-        }));
+      expect(insertMock).toHaveBeenCalledWith(expect.arrayContaining([
+        expect.objectContaining({
+          name: 'Nueva Tienda',
+          user_id: mockUser.id,
+        })
+      ]));
     });
   });
 });

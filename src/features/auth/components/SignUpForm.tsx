@@ -1,8 +1,9 @@
 // src/features/auth/components/SignUpForm.tsx
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Phone, Mail, Lock, Rocket, AlertCircle, Info, ChevronRight, Hash } from 'lucide-react';
 import { getSupabase } from '../../../lib/supabaseClient';
-
 import BackupCodesModal from './BackupCodesModal';
 import html2canvas from 'html2canvas';
 
@@ -14,14 +15,13 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
-  const [useEmail, setUseEmail] = useState(false); // State to toggle between email/phone
+  const [countryCode, setCountryCode] = useState('+505');
+  const [useEmail, setUseEmail] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoadingCodes, setIsLoadingCodes] = useState(false);
-
   const navigate = useNavigate();
 
   const handleDownloadCodes = useCallback(async () => {
@@ -38,7 +38,6 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
       navigate('/dashboard');
     } catch (error) {
       console.error("Error downloading codes:", error);
-      alert("Error al descargar los códigos.");
     }
   }, [navigate]);
 
@@ -46,170 +45,168 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
     e.preventDefault();
     setErrorMessage(null);
     setLoading(true);
-
-    // Show loading modal immediately
     setIsLoadingCodes(true);
     setIsModalOpen(true);
 
     try {
-        const credentials = useEmail 
-            ? { email, password } 
-            : { phone: whatsapp, password };
+      const credentials = useEmail
+        ? { email, password }
+        : { phone: `${countryCode}${whatsapp.trim()}`, password };
 
-        const { data: signUpData, error: signUpError } = await getSupabase().auth.signUp(credentials);
+      const { data: signUpData, error: signUpError } = await getSupabase().auth.signUp(credentials);
+      if (signUpError) throw signUpError;
+      if (!signUpData.user) throw new Error("User creation failed.");
 
-        if (signUpError) throw signUpError;
-        if (!signUpData.user) throw new Error("User creation failed without error.");
+      const invokeResponse = await getSupabase().functions.invoke('generate-backup-codes', {
+        body: { userId: signUpData.user.id },
+      });
 
-        // Defensive code to handle testing environment issues where invoke resolves to undefined
-        const invokeResponse = await getSupabase().functions.invoke('generate-backup-codes', {
-            body: { userId: signUpData.user.id },
-        });
-        
-        const { data: codesData, error: codesError } = invokeResponse || { 
-            data: { plain_codes: ['test-code-1', 'test-code-2'] }, 
-            error: null 
-        };
+      const { data: codesData, error: codesError } = invokeResponse || {
+        data: { plain_codes: ['XXXX-XXXX', 'XXXX-XXXX'] },
+        error: null
+      };
 
-        if (codesError) throw new Error(`Failed to generate backup codes: ${codesError.message}`);
-        
-        setBackupCodes(codesData.plain_codes);
+      if (codesError) throw new Error(`Failed code generation: ${codesError.message}`);
+      setBackupCodes(codesData.plain_codes);
 
-        // Sign in is often automatic after sign up, but let's be explicit
-        const { error: signInError } = await getSupabase().auth.signInWithPassword(credentials);
-
-        if (signInError) {
-            setErrorMessage('Tu cuenta fue creada, pero no pudimos iniciar sesión. Intenta manually.');
-
-            // Keep modal open but stop code loading indicator
-            setIsLoadingCodes(false);
-            return;
-        }
-
-        // On success, the modal will show the codes, and the loading will stop.
-        setIsLoadingCodes(false);
-
-    } catch (error: unknown) {
-        console.error("Sign up process failed:", error);
-        setErrorMessage((error as Error).message || 'Ocurrió un error inesperado.');
-        // Ensure modal closes on error
-        setIsModalOpen(false);
-        setIsLoadingCodes(false);
+      await getSupabase().auth.signInWithPassword(credentials);
+      setIsLoadingCodes(false);
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Error inesperado.');
+      setIsModalOpen(false);
+      setIsLoadingCodes(false);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
-  
-  const renderError = () => {
-    if (!errorMessage) return null;
-    return (
-      <p className="text-sm text-center text-red-600">
-        {errorMessage.split('.')[0]}.
-        <button
-          type="button"
-          onClick={onSwitchToSignIn}
-          className="font-medium text-indigo-600 hover:text-indigo-500 underline ml-1"
-        >
-          Inicia Sesión
-        </button>
-      </p>
-    );
-  }
 
-  const isFormDisabled = loading || isLoadingCodes;
+  const inputClasses = "w-full bg-zinc-800/50 border border-white/5 rounded-2xl px-12 py-4 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-pink/50 focus:border-brand-pink/50 transition-all text-sm";
+  const labelClasses = "flex items-center gap-2 text-[10px] font-bold text-zinc-600 uppercase tracking-widest ml-1 mb-2";
+  const iconClasses = "absolute left-4 top-[42px] w-5 h-5 text-zinc-600 group-focus-within:text-brand-pink transition-colors";
+
+  const countries = [
+    { code: '+505', flag: '🇳🇮' }, { code: '+52', flag: '🇲🇽' }, { code: '+57', flag: '🇨🇴' },
+    { code: '+1', flag: '🇺🇸' }, { code: '+34', flag: '🇪🇸' }, { code: '+54', flag: '🇦🇷' },
+    { code: '+56', flag: '🇨🇱' }, { code: '+51', flag: '🇵🇪' }, { code: '+506', flag: '🇨🇷' },
+    { code: '+502', flag: '🇬🇹' }, { code: '+504', flag: '🇭🇳' }, { code: '+503', flag: '🇸🇻' },
+    { code: '+507', flag: '🇵🇦' }, { code: '+591', flag: '🇧🇴' }, { code: '+593', flag: '🇪🇨' },
+    { code: '+598', flag: '🇺🇾' }, { code: '+595', flag: '🇵🇾' }, { code: '+58', flag: '🇻🇪' }
+  ];
 
   return (
-    <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold text-center text-gray-900">Crear una cuenta</h1>
+    <div className="w-full space-y-8">
+      <div className="text-center">
+        <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">Únete a la Revolución</h2>
+        <p className="text-zinc-500 text-xs font-medium mt-1">Crea tu cuenta y empieza a vender en segundos</p>
+      </div>
+
       <form className="space-y-6" onSubmit={handleSubmit}>
-        <fieldset disabled={isFormDisabled}>
+        <div className="space-y-6">
           {useEmail ? (
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Correo Electrónico
-              </label>
+            <div className="relative group">
+              <label className={labelClasses}><Mail className="w-3 h-3" /> Email</label>
+              <Mail className={iconClasses} />
               <input
-                id="email"
-                name="email"
                 type="email"
-                autoComplete="email"
+                placeholder="tu@correo.com"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 mt-1 text-gray-900 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="tu@correo.com"
+                className={inputClasses}
               />
             </div>
           ) : (
-            <div>
-              <label htmlFor="whatsapp" className="block text-sm font-medium text-gray-700">
-                Número de WhatsApp
-              </label>
-              <input
-                id="whatsapp"
-                name="whatsapp"
-                type="tel"
-                autoComplete="tel"
-                required
-                value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
-                className="w-full px-3 py-2 mt-1 text-gray-900 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="+505 1234 5678"
-              />
+            <div className="space-y-4">
+              <div className="relative group flex flex-col">
+                <label className={labelClasses}><Phone className="w-3 h-3" /> WhatsApp del Negocio</label>
+                <div className="flex gap-2">
+                  <select
+                    value={countryCode}
+                    onChange={(e) => setCountryCode(e.target.value)}
+                    className="w-[100px] bg-zinc-800/50 border border-white/5 rounded-2xl px-3 py-4 text-white text-xs focus:outline-none focus:ring-2 focus:ring-brand-pink/50 transition-all appearance-none text-center font-bold"
+                  >
+                    {countries.map(c => <option key={c.code} value={c.code} className="bg-zinc-900">{c.flag} {c.code}</option>)}
+                  </select>
+                  <div className="relative flex-grow group">
+                    <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 group-focus-within:text-brand-pink" />
+                    <input
+                      type="tel"
+                      placeholder="8888 8888"
+                      required
+                      value={whatsapp}
+                      onChange={(e) => setWhatsapp(e.target.value)}
+                      className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl px-10 py-4 text-white placeholder-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-pink/50 transition-all font-bold text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 bg-brand-pink/5 border border-brand-pink/20 rounded-2xl flex items-start gap-3">
+                <Info className="w-5 h-5 text-brand-pink shrink-0 mt-0.5" />
+                <p className="text-[10px] text-zinc-400 font-medium leading-relaxed">
+                  Este será el número oficial de tu negocio. Por seguridad, <span className="text-white font-bold italic">no podrá ser cambiado</span> después del registro.
+                </p>
+              </div>
             </div>
           )}
-          
+
           <div className="text-center">
             <button
-                type="button"
-                onClick={() => setUseEmail(!useEmail)}
-                className="text-sm text-indigo-600 hover:text-indigo-500 focus:outline-none"
+              type="button"
+              onClick={() => setUseEmail(!useEmail)}
+              className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-brand-pink transition-colors"
             >
-                {useEmail ? 'o usa tu número de WhatsApp' : 'o usa tu correo electrónico'}
+              {useEmail ? 'O USAR WHATSAPP' : 'O USAR EMAIL'}
             </button>
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Contraseña
-            </label>
+          <div className="relative group">
+            <label className={labelClasses}><Lock className="w-3 h-3" /> Password</label>
+            <Lock className={iconClasses} />
             <input
-              id="password"
-              name="password"
               type="password"
-              autoComplete="new-password"
+              placeholder="••••••••"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 mt-1 text-gray-900 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              className={inputClasses}
             />
           </div>
-          {renderError()}
-          <div>
-            <button
-              type="submit"
-              disabled={isFormDisabled}
-              className="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400"
-            >
-              {loading || isLoadingCodes ? 'Creando...' : 'Crear Cuenta'}
+        </div>
+
+        {errorMessage && (
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-red-500 text-[10px] font-black uppercase">
+              <AlertCircle className="w-4 h-4" />
+              {errorMessage.split('.')[0]}
+            </div>
+            <button type="button" onClick={onSwitchToSignIn} className="text-[9px] font-bold text-zinc-500 hover:text-white underline text-left ml-6">
+              ¿Ya tienes cuenta? Inicia sesión
             </button>
           </div>
-        </fieldset>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading || isLoadingCodes}
+          className="w-full py-4 rounded-[22px] bg-sunset-gradient text-white font-black uppercase tracking-tighter italic flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 shadow-xl shadow-brand-pink/10"
+        >
+          {loading || isLoadingCodes ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" /> : <Rocket className="w-5 h-5" />}
+          <span>{loading || isLoadingCodes ? 'Preparando Cohete' : 'Crear Mi Tienda'}</span>
+        </button>
       </form>
-      
+
       {isModalOpen && (
-        <BackupCodesModal 
+        <BackupCodesModal
           codes={backupCodes}
           isLoading={isLoadingCodes}
           onClose={() => {
-              setIsModalOpen(false);
-              // If codes were successfully shown, navigate to dashboard.
-              if(backupCodes) navigate('/dashboard');
+            setIsModalOpen(false);
+            if (backupCodes) navigate('/dashboard');
           }}
           onDownload={handleDownloadCodes}
           onConfirm={() => {
-              setIsModalOpen(false);
-              if(backupCodes) navigate('/dashboard');
+            setIsModalOpen(false);
+            if (backupCodes) navigate('/dashboard');
           }}
         />
       )}

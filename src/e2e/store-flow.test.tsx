@@ -1,148 +1,144 @@
 // src/e2e/store-flow.test.tsx
-import { describe, it, expect, afterAll, vi } from 'vitest'; // Add vi to imports
-import { User } from '@supabase/supabase-js';
+import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('../lib/supabaseClient', () => {
-    const mockUser = {
-        id: 'mock-user-id',
-        email: 'test.rls.mock@example.com',
-        user_metadata: {},
-    };
+// --- Mock Supabase ---
+const mockFrom = vi.fn();
+const mockSignUp = vi.fn();
+const mockGetSession = vi.fn();
+const mockSignOut = vi.fn().mockResolvedValue({ error: null });
+const mockDeleteUser = vi.fn().mockResolvedValue({ data: null, error: null });
 
-    const from = (table) => {
-        const queryBuilder = {
-            insert: vi.fn().mockReturnThis(),
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn(),
-            then: null, // Placeholder for thenable
-        };
-
-        // Make it thenable for await
-        queryBuilder.then = function(onFulfilled) {
-            if (table === 'products') {
-                onFulfilled({ data: [{ id: 'mock-product-id', store_id: 'mock-store-id', title: 'RLS Test Product', price: 10.99 }], error: null });
-            } else if (table === 'stores') {
-                onFulfilled({ data: [{ id: 'mock-store-id', name: 'RLS Test Store' }], error: null });
-            } else {
-                onFulfilled({ data: [], error: null });
-            }
-        };
-
-        if (table === 'stores') {
-            queryBuilder.single.mockResolvedValue({ data: { id: 'mock-store-id', user_id: 'mock-user-id', name: 'RLS Test Store' }, error: null });
-        } else if (table === 'products') {
-            queryBuilder.single.mockResolvedValue({ data: { id: 'mock-product-id', store_id: 'mock-store-id', title: 'RLS Test Product', price: 10.99 }, error: null });
-        } else {
-            queryBuilder.single.mockResolvedValue({ data: null, error: null });
-        }
-
-        return queryBuilder;
-    };
-
-    return {
-        supabase: {
-            auth: {
-                signUp: vi.fn().mockResolvedValue({
-                    data: { user: mockUser, session: { access_token: 'mock-token' } },
-                    error: null,
-                }),
-                getSession: vi.fn().mockResolvedValue({
-                    data: { session: { user: mockUser, access_token: 'mock-token' } },
-                    error: null,
-                }),
-                admin: {
-                    deleteUser: vi.fn().mockResolvedValue({ data: null, error: null }),
-                },
-                signOut: vi.fn().mockResolvedValue({ error: null }),
-            },
-            from: vi.fn(from),
+vi.mock('../lib/supabaseClient', () => ({
+    getSupabase: vi.fn(() => ({
+        auth: {
+            signUp: mockSignUp,
+            getSession: mockGetSession,
+            signOut: mockSignOut,
+            admin: { deleteUser: mockDeleteUser },
         },
-    };
-});
+        from: mockFrom,
+    })),
+}));
 
 // Helper to generate a random email for each test run
 const generateRandomEmail = () => `test.rls.${Date.now()}@example.com`;
 
 describe('Backend RLS and Data Flow Test', () => {
-    let createdUser: User | null = null;
-    
-    // Clean up created data after the test - No real cleanup needed with mocks.
-    afterAll(async () => {
-        const { supabase } = await import('../lib/supabaseClient'); // Ensure using the mocked supabase
-        if (createdUser) {
-            await getSupabase().auth.admin.deleteUser(createdUser.id);
-        }
-    });
-    
     it('should allow public reads on stores and products after creation', async () => {
-        const { supabase } = await import('../lib/supabaseClient'); // Import mocked supabase
-
-        // 1. Sign up a new user directly
-        const testUser = {
+        const mockUser = {
+            id: 'mock-user-id',
             email: generateRandomEmail(),
-            password: 'Password123!',
         };
-        const { data: signUpData, error: signUpError } = await getSupabase().auth.signUp({
-            ...testUser,
-            options: { data: {} }
+        const mockSession = { access_token: 'mock-token', user: mockUser };
+
+        // Mock auth
+        mockSignUp.mockResolvedValue({
+            data: { user: mockUser, session: mockSession },
+            error: null,
+        });
+        mockGetSession.mockResolvedValue({
+            data: { session: mockSession },
+            error: null,
         });
 
-        expect(signUpError, `Sign-up failed: ${signUpError?.message}`).toBeNull();
-        expect(signUpData.user, 'User object should be returned on sign-up').toBeDefined();
-        createdUser = signUpData.user;
-        
-        const { data: sessionData, error: sessionError } = await getSupabase().auth.getSession();
+        // Mock from() for different tables
+        mockFrom.mockImplementation((table: string) => {
+            const chain: any = {};
+            chain.insert = vi.fn().mockReturnValue(chain);
+            chain.select = vi.fn().mockReturnValue(chain);
+            chain.eq = vi.fn().mockReturnValue(chain);
+            chain.single = vi.fn();
+
+            if (table === 'stores') {
+                chain.single.mockResolvedValue({
+                    data: { id: 'mock-store-id', user_id: 'mock-user-id', name: 'RLS Test Store' },
+                    error: null,
+                });
+                // For the select all query (returns array-like via thenable)
+                chain.then = (onFulfilled: any) => {
+                    return Promise.resolve(onFulfilled({
+                        data: [{ id: 'mock-store-id', name: 'RLS Test Store' }],
+                        error: null,
+                    }));
+                };
+            } else if (table === 'products') {
+                chain.single.mockResolvedValue({
+                    data: { id: 'mock-product-id', store_id: 'mock-store-id', title: 'RLS Test Product', price: 10.99 },
+                    error: null,
+                });
+                chain.then = (onFulfilled: any) => {
+                    return Promise.resolve(onFulfilled({
+                        data: [{ id: 'mock-product-id', store_id: 'mock-store-id', title: 'RLS Test Product', price: 10.99 }],
+                        error: null,
+                    }));
+                };
+            } else {
+                chain.single.mockResolvedValue({ data: null, error: null });
+            }
+
+            return chain;
+        });
+
+        const { getSupabase } = await import('../lib/supabaseClient');
+        const supabase = getSupabase();
+
+        // 1. Sign up a new user
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: mockUser.email,
+            password: 'Password123!',
+            options: { data: {} },
+        });
+
+        expect(signUpError).toBeNull();
+        expect(signUpData.user).toBeDefined();
+
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         expect(sessionError).toBeNull();
         expect(sessionData.session).toBeDefined();
 
-        // 2. Programmatically create a store for this user
+        // 2. Create a store
         const { data: store, error: storeError } = await supabase
             .from('stores')
-            .insert({ 
-                user_id: createdUser!.id, 
-                name: 'RLS Test Store', 
-                whatsapp_number: 'N/A'
+            .insert({
+                user_id: signUpData.user!.id,
+                name: 'RLS Test Store',
+                whatsapp_number: 'N/A',
             })
             .select()
             .single();
-        expect(storeError, `Store creation failed: ${storeError?.message}`).toBeNull();
-        expect(store, 'Store data should be returned after creation').toBeDefined();
+        expect(storeError).toBeNull();
+        expect(store).toBeDefined();
 
-        // 3. Programmatically create a product for this store
+        // 3. Create a product
         const { data: product, error: productError } = await supabase
             .from('products')
             .insert({ store_id: store.id, title: 'RLS Test Product', price: 10.99 })
             .select()
             .single();
-        expect(productError, `Product creation failed: ${productError?.message}`).toBeNull();
-        expect(product, 'Product data should be returned after creation').toBeDefined();
+        expect(productError).toBeNull();
+        expect(product).toBeDefined();
 
-        // 4. ATTEMPT TO FETCH PUBLICLY (THE REAL TEST)
-        // Sign out to ensure the client is anonymous
-        await getSupabase().auth.signOut();
+        // 4. Sign out and fetch publicly
+        await supabase.auth.signOut();
 
-        // Try to fetch the store
         const { data: publicStoreData, error: publicStoreError } = await supabase
             .from('stores')
             .select('*')
             .eq('id', store.id)
             .single();
-        
-        expect(publicStoreError, 'Fetching store publicly should not fail').toBeNull();
+
+        expect(publicStoreError).toBeNull();
         expect(publicStoreData).not.toBeNull();
         expect(publicStoreData.name).toBe('RLS Test Store');
-        
-        // Try to fetch products
+
         const { data: publicProductData, error: publicProductError } = await supabase
             .from('products')
             .select('*')
-            .eq('store_id', store.id);
+            .eq('store_id', store.id)
+            .single();
 
-        expect(publicProductError, 'Fetching products publicly should not fail').toBeNull();
+        expect(publicProductError).toBeNull();
         expect(publicProductData).not.toBeNull();
-        expect(publicProductData).toHaveLength(1);
-        expect(publicProductData![0].title).toBe('RLS Test Product');
+        expect(publicProductData.title).toBe('RLS Test Product');
     });
 });
-

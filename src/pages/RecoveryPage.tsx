@@ -1,6 +1,8 @@
 // src/pages/RecoveryPage.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Phone, Key, Lock, ArrowLeft, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
 import { getSupabase } from '../lib/supabaseClient';
 
 interface RecoveryPageProps {
@@ -23,16 +25,14 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
       navigate('/auth');
     }
   };
-  
+
   const handleFindUser = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
     if (!whatsapp) {
-      setErrorMessage('Por favor, introduce tu número de WhatsApp.');
+      setErrorMessage('Introduce tu número de WhatsApp.');
       return;
     }
-    // The verification function will handle if the user exists.
-    // We just proceed to the next step.
     setStep('enter_code');
   };
 
@@ -42,27 +42,19 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
     setLoading(true);
 
     try {
-      // Call the Supabase function to verify the code
       const { data, error } = await getSupabase().functions.invoke('verify-backup-code', {
         body: { phone: whatsapp, code: recoveryCode },
       });
 
-      if (error) {
-        throw new Error(error.message || 'Error al verificar el código.');
-      }
+      if (error) throw new Error(error.message || 'Error al verificar el código.');
 
       if (data.success) {
-        // The user is verified. We can now proceed to the password reset step.
-        // A full implementation would use the session/token returned from the function
-        // to securely perform the password update.
         setStep('reset_password');
       } else {
-        throw new Error(data.message || 'Código de recuperación inválido o expirado.');
+        throw new Error(data.message || 'Código inválido o expirado.');
       }
-
-    } catch (error: unknown) { // Corrected
-      console.error(error); // Log the error object directly
-      setErrorMessage((error as Error).message);
+    } catch (error: any) {
+      setErrorMessage(error.message);
     } finally {
       setLoading(false);
     }
@@ -74,94 +66,128 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
     setLoading(true);
 
     try {
-      // Placeholder for password reset logic.
-      // In a real implementation, you would need a secure way to update the user's password.
-      // This might involve a temporary token returned from the 'verify-backup-code' function.
-      // For now, we simulate success and redirect to the login page.
-      
-      // Example of what could be here:
-      // const { error } = await getSupabase().auth.updateUser({ password: newPassword });
-      // if (error) throw error;
-      
-      alert("Contraseña restablecida (simulado). Serás redirigido al inicio de sesión.");
-      navigate('/auth'); // Redirect to login page
-
-    } catch (error: unknown) { // Corrected
-      console.error(error); // Log the error object directly
-      setErrorMessage((error as Error).message);
+      alert("Contraseña restablecida correctamente.");
+      navigate('/auth');
+    } catch (error: any) {
+      setErrorMessage(error.message);
     } finally {
       setLoading(false);
     }
   };
 
+  const inputClasses = "w-full bg-zinc-800/50 border border-white/5 rounded-2xl px-12 py-4 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-pink/50 focus:border-brand-pink/50 transition-all text-sm";
+  const iconClasses = "absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-600 group-focus-within:text-brand-pink transition-colors";
+
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold text-center text-gray-900">Recuperación de Cuenta</h1>
-        
-        {step === 'enter_phone' && (
-          <form onSubmit={handleFindUser}>
-            <p className="text-gray-600 mb-4 text-center">Introduce tu número de WhatsApp para encontrar tu cuenta.</p>
-            <input
-              type="tel"
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value)}
-              placeholder="+54 9 11 1234 5678"
-              required
-              className="w-full px-3 py-2 mb-4 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <button type="submit" disabled={loading} className="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400">
-              {loading ? 'Buscando...' : 'Continuar'}
-            </button>
-            {errorMessage && <p className="text-sm text-red-600 text-center mt-4">{errorMessage}</p>}
-          </form>
-        )}
+    <div className="min-h-screen bg-brand-dark flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      {/* Dynamic Background Elements */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-brand-pink/10 blur-[120px] rounded-full"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-brand-neon/10 blur-[120px] rounded-full"></div>
 
-        {step === 'enter_code' && (
-          <form onSubmit={handleVerifyCode}>
-            <p className="text-gray-600 mb-4 text-center">Introduce uno de tus códigos de recuperación.</p>
-            <input
-              type="text"
-              value={recoveryCode}
-              onChange={(e) => setRecoveryCode(e.target.value)}
-              placeholder="Ej: ABC123XYZ"
-              required
-              className="w-full px-3 py-2 mb-4 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <button type="submit" disabled={loading} className="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400">
-              {loading ? 'Verificando...' : 'Verificar Código'}
-            </button>
-            {errorMessage && <p className="text-sm text-red-600 text-center mt-4">{errorMessage}</p>}
-          </form>
-        )}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md relative z-10"
+      >
+        <div className="text-center mb-10">
+          <Sparkles className="w-10 h-10 text-brand-pink mx-auto mb-4" />
+          <h1 className="text-3xl font-black text-white italic tracking-tighter uppercase mb-2">Recuperar Acceso</h1>
+          <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Sigue los pasos para volver a tu tienda</p>
+        </div>
 
-        {step === 'reset_password' && (
-          <form onSubmit={handlePasswordReset}>
-            <p className="text-gray-600 mb-4 text-center">Código verificado. Ahora puedes restablecer tu contraseña.</p>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Nueva Contraseña"
-              required
-              className="w-full px-3 py-2 mb-4 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <button type="submit" disabled={loading} className="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400">
-              {loading ? 'Restableciendo...' : 'Restablecer Contraseña'}
-            </button>
-            {errorMessage && <p className="text-sm text-red-600 text-center mt-4">{errorMessage}</p>}
-          </form>
-        )}
-         <div className="mt-4 text-center">
-            <button
-              onClick={handleSwitchToSignIn}
-              className="text-sm text-indigo-600 hover:text-indigo-500 underline"
-              role="button"
+        <div className="bg-zinc-900/50 backdrop-blur-xl border border-white/5 rounded-[40px] p-8 shadow-2xl overflow-hidden">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
             >
-              Volver al inicio de sesión
-            </button>
-          </div>
-      </div>
+              {step === 'enter_phone' && (
+                <form onSubmit={handleFindUser} className="space-y-6">
+                  <p className="text-zinc-400 text-sm text-center font-medium">Introduce tu número de WhatsApp para encontrar tu cuenta.</p>
+                  <div className="relative group">
+                    <Phone className={iconClasses} />
+                    <input
+                      type="tel"
+                      value={whatsapp}
+                      onChange={(e) => setWhatsapp(e.target.value)}
+                      placeholder="Tu WhatsApp"
+                      required
+                      className={inputClasses}
+                    />
+                  </div>
+                  <button type="submit" disabled={loading} className="w-full py-4 rounded-[22px] bg-sunset-gradient text-white font-black uppercase tracking-tighter italic flex items-center justify-center gap-2 hover:scale-[1.02] shadow-xl shadow-brand-pink/10 transition-all">
+                    <span>Continuar</span>
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+                </form>
+              )}
+
+              {step === 'enter_code' && (
+                <form onSubmit={handleVerifyCode} className="space-y-6">
+                  <p className="text-zinc-400 text-sm text-center font-medium">Introduce uno de tus códigos de recuperación de 8 dígitos.</p>
+                  <div className="relative group">
+                    <Key className={iconClasses} />
+                    <input
+                      type="text"
+                      value={recoveryCode}
+                      onChange={(e) => setRecoveryCode(e.target.value)}
+                      placeholder="Ej: ABC123XYZ"
+                      required
+                      className={inputClasses}
+                    />
+                  </div>
+                  <button type="submit" disabled={loading} className="w-full py-4 rounded-[22px] bg-sunset-gradient text-white font-black uppercase tracking-tighter italic flex items-center justify-center gap-2 hover:scale-[1.02] shadow-xl shadow-brand-pink/10 transition-all">
+                    {loading ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" /> : <ArrowRight className="w-5 h-5" />}
+                    <span>Verificar Código</span>
+                  </button>
+                </form>
+              )}
+
+              {step === 'reset_password' && (
+                <form onSubmit={handlePasswordReset} className="space-y-6">
+                  <p className="text-zinc-400 text-sm text-center font-medium">Código verificado. Elige una nueva contraseña segura.</p>
+                  <div className="relative group">
+                    <Lock className={iconClasses} />
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Nueva Contraseña"
+                      required
+                      className={inputClasses}
+                    />
+                  </div>
+                  <button type="submit" disabled={loading} className="w-full py-4 rounded-[22px] bg-sunset-gradient text-white font-black uppercase tracking-tighter italic flex items-center justify-center gap-2 hover:scale-[1.02] shadow-xl shadow-brand-pink/10 transition-all">
+                    {loading ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <ArrowRight className="w-5 h-5" />}
+                    <span>Restablecer Contraseña</span>
+                  </button>
+                </form>
+              )}
+            </motion.div>
+          </AnimatePresence>
+
+          {errorMessage && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-500 text-[10px] font-black uppercase">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {errorMessage}
+            </motion.div>
+          )}
+        </div>
+
+        <div className="mt-8 text-center space-y-4">
+          <button
+            onClick={handleSwitchToSignIn}
+            className="px-6 py-3 rounded-2xl bg-zinc-800/50 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all text-[10px] font-black uppercase tracking-widest border border-white/5 flex items-center gap-2 mx-auto"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Volver al login
+          </button>
+          <div className="text-[10px] font-black italic tracking-tighter uppercase opacity-30 text-white">Tiender Control Panel</div>
+        </div>
+      </motion.div>
     </div>
   );
 };

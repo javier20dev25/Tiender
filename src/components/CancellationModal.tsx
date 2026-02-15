@@ -1,5 +1,7 @@
 // src/components/CancellationModal.tsx
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AlertCircle, Trash2 } from 'lucide-react';
 import { getSupabase } from '../lib/supabaseClient';
 
 interface CancellationModalProps {
@@ -20,51 +22,72 @@ const CancellationModal: React.FC<CancellationModalProps> = ({ isOpen, onClose, 
       if (funcError) {
         throw new Error(funcError.message || 'Ocurrió un error al procesar la cancelación.');
       }
-      onSuccess(); // Llama a la función de éxito pasada por props
-    } catch (e) {
-      let errorMessage = 'Ocurrió un error inesperado.';
-      if (e instanceof Error) {
-        errorMessage = e.message;
-      }
-      setError(errorMessage);
+      onSuccess();
+    } catch (e: any) {
+      setError(e.message || 'Ocurrió un error inesperado.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-        <h2 className="text-xl font-bold text-gray-900">Confirmar Cancelación</h2>
-        <p className="mt-2 text-gray-600">
-          ¿Estás seguro de que quieres cancelar tu suscripción? Tu acceso a las funciones premium
-          permanecerá activo hasta el final de tu ciclo de facturación actual.
-        </p>
-
-        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-
-        <div className="mt-6 flex justify-end gap-4">
-          <button
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={onClose}
-            disabled={loading}
-            className="rounded-lg bg-gray-100 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-200"
+            className="absolute inset-0 bg-brand-dark/90 backdrop-blur-md"
+          />
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            className="relative w-full max-w-md bg-zinc-900 border border-white/5 rounded-[40px] shadow-2xl overflow-hidden p-8"
           >
-            Volver
-          </button>
-          <button
-            onClick={handleConfirmCancellation}
-            disabled={loading}
-            className="rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-          >
-            {loading ? 'Procesando...' : 'Sí, Cancelar'}
-          </button>
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-500 mb-6">
+                <AlertCircle className="w-8 h-8" />
+              </div>
+
+              <h2 className="text-xl font-black text-white uppercase italic tracking-tighter mb-4">¿Cancelar Suscripción?</h2>
+
+              <p className="text-sm text-zinc-500 font-medium leading-relaxed mb-8">
+                Tu acceso a las funciones premium (analíticas avanzadas, ofertas "match", etc.)
+                se mantendrá activo hasta el final de tu ciclo de facturación actual.
+              </p>
+
+              {error && (
+                <div className="w-full p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-xs font-bold mb-6 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  {error}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 w-full gap-3">
+                <button
+                  onClick={handleConfirmCancellation}
+                  disabled={loading}
+                  className="w-full py-4 rounded-2xl bg-red-500 text-white font-black uppercase tracking-tighter italic flex items-center justify-center gap-2 hover:bg-red-600 transition-all disabled:opacity-30"
+                >
+                  {loading ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : <Trash2 className="w-4 h-4" />}
+                  {loading ? 'Procesando' : 'Sí, confirmar cancelación'}
+                </button>
+                <button
+                  onClick={onClose}
+                  disabled={loading}
+                  className="w-full py-4 rounded-2xl bg-zinc-800 text-zinc-400 font-bold uppercase tracking-widest text-[10px] hover:text-white transition-colors"
+                >
+                  Mantener mi plan premium
+                </button>
+              </div>
+            </div>
+          </motion.div>
         </div>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   );
 };
 

@@ -23,7 +23,7 @@ describe('App Routing', () => {
     await waitFor(() => {
       // Asegurarse de que el texto de carga ya no está presente y el contenido del dashboard sí
       expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-      expect(screen.getByText(/Tu Tienda: Tienda de Prueba/i)).toBeInTheDocument();
+      expect(screen.getByText(/Tu Tienda: Mi Tienda/i)).toBeInTheDocument();
     });
   });
 });

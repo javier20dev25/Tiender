@@ -1,10 +1,9 @@
-
+// src/components/WeeklyAnalytics.tsx
 import React from 'react';
+import { motion } from 'framer-motion';
+import { Eye, ShoppingCart, TrendingUp, Calendar, Info, Package } from 'lucide-react';
 import { AnalyticsHeatmap } from './AnalyticsHeatmap';
-import { AnalyticsLegend } from './AnalyticsLegend';
-import { AnalyticsProductTable } from './AnalyticsProductTable';
 
-// Placeholder types, will be refined with types from src/types.ts
 type HeatmapData = {
   hour: string;
   visits: number;
@@ -40,46 +39,87 @@ export const WeeklyAnalytics: React.FC<WeeklyAnalyticsProps> = ({
 }) => {
   if (isLoading) {
     return (
-        <div className="text-center p-8 bg-gray-900 text-white rounded-xl">
-            Cargando analíticas...
-        </div>
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="w-8 h-8 border-2 border-brand-cyan/30 border-t-brand-cyan rounded-full animate-spin mb-3"></div>
+        <p className="text-zinc-500 text-sm font-medium">Sincronizando datos...</p>
+      </div>
     );
   }
 
-  const conversionRate = totalSummary.total_visits > 0 
-    ? ((totalSummary.total_adds_to_cart / totalSummary.total_visits) * 100).toFixed(2)
-    : '0.00';
+  const conversionRate = totalSummary.total_visits > 0
+    ? ((totalSummary.total_adds_to_cart / totalSummary.total_visits) * 100).toFixed(1)
+    : '0.0';
 
   return (
-    <div className="p-4 bg-gray-900 text-white rounded-xl">
-      <h2 className="text-2xl font-bold mb-4">Análisis Semanal</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-blue-500/20 p-4 rounded-lg">
-          <p className="text-sm text-blue-200">Visitas Totales</p>
-          <p className="text-3xl font-bold">{totalSummary.total_visits}</p>
+    <div className="space-y-10">
+      {/* Mini Stats Summary */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="p-4 rounded-2xl bg-zinc-800/50 border border-white/5">
+          <div className="flex items-center gap-2 mb-1 text-zinc-500">
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Conversión</span>
+          </div>
+          <div className="text-2xl font-black text-brand-neon">{conversionRate}%</div>
         </div>
-        <div className="bg-purple-500/20 p-4 rounded-lg">
-          <p className="text-sm text-purple-200">Añadidos al Carrito</p>
-          <p className="text-3xl font-bold">{totalSummary.total_adds_to_cart}</p>
-        </div>
-        <div className="bg-green-500/20 p-4 rounded-lg">
-          <p className="text-sm text-green-200">Tasa de Conversión</p>
-          <p className="text-3xl font-bold">{conversionRate}%</p>
+        <div className="p-4 rounded-2xl bg-zinc-800/50 border border-white/5">
+          <div className="flex items-center gap-2 mb-1 text-zinc-500">
+            <Calendar className="w-3.5 h-3.5" />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Ciclo</span>
+          </div>
+          <div className="text-lg font-bold text-white leading-none mt-1">7 Días</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3">
+      {/* Heatmap Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+            <Info className="w-3.5 h-3.5" />
+            Flujo Horario
+          </h4>
+          <div className="flex items-center gap-3 text-[10px] font-medium text-zinc-500">
+            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-brand-pink/40"></div> Visitas</div>
+            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-brand-cyan border border-brand-cyan"></div> Carrito</div>
+          </div>
+        </div>
+        <div className="rounded-[25px] bg-brand-dark/50 overflow-hidden">
           <AnalyticsHeatmap data={heatmapData} startDate={startDate} />
         </div>
-        <div>
-          <AnalyticsLegend />
+      </div>
+
+      {/* Top Products Table (Simplified for Sidebar/Dashboard vibe) */}
+      <div className="space-y-4">
+        <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+          <Package className="w-3.5 h-3.5" />
+          Rendimiento por Producto
+        </h4>
+        <div className="space-y-2">
+          {productSummary.length > 0 ? (
+            productSummary.map((product, idx) => (
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: idx * 0.1 }}
+                key={product.id}
+                className="flex items-center gap-3 p-2 rounded-2xl bg-zinc-800/30 border border-white/5"
+              >
+                <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm flex-shrink-0">
+                  <img src={product.image_url || 'https://placehold.co/50x50'} alt="" className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-grow min-w-0">
+                  <p className="text-xs font-bold text-white truncate">{product.title}</p>
+                </div>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-pink/10 text-brand-pink border border-brand-pink/10">
+                  <ShoppingCart className="w-3 h-3" />
+                  <span className="text-[10px] font-black">{product.total_added_to_cart}</span>
+                </div>
+              </motion.div>
+            ))
+          ) : (
+            <div className="text-center py-6 text-[10px] font-medium text-zinc-600 italic">No hay datos de productos aún.</div>
+          )}
         </div>
       </div>
-      
-      <AnalyticsProductTable data={productSummary} />
-
     </div>
   );
 };

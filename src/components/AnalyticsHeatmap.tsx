@@ -1,3 +1,4 @@
+// src/components/AnalyticsHeatmap.tsx
 import React from 'react';
 
 type HeatmapData = {
@@ -11,19 +12,14 @@ type AnalyticsHeatmapProps = {
   startDate: Date;
 };
 
-// Helper to get the day of the week (0=Sun, 1=Mon, ...)
-const getDayOfWeek = (date: Date) => date.getUTCDay();
-
 export const AnalyticsHeatmap: React.FC<AnalyticsHeatmapProps> = ({ data, startDate }) => {
-  // Create a map for quick lookup
   const dataMap = new Map<string, HeatmapData>();
   data.forEach(d => {
-    // Key by YYYY-MM-DD-HH
     const key = new Date(d.hour).toISOString().substring(0, 13);
     dataMap.set(key, d);
   });
 
-  const maxVisits = Math.max(...data.map(d => d.visits), 0);
+  const maxVisits = Math.max(...data.map(d => d.visits), 1);
 
   const days = Array.from({ length: 7 }, (_, i) => {
     const day = new Date(startDate);
@@ -32,51 +28,68 @@ export const AnalyticsHeatmap: React.FC<AnalyticsHeatmapProps> = ({ data, startD
   });
 
   const hours = Array.from({ length: 24 }, (_, i) => i);
-  const dayLabels = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const dayLabels = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 
   return (
-    <div className="p-4 bg-gray-800 rounded-lg overflow-x-auto">
-      <div className="flex text-xs text-center text-gray-400 mb-2">
-        <div className="w-12">&nbsp;</div> {/* Spacer for day labels */}
-        {hours.map(hour => (
-          <div key={hour} className="w-8 flex-shrink-0">{hour.toString().padStart(2, '0')}</div>
-        ))}
-      </div>
-      <div className="flex">
-        <div className="flex flex-col text-xs text-gray-400">
-           {days.map(day => (
-              <div key={day.toISOString()} className="h-8 flex items-center justify-center w-12 pr-2">
-                {dayLabels[getDayOfWeek(day)]} {day.getUTCDate()}
-              </div>
-           ))}
+    <div className="p-4 bg-zinc-950/50 rounded-2xl overflow-x-auto custom-scrollbar">
+      <div className="min-w-[600px]">
+        <div className="flex text-[9px] font-black text-zinc-600 mb-3 text-center uppercase tracking-tighter">
+          <div className="w-8">&nbsp;</div>
+          {hours.map(hour => (
+            <div key={hour} className="w-6 flex-shrink-0">{hour}</div>
+          ))}
         </div>
-        <div className="grid grid-flow-col grid-rows-7 gap-1">
+
+        <div className="space-y-1.5">
           {days.map(day => {
-            return hours.map(hour => {
-              const cellDate = new Date(day);
-              cellDate.setUTCHours(hour, 0, 0, 0);
-              const key = cellDate.toISOString().substring(0, 13);
-              const cellData = dataMap.get(key);
+            const dayOfWeek = day.getUTCDay();
+            return (
+              <div key={day.toISOString()} className="flex items-center gap-1.5">
+                <div className="w-8 text-[10px] font-bold text-zinc-500 text-center">
+                  {dayLabels[dayOfWeek]}
+                </div>
+                <div className="flex gap-1">
+                  {hours.map(hour => {
+                    const cellDate = new Date(day);
+                    cellDate.setUTCHours(hour, 0, 0, 0);
+                    const key = cellDate.toISOString().substring(0, 13);
+                    const cellData = dataMap.get(key);
 
-              const visits = cellData?.visits || 0;
-              const addsToCart = cellData?.adds_to_cart || 0;
+                    const visits = cellData?.visits || 0;
+                    const addsToCart = cellData?.adds_to_cart || 0;
 
-              const opacity = maxVisits > 0 ? visits / maxVisits : 0;
-              const bgColor = `rgba(239, 68, 68, ${opacity})`; // Red-500 with variable alpha
+                    const opacity = visits > 0 ? 0.1 + (visits / maxVisits) * 0.9 : 0;
 
-              const border = addsToCart > 0 ? '2px solid #8b5cf6' : 'none'; // Purple-500 border
-
-              const title = `${cellDate.toLocaleString('es-ES', { weekday: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' })}\nVisitas: ${visits}\nAñadido al carrito: ${addsToCart}`;
-
-              return (
-                <div
-                  key={key}
-                  className="w-8 h-8 rounded-md transition-transform duration-150 hover:scale-125 hover:z-10"
-                  style={{ backgroundColor: bgColor, border }}
-                  title={title}
-                />
-              );
-            });
+                    return (
+                      <div
+                        key={key}
+                        className="w-6 h-6 rounded-md transition-all duration-300 relative group cursor-crosshair"
+                        style={{
+                          backgroundColor: visits > 0 ? `rgba(255, 77, 77, ${opacity})` : 'rgba(255, 255, 255, 0.03)',
+                          border: addsToCart > 0 ? '2px solid #00F0FF' : 'none',
+                          boxShadow: addsToCart > 0 ? '0 0 10px rgba(0, 240, 255, 0.3)' : 'none'
+                        }}
+                      >
+                        {/* Tooltip */}
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-zinc-900 border border-white/10 rounded-xl text-[10px] font-bold text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl">
+                          <p className="text-zinc-500 mb-1">{cellDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 rounded-full bg-brand-pink"></div>
+                              {visits} Visitas
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <div className="w-1.5 h-1.5 rounded-full bg-brand-cyan"></div>
+                              {addsToCart} Interés
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
           })}
         </div>
       </div>
