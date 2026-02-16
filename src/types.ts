@@ -68,4 +68,9 @@ export interface WeeklyAnalyticsData {
   };
 }
 
-export type CartItem = Product & { quantity: number; final_price?: number };
+export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'unpaid' | 'canceled';
+
+export interface Subscription {
+  status: SubscriptionStatus | string;
+  current_period_end: string | null;
+}

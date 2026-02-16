@@ -3,11 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, XCircle, Clock, ExternalLink } from 'lucide-react';
 
-type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'unpaid' | 'canceled';
-interface Subscription {
-  status: SubscriptionStatus;
-  current_period_end: string | null;
-}
+import type { Subscription } from '../types';
 
 interface SubscriptionStatusBannerProps {
   subscription: Subscription | null;

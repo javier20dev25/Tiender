@@ -23,8 +23,8 @@ const CancellationModal: React.FC<CancellationModalProps> = ({ isOpen, onClose, 
         throw new Error(funcError.message || 'Ocurrió un error al procesar la cancelación.');
       }
       onSuccess();
-    } catch (e: any) {
-      setError(e.message || 'Ocurrió un error inesperado.');
+    } catch (e: unknown) {
+      setError((e as Error).message || 'Ocurrió un error inesperado.');
     } finally {
       setLoading(false);
     }

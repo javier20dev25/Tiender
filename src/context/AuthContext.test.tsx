@@ -46,7 +46,7 @@ const mockSession: Session = {
 const mockStore = { id: 'store-123', name: 'Test Store', plan_type: 'full', trial_ends_at: null, user_id: 'mock-user-id' };
 
 // Helper to set up from() mock for store and subscription queries
-const setupFromMock = (storeData: any = mockStore, subData: any = null) => {
+const setupFromMock = (storeData: unknown = mockStore, subData: unknown = null) => {
   mockFrom.mockImplementation((table: string) => ({
     select: vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({

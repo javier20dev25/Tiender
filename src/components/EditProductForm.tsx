@@ -65,7 +65,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
     try {
       const hashtagsArray = hashtags.split(',').map(h => h.trim()).filter(h => h);
 
-      const updatePayload: any = {
+      const updatePayload: Record<string, unknown> = {
         title,
         price: parseFloat(price),
         external_link: externalLink || null,
@@ -100,8 +100,8 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
 
       onProductUpdated();
       onClose();
-    } catch (error: any) {
-      setError(error.message || 'Error al actualizar el producto.');
+    } catch (error: unknown) {
+      setError((error as Error).message || 'Error al actualizar el producto.');
     } finally {
       setIsSubmitting(false);
     }

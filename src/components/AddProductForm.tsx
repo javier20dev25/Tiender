@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { getSupabase } from '../lib/supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
-import type { Product } from '../types';
 
 interface AddProductFormProps {
   storeId: string;
@@ -70,7 +69,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
       const imageUrl = `${supabaseUrl}/storage/v1/object/public/product-images/${filePath}`;
       const hashtagsArray = hashtags.split(',').map(h => h.trim()).filter(h => h);
 
-      const insertPayload: any = {
+      const insertPayload: Record<string, unknown> = {
         store_id: storeId,
         title,
         price: parseFloat(price),
@@ -96,8 +95,8 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
 
       onProductAdded();
       onClose();
-    } catch (error: any) {
-      setError(error.message || 'Error al guardar el producto.');
+    } catch (error: unknown) {
+      setError((error as Error).message || 'Error al guardar el producto.');
     } finally {
       setIsSubmitting(false);
     }

@@ -2,7 +2,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CreditCard, LogOut, User, Settings, ShoppingBag } from 'lucide-react';
+import { X, CreditCard, LogOut, User, Settings } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface MobileMenuProps {

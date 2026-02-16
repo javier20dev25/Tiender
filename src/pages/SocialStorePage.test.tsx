@@ -1,8 +1,10 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import SocialStorePage from './SocialStorePage';
 import { getSupabase } from '../lib/supabaseClient';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 // --- MOCKING supabaseClient ---
 vi.mock('../lib/supabaseClient', () => ({
@@ -46,9 +48,9 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
       from: vi.fn(),
       rpc: rpcMock,
       functions: { invoke: invokeMock }
-    } as any;
+    };
 
-    (getSupabase as any).mockReturnValue(mockedSupabase);
+    vi.mocked(getSupabase).mockReturnValue(mockedSupabase as unknown as SupabaseClient);
 
     mockedSupabase.from.mockImplementation((tableName: string) => {
       if (tableName === 'stores') {
@@ -83,7 +85,7 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
     renderWithRouter();
     await waitFor(() => expect(screen.getByText('Camisa React')).toBeInTheDocument());
 
-    const likeButton = screen.getByText('❤️');
+    const likeButton = screen.getByLabelText('Me gusta');
     fireEvent.click(likeButton);
 
     await waitFor(() => {
@@ -99,7 +101,7 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
     renderWithRouter();
     await waitFor(() => expect(screen.getByText('Camisa React')).toBeInTheDocument());
 
-    const dislikeButton = screen.getByText('❌');
+    const dislikeButton = screen.getByLabelText('Siguiente producto');
     fireEvent.click(dislikeButton);
 
     await waitFor(() => {
@@ -132,7 +134,7 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
     await waitFor(() => expect(screen.getByText('Camisa React')).toBeInTheDocument());
 
     // 1. Añadir al carrito
-    const cartButton = screen.getByText('🛒 Añadir al Carrito');
+    const cartButton = screen.getByText('Añadir');
     fireEvent.click(cartButton);
 
     await waitFor(() => {
@@ -144,10 +146,10 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
     });
 
     // 2. Abrir Modal de Compra y Finalizar
-    fireEvent.click(screen.getByText(/Ver Carrito/i));
+    fireEvent.click(screen.getByText(/Ver mi pedido/i));
 
     // Suponiendo que el modal tiene un botón de confirmar
-    const finalizeButton = screen.getByText(/Finalizar Compra/i);
+    const finalizeButton = screen.getByText(/Finalizar por WhatsApp/i);
     fireEvent.click(finalizeButton);
 
     // 3. Verificar que se llama a window.open con el enlace de WhatsApp

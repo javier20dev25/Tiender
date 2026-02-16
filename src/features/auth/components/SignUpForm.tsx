@@ -1,8 +1,8 @@
 // src/features/auth/components/SignUpForm.tsx
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, Mail, Lock, Rocket, AlertCircle, Info, ChevronRight, Hash } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Phone, Mail, Lock, Rocket, AlertCircle, Info, Hash } from 'lucide-react';
 import { getSupabase } from '../../../lib/supabaseClient';
 import BackupCodesModal from './BackupCodesModal';
 import html2canvas from 'html2canvas';
@@ -71,8 +71,8 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
 
       await getSupabase().auth.signInWithPassword(credentials);
       setIsLoadingCodes(false);
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Error inesperado.');
+    } catch (error: unknown) {
+      setErrorMessage((error as Error).message || 'Error inesperado.');
       setIsModalOpen(false);
       setIsLoadingCodes(false);
     } finally {

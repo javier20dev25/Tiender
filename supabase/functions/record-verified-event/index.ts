@@ -24,14 +24,14 @@ serve(async (req) => {
     let payload;
     try {
       payload = await verify(visitToken, JWT_SECRET, 'HS256');
-    } catch (e) {
+    } catch (_e) {
       return new Response(JSON.stringify({ error: 'Token de visita inválido o expirado.' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     if (!payload || !payload.store_id) {
-        throw new Error('El payload del token es inválido.');
+      throw new Error('El payload del token es inválido.');
     }
 
     // 2. Get event details from the request body
@@ -41,7 +41,7 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    
+
     // 3. Insert the validated event into the analytics table
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -49,12 +49,12 @@ serve(async (req) => {
     );
 
     const eventToInsert: { store_id: string, event_type: string, product_id?: string } = {
-        store_id: payload.store_id as string,
-        event_type: event_type,
+      store_id: payload.store_id as string,
+      event_type: event_type,
     };
 
     if (product_id) {
-        eventToInsert.product_id = product_id;
+      eventToInsert.product_id = product_id;
     }
 
     const { error: insertError } = await supabaseAdmin

@@ -38,8 +38,8 @@ const CreateStoreForm: React.FC<CreateStoreFormProps> = ({ onClose, onStoreCreat
 
             onStoreCreated();
             onClose();
-        } catch (err: any) {
-            setError(err.message || 'Error al crear la tienda');
+        } catch (err: unknown) {
+            setError((err as Error).message || 'Error al crear la tienda');
         } finally {
             setIsSubmitting(false);
         }

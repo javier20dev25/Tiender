@@ -46,8 +46,8 @@ const SocialStorePage: React.FC = () => {
           product_id: isProductEvent ? currentProductId : undefined,
         }
       });
-    } catch (error) {
-      console.error('Error logging verified event:', error);
+    } catch (err) {
+      console.error('Error logging verified event:', err);
     }
   }, [storeId, visitToken, currentIndex, products]);
 
@@ -68,7 +68,7 @@ const SocialStorePage: React.FC = () => {
         logEvent('VISIT');
         hasLoggedVisit.current = true;
       }
-    } catch (error: unknown) {
+    } catch {
       setError('No se pudo cargar la tienda. Inténtalo de nuevo.');
     }
   }, [storeId, logEvent]);
@@ -87,7 +87,7 @@ const SocialStorePage: React.FC = () => {
         if (error) throw error;
         setVisitToken(data.visit_token);
         setVerificationStatus('verified');
-      } catch (err) {
+      } catch {
         setVerificationStatus('failed');
         setError("Acceso denegado. La visita ha sido marcada como sospechosa.");
       }
@@ -222,6 +222,7 @@ const SocialStorePage: React.FC = () => {
         <div className="flex justify-center items-center gap-6 mt-10">
           <button
             onClick={() => handleNextProduct('DISLIKE')}
+            aria-label="Siguiente producto"
             className="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center text-gray-400 hover:text-brand-pink hover:scale-110 active:scale-95 transition-all border border-gray-100"
           >
             <X className="w-8 h-8" />
@@ -235,6 +236,7 @@ const SocialStorePage: React.FC = () => {
           </button>
           <button
             onClick={() => handleNextProduct('LIKE')}
+            aria-label="Me gusta"
             className="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center text-gray-400 hover:text-brand-neon hover:scale-110 active:scale-95 transition-all border border-gray-100"
           >
             <Heart className="w-8 h-8" />

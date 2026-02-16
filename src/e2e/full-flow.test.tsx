@@ -3,7 +3,8 @@
 // Uses mocked useAuth and getSupabase to bypass AuthProvider internals.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import App from '../App';
 
@@ -44,7 +45,7 @@ vi.mock('../lib/supabaseClient', () => ({
 }));
 
 // --- Mock useAuth - Start unauthenticated, then simulate login ---
-let currentAuthState: any;
+let currentAuthState: unknown;
 
 vi.mock('../context/AuthContext', () => ({
     useAuth: vi.fn(() => currentAuthState),
@@ -82,14 +83,15 @@ describe('Full E2E User and Customer Flow', () => {
 
         // Mock from() 
         mockFrom.mockImplementation(() => {
-            const chain: any = {};
-            chain.select = vi.fn().mockReturnValue(chain);
-            chain.eq = vi.fn().mockReturnValue(chain);
-            chain.order = vi.fn().mockResolvedValue({ data: [mockProduct], error: null });
-            chain.single = vi.fn().mockResolvedValue({ data: mockStore, error: null });
-            chain.insert = vi.fn().mockResolvedValue({ data: [mockProduct], error: null });
-            chain.update = vi.fn().mockReturnValue(chain);
-            chain.delete = vi.fn().mockReturnValue(chain);
+            const chain = {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                order: vi.fn().mockResolvedValue({ data: [mockProduct], error: null }),
+                single: vi.fn().mockResolvedValue({ data: mockStore, error: null }),
+                insert: vi.fn().mockResolvedValue({ data: [mockProduct], error: null }),
+                update: vi.fn().mockReturnThis(),
+                delete: vi.fn().mockReturnThis(),
+            };
             return chain;
         });
     });
@@ -104,7 +106,7 @@ describe('Full E2E User and Customer Flow', () => {
         // Auth page should be rendered when not authenticated
         await waitFor(() => {
             // SignUpForm should be visible since AuthPage defaults to sign-up
-            const authContent = screen.getByText(/crear cuenta/i);
+            const authContent = screen.getByText(/Crear Mi Tienda/i);
             expect(authContent).toBeInTheDocument();
         });
     });
@@ -126,12 +128,12 @@ describe('Full E2E User and Customer Flow', () => {
         );
 
         await waitFor(() => {
-            expect(screen.getByText('Panel del Vendedor')).toBeInTheDocument();
+            expect(screen.getByText('Centro de Mando')).toBeInTheDocument();
         });
 
         // Should see the store name
         await waitFor(() => {
-            expect(screen.getByText(`Tu Tienda: ${mockStore.name}`)).toBeInTheDocument();
+            expect(screen.getByText(mockStore.name)).toBeInTheDocument();
         });
     });
 });

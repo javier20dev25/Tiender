@@ -95,7 +95,7 @@ const DashboardPage: React.FC = () => {
       const { data, error } = await getSupabase().functions.invoke('generate-store-report');
       if (error || data.error) throw new Error(error?.message || data.error);
       setReport(data.report);
-    } catch (err) {
+    } catch {
       setError('No se pudo generar el reporte IA.');
     } finally {
       setIsGeneratingReport(false);
@@ -113,7 +113,7 @@ const DashboardPage: React.FC = () => {
         if (imagePath) await getSupabase().storage.from('product-images').remove([imagePath]);
       }
       if (store) fetchProducts(store.id);
-    } catch (error) {
+    } catch {
       setError('No se pudo eliminar el producto.');
     } finally {
       setIsSubmitting(false);
@@ -128,7 +128,7 @@ const DashboardPage: React.FC = () => {
       });
       if (error) throw error;
       if (data.approve_url) window.location.href = data.approve_url;
-    } catch (error) {
+    } catch {
       setError('Error al iniciar la mejora de plan.');
       setIsSubmitting(false);
     }
@@ -153,7 +153,7 @@ const DashboardPage: React.FC = () => {
         navigator.clipboard.writeText(shareUrl);
         alert('Enlace copiado.');
       }
-    } catch (error) {
+    } catch {
       setError("Error al compartir.");
     } finally {
       setIsSharing(false);
@@ -169,7 +169,7 @@ const DashboardPage: React.FC = () => {
     );
 
     if (store) {
-      const productLimit = (store as any).product_limit || 10;
+      const productLimit = store.product_limit || 10;
       const atProductLimit = products.length >= productLimit;
 
       return (
@@ -182,8 +182,8 @@ const DashboardPage: React.FC = () => {
             <div className="flex items-center space-x-6">
               <div className="relative group">
                 <div className="absolute inset-0 bg-sunset-gradient opacity-0 group-hover:opacity-20 blur-md transition-opacity rounded-full"></div>
-                {(store as any).logo_url ? (
-                  <img src={(store as any).logo_url} alt="" className="h-16 w-16 object-cover rounded-full border-2 border-white/10 ring-4 ring-black shadow-2xl" />
+                {store.logo_url ? (
+                  <img src={store.logo_url} alt="" className="h-16 w-16 object-cover rounded-full border-2 border-white/10 ring-4 ring-black shadow-2xl" />
                 ) : (
                   <div className="h-16 w-16 bg-zinc-800 rounded-full flex items-center justify-center border-2 border-white/10 ring-4 ring-black shadow-2xl">
                     <PackageOpen className="w-8 h-8 text-zinc-600" />
@@ -272,7 +272,7 @@ const DashboardPage: React.FC = () => {
                   <PackageOpen className="w-5 h-5 text-brand-neon" />
                   Catálogo de Productos
                 </h3>
-                <button onClick={() => setShowAddProductForm(true)} disabled={atProductLimit} className="p-2.5 rounded-2xl bg-brand-neon/10 text-brand-neon hover:bg-brand-neon hover:text-brand-dark transition-all disabled:opacity-30">
+                <button onClick={() => setShowAddProductForm(true)} aria-label="Añadir Producto" disabled={atProductLimit} className="p-2.5 rounded-2xl bg-brand-neon/10 text-brand-neon hover:bg-brand-neon hover:text-brand-dark transition-all disabled:opacity-30">
                   <Plus className="w-6 h-6" />
                 </button>
               </div>
@@ -284,15 +284,15 @@ const DashboardPage: React.FC = () => {
                   products.map(product => (
                     <div key={product.id} className="flex items-center gap-4 p-4 rounded-3xl bg-zinc-900 border border-white/5 group hover:border-white/20 transition-all">
                       <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 shadow-xl border border-white/5">
-                        <img src={product.image_url || 'https://placehold.co/100x100'} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                        <img src={product.image_url || 'https://placehold.co/100x100'} alt={product.title} title={product.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                       </div>
                       <div className="flex-grow min-w-0">
                         <h4 className="font-bold text-white truncate">{product.title}</h4>
                         <p className="text-brand-neon font-black">${product.price.toFixed(2)}</p>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => setEditingProduct(product)} className="p-2.5 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-all"><Edit3 className="w-5 h-5" /></button>
-                        <button onClick={() => handleDeleteProduct(product.id, product.image_url || null)} className="p-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"><Trash2 className="w-5 h-5" /></button>
+                        <button onClick={() => setEditingProduct(product)} aria-label="Editar" className="p-2.5 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-all"><Edit3 className="w-5 h-5" /></button>
+                        <button onClick={() => handleDeleteProduct(product.id, product.image_url || null)} aria-label="Eliminar" className="p-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"><Trash2 className="w-5 h-5" /></button>
                       </div>
                     </div>
                   ))
@@ -367,7 +367,7 @@ const DashboardPage: React.FC = () => {
       <AnimatePresence>
         {showAddProductForm && store && <AddProductForm storeId={store.id} plan_type={store.plan_type} onClose={() => setShowAddProductForm(false)} onProductAdded={() => fetchProducts(store.id)} />}
         {editingProduct && store && <EditProductForm product={editingProduct} plan_type={store.plan_type} onClose={() => setEditingProduct(null)} onProductUpdated={() => fetchProducts(store.id)} />}
-        {showEditStoreForm && store && <EditStoreForm store={store as any} onClose={() => setShowEditStoreForm(false)} onStoreUpdated={() => { }} />}
+        {showEditStoreForm && store && <EditStoreForm store={store} onClose={() => setShowEditStoreForm(false)} onStoreUpdated={() => { }} />}
       </AnimatePresence>
 
       <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onOpenCancelModal={() => setIsCancelModalOpen(true)} />

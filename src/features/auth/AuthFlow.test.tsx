@@ -3,6 +3,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
+import '@testing-library/jest-dom';
 import { SignUpForm } from './components/SignUpForm';
 
 // --- Mock Data ---
@@ -65,16 +66,16 @@ describe('Authentication Flow Integration Test', () => {
     );
 
     // The form defaults to WhatsApp mode
-    const phoneInput = screen.getByLabelText(/número de whatsapp/i);
-    const passwordInput = screen.getByLabelText(/contraseña/i);
+    const phoneInput = screen.getByPlaceholderText(/8888 8888/i);
+    const passwordInput = screen.getByPlaceholderText(/••••••••/i);
 
     expect(phoneInput).toBeInTheDocument();
     expect(passwordInput).toBeInTheDocument();
 
     // Fill out and submit the sign-up form
-    fireEvent.change(phoneInput, { target: { value: testPhone } });
+    fireEvent.change(phoneInput, { target: { value: '70000001' } });
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
-    fireEvent.click(screen.getByRole('button', { name: /crear cuenta/i }));
+    fireEvent.click(screen.getByRole('button', { name: /crear mi tienda/i }));
 
     // Assert that the backup codes modal appears with the codes
     await waitFor(() => {
@@ -102,15 +103,15 @@ describe('Authentication Flow Integration Test', () => {
     );
 
     // Click the toggle to switch to email mode
-    fireEvent.click(screen.getByText(/o usa tu correo electrónico/i));
+    fireEvent.click(screen.getByText(/O USAR EMAIL/i));
 
     // Now email input should be visible
-    const emailInput = screen.getByLabelText(/correo electrónico/i);
-    const passwordInput = screen.getByLabelText(/contraseña/i);
+    const emailInput = screen.getByPlaceholderText(/tu@correo.com/i);
+    const passwordInput = screen.getByPlaceholderText(/••••••••/i);
 
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
-    fireEvent.click(screen.getByRole('button', { name: /crear cuenta/i }));
+    fireEvent.click(screen.getByRole('button', { name: /crear mi tienda/i }));
 
     // Verify signUp was called with email credentials
     await waitFor(() => {

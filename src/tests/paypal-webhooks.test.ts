@@ -1,7 +1,8 @@
 // src/tests/paypal-webhooks.test.ts
 import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
-import { processWebhookEvent, PlanMap } from '../../supabase/functions/handle-paypal-webhook/logic';
+import { processWebhookEvent, PlanMap, PayPalWebhookEvent } from '../../supabase/functions/handle-paypal-webhook/logic';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 vi.mock('@supabase/supabase-js');
 
@@ -11,7 +12,7 @@ const mockSubscriberEmail = 'test@example.com';
 const mockSubscriptionId = 'paypal-sub-id-1';
 
 describe('Lógica del Webhook de PayPal', () => {
-  let mockSupabaseAdmin: any;
+  let mockSupabaseAdmin: { from: Mock; rpc: Mock };
   let mockRpc: Mock;
   let mockPlanMap: PlanMap;
 
@@ -57,7 +58,7 @@ describe('Lógica del Webhook de PayPal', () => {
       rpc: mockRpc,
     };
 
-    (createClient as any).mockReturnValue(mockSupabaseAdmin);
+    (createClient as unknown as Mock).mockReturnValue(mockSupabaseAdmin as unknown as SupabaseClient);
 
     mockPlanMap = {
       'P-12345STD': 'standard',
@@ -77,7 +78,7 @@ describe('Lógica del Webhook de PayPal', () => {
       },
     };
 
-    await processWebhookEvent(mockEvent as any, mockSupabaseAdmin, mockPlanMap);
+    await processWebhookEvent(mockEvent as unknown as PayPalWebhookEvent, mockSupabaseAdmin as unknown as SupabaseClient, mockPlanMap);
 
     expect(mockRpc).toHaveBeenCalledWith('get_user_id_by_email', { user_email: mockSubscriberEmail });
     expect(mockFrom).toHaveBeenCalledWith('subscriptions');
@@ -101,7 +102,7 @@ describe('Lógica del Webhook de PayPal', () => {
       },
     };
 
-    await processWebhookEvent(mockEvent as any, mockSupabaseAdmin, mockPlanMap);
+    await processWebhookEvent(mockEvent as unknown as PayPalWebhookEvent, mockSupabaseAdmin as unknown as SupabaseClient, mockPlanMap);
 
     expect(mockFrom).toHaveBeenCalledWith('subscriptions');
     expect(subUpdate).toHaveBeenCalledWith({ status: 'past_due' });
@@ -122,7 +123,7 @@ describe('Lógica del Webhook de PayPal', () => {
       },
     };
 
-    await processWebhookEvent(mockEvent as any, mockSupabaseAdmin, mockPlanMap);
+    await processWebhookEvent(mockEvent as unknown as PayPalWebhookEvent, mockSupabaseAdmin as unknown as SupabaseClient, mockPlanMap);
 
     expect(mockFrom).toHaveBeenCalledWith('subscriptions');
     expect(subUpdate).toHaveBeenCalledWith({
@@ -155,8 +156,8 @@ describe('Lógica del Webhook de PayPal', () => {
       .mockResolvedValueOnce({ data: { status: 'canceled' }, error: null });// 2nd call, sub is already cancelled
 
     // Call the event handler twice with the same event
-    await processWebhookEvent(mockEvent as any, mockSupabaseAdmin, mockPlanMap);
-    await processWebhookEvent(mockEvent as any, mockSupabaseAdmin, mockPlanMap);
+    await processWebhookEvent(mockEvent as unknown as PayPalWebhookEvent, mockSupabaseAdmin as unknown as SupabaseClient, mockPlanMap);
+    await processWebhookEvent(mockEvent as unknown as PayPalWebhookEvent, mockSupabaseAdmin as unknown as SupabaseClient, mockPlanMap);
 
     expect(mockRpc).toHaveBeenCalledTimes(2);
     // The select call should happen twice

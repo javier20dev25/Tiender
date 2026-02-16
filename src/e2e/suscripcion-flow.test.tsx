@@ -2,8 +2,9 @@
 // Test E2E para el flujo de suscripción en el Dashboard.
 // Verifica: upgrade de plan, redirect a PayPal, y manejo de errores.
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import DashboardPage from '../pages/DashboardPage';
 
@@ -46,7 +47,7 @@ vi.mock('../context/AuthContext', () => ({
 }));
 
 import { useAuth } from '../context/AuthContext';
-const mockUseAuth = useAuth as vi.Mock;
+const mockUseAuth = useAuth as Mock;
 
 // Mock window.location.href
 let mockLocationHref = '';
@@ -65,15 +66,16 @@ beforeEach(() => {
   });
 
   // Default from() mock
-  mockFrom.mockImplementation((tableName: string) => {
-    const chain: any = {};
-    chain.select = vi.fn().mockReturnValue(chain);
-    chain.eq = vi.fn().mockReturnValue(chain);
-    chain.order = vi.fn().mockResolvedValue({ data: [], error: null });
-    chain.single = vi.fn().mockResolvedValue({ data: null, error: null });
-    chain.insert = vi.fn().mockResolvedValue({ data: [], error: null });
-    chain.update = vi.fn().mockReturnValue(chain);
-    chain.delete = vi.fn().mockReturnValue(chain);
+  mockFrom.mockImplementation(() => {
+    const chain = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({ data: [], error: null }),
+      single: vi.fn().mockResolvedValue({ data: null, error: null }),
+      insert: vi.fn().mockResolvedValue({ data: [], error: null }),
+      update: vi.fn().mockReturnThis(),
+      delete: vi.fn().mockReturnThis(),
+    };
     return chain;
   });
 
@@ -84,8 +86,8 @@ beforeEach(() => {
   });
 
   // Mock window.location.href setter
-  delete (window as any).location;
-  window.location = { ...originalLocation, href: '' } as any;
+  delete (window as unknown as { location: unknown }).location;
+  (window as unknown as { location: unknown }).location = { ...originalLocation, href: '' };
   Object.defineProperty(window.location, 'href', {
     get: () => mockLocationHref,
     set: (value: string) => { mockLocationHref = value; },
@@ -94,8 +96,13 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  window.location = originalLocation;
   mockLocationHref = '';
+  // Restore original location by redefining it
+  Object.defineProperty(window, 'location', {
+    value: originalLocation,
+    configurable: true,
+    writable: true
+  });
 });
 
 describe('Flujo de Suscripción E2E en Dashboard', () => {
@@ -108,7 +115,7 @@ describe('Flujo de Suscripción E2E en Dashboard', () => {
 
     // Wait for dashboard to render with the store name
     await waitFor(() => {
-      expect(screen.getByText('Panel del Vendedor')).toBeInTheDocument();
+      expect(screen.getByText('Centro de Mando')).toBeInTheDocument();
     });
 
     // Find and click the upgrade button
@@ -145,7 +152,7 @@ describe('Flujo de Suscripción E2E en Dashboard', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Panel del Vendedor')).toBeInTheDocument();
+      expect(screen.getByText('Centro de Mando')).toBeInTheDocument();
     });
 
     // The upgrade button should no longer be visible for 'full' plan
@@ -168,7 +175,7 @@ describe('Flujo de Suscripción E2E en Dashboard', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Panel del Vendedor')).toBeInTheDocument();
+      expect(screen.getByText('Centro de Mando')).toBeInTheDocument();
     });
 
     const upgradeButton = screen.getByRole('button', { name: /mejorar plan/i });
@@ -176,7 +183,7 @@ describe('Flujo de Suscripción E2E en Dashboard', () => {
 
     // Verify error message appears in the UI (DashboardPage uses setError, not window.alert)
     await waitFor(() => {
-      expect(screen.getByText(/no se pudo iniciar la mejora de plan/i)).toBeInTheDocument();
+      expect(screen.getByText(/Error al iniciar la mejora de plan/i)).toBeInTheDocument();
     });
 
     // No redirect should happen

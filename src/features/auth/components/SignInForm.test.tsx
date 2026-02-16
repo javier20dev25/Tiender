@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { describe, it, expect } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import SignInForm from './SignInForm';
@@ -11,16 +12,16 @@ describe('SignInForm', () => {
       </MemoryRouter>
     );
 
-    // Check for phone input using the Spanish label
-    const phoneInput = screen.getByLabelText(/número de whatsapp/i);
+    // Check for phone input using the Spanish placeholder
+    const phoneInput = screen.getByPlaceholderText(/Número de WhatsApp/i);
     expect(phoneInput).toBeInTheDocument();
 
-    // Check for password input using the Spanish label
-    const passwordInput = screen.getByLabelText(/contraseña/i);
+    // Check for password input using the Spanish placeholder
+    const passwordInput = screen.getByPlaceholderText(/Tu Contraseña/i);
     expect(passwordInput).toBeInTheDocument();
 
     // Check for submit button using the Spanish text
-    const submitButton = screen.getByRole('button', { name: /iniciar sesión/i });
+    const submitButton = screen.getByRole('button', { name: /Entrar a mi Tienda/i });
     expect(submitButton).toBeInTheDocument();
   });
 });

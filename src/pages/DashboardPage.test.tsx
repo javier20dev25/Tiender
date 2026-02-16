@@ -4,18 +4,20 @@ import DashboardPage from './DashboardPage';
 import { useAuth } from '../context/AuthContext';
 import { getSupabase } from '../lib/supabaseClient';
 import { MemoryRouter } from 'react-router-dom';
+import type { Product, Store } from '../types';
+import type { SupabaseClient, User } from '@supabase/supabase-js';
 
 // 1. Mockear módulos (excepto supabaseClient, que se mockea globalmente)
 vi.mock('../context/AuthContext');
 
 // Mockear componentes hijos para aislar el test al DashboardPage
 vi.mock('../components/AddProductForm', () => ({
-  default: ({ onProductAdded, onClose }: any) => (
+  default: ({ onProductAdded, onClose }: { onProductAdded: () => void; onClose: () => void }) => (
     <div data-testid="add-product-form"><button onClick={onProductAdded}>Simulate Add</button><button onClick={onClose}>Close</button></div>
   ),
 }));
 vi.mock('../components/EditProductForm', () => ({
-  default: ({ product, onProductUpdated, onClose }: any) => (
+  default: ({ product, onProductUpdated, onClose }: { product: Product; onProductUpdated: () => void; onClose: () => void }) => (
     <div data-testid="edit-product-form"><h2>Edit: {product.title}</h2><button onClick={onProductUpdated}>Simulate Update</button><button onClick={onClose}>Close</button></div>
   ),
 }));
@@ -59,19 +61,27 @@ const createMockSupabase = () => ({
 });
 
 describe('DashboardPage - Product CRUD', () => {
-  let mockSupabase;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockSupabase: any;
 
   beforeEach(() => {
     vi.resetAllMocks();
     mockSupabase = createMockSupabase();
-    vi.mocked(getSupabase).mockReturnValue(mockSupabase);
+    vi.mocked(getSupabase).mockReturnValue(mockSupabase as unknown as SupabaseClient);
 
     window.confirm = vi.fn(() => true);
-    mockedUseAuth.mockReturnValue({ user: mockUser as any, loading: false, store: mockStore as any, session: null, subscription: null, signOut: vi.fn() });
+    mockedUseAuth.mockReturnValue({
+      user: mockUser as unknown as User,
+      loading: false,
+      store: mockStore as unknown as Store,
+      session: null,
+      subscription: null,
+      signOut: vi.fn()
+    });
 
     // Configuración de mock por defecto para 'from'
-    mockSupabase.from.mockImplementation((tableName) => {
-      const query: any = {
+    mockSupabase.from.mockImplementation((tableName: string) => {
+      const query = {
         select: vi.fn(),
         insert: vi.fn().mockResolvedValue({ data: [], error: null }),
         update: vi.fn().mockResolvedValue({ data: [], error: null }),
@@ -96,7 +106,14 @@ describe('DashboardPage - Product CRUD', () => {
       return query;
     });
 
-    mockSupabase.rpc.mockResolvedValue({ data: { weekly_summary: [], top_products: [] }, error: null });
+    mockSupabase.rpc.mockResolvedValue({
+      data: {
+        heatmap_data: [],
+        product_summary: [],
+        total_summary: { total_visits: 0, total_adds_to_cart: 0 }
+      },
+      error: null
+    });
   });
 
   it('should display existing products and allow opening the add form', async () => {
@@ -105,14 +122,14 @@ describe('DashboardPage - Product CRUD', () => {
 
     // ASSERT
     await waitFor(() => expect(screen.getByText('P1')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('+ Añadir Producto'));
+    fireEvent.click(screen.getByLabelText('Añadir Producto'));
     await waitFor(() => expect(screen.getByTestId('add-product-form')).toBeInTheDocument());
   });
 
   it('should allow deleting a product', async () => {
     // ARRANGE
     const eqDeleteMock = vi.fn().mockResolvedValue({ error: null });
-    mockSupabase.from.mockImplementation((tableName) => {
+    mockSupabase.from.mockImplementation((tableName: string) => {
       if (tableName === 'products') {
         return {
           select: vi.fn().mockReturnThis(),
@@ -136,7 +153,7 @@ describe('DashboardPage - Product CRUD', () => {
 
     // ASSERT
     await waitFor(() => expect(screen.getByText('P1')).toBeInTheDocument());
-    fireEvent.click(screen.getAllByText('Eliminar')[0]);
+    fireEvent.click(screen.getAllByLabelText('Eliminar')[0]);
     expect(window.confirm).toHaveBeenCalled();
     await waitFor(() => expect(eqDeleteMock).toHaveBeenCalledWith('id', 'prod-1'));
   });
@@ -147,7 +164,7 @@ describe('DashboardPage - Product CRUD', () => {
 
     // ASSERT
     await waitFor(() => expect(screen.getByText('P1')).toBeInTheDocument());
-    fireEvent.click(screen.getAllByText('Editar')[0]);
+    fireEvent.click(screen.getAllByLabelText('Editar')[0]);
     await waitFor(() => {
       expect(screen.getByTestId('edit-product-form')).toBeInTheDocument();
       expect(screen.getByText('Edit: P1')).toBeInTheDocument();
@@ -156,10 +173,17 @@ describe('DashboardPage - Product CRUD', () => {
 
   it('should allow creating a store if one does not exist', async () => {
     // ARRANGE
-    mockedUseAuth.mockReturnValue({ user: mockUser as any, loading: false, store: null, session: null, subscription: null, signOut: vi.fn() });
+    mockedUseAuth.mockReturnValue({
+      user: mockUser as unknown as User,
+      loading: false,
+      store: null,
+      session: null,
+      subscription: null,
+      signOut: vi.fn()
+    });
 
     const insertMock = vi.fn().mockResolvedValue({ data: [mockStore], error: null });
-    mockSupabase.from.mockImplementation((tableName) => {
+    mockSupabase.from.mockImplementation((tableName: string) => {
       if (tableName === 'stores') {
         return {
           select: vi.fn().mockReturnThis(),
@@ -176,16 +200,16 @@ describe('DashboardPage - Product CRUD', () => {
     renderDashboard();
 
     // ASSERT
-    await waitFor(() => expect(screen.getByText('Crea tu Tienda Social')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Crea tu Tienda Social'));
+    await waitFor(() => expect(screen.getByText(/Lanzar mi Tienda/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByText(/Lanzar mi Tienda/i));
 
-    await waitFor(() => expect(screen.getByPlaceholderText('Ej: Tienda de Ana')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByPlaceholderText('Ej: Urban Style Shop')).toBeInTheDocument());
 
-    const input = screen.getByPlaceholderText('Ej: Tienda de Ana');
-    const submitButton = screen.getByText('Crear Tienda');
+    const input = screen.getByPlaceholderText('Ej: Urban Style Shop');
+    const submitBtn = screen.getByText('Empezar a Vender');
 
     fireEvent.change(input, { target: { value: 'Nueva Tienda' } });
-    fireEvent.click(submitButton);
+    fireEvent.click(submitBtn);
 
     await waitFor(() => {
       expect(insertMock).toHaveBeenCalledWith(expect.arrayContaining([

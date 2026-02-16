@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Store as StoreType } from '../types';
 
 interface EditStoreFormProps {
-  store: StoreType & { whatsapp_number: string; plan_type: string; community_link?: string | null; };
+  store: StoreType;
   onClose: () => void;
   onStoreUpdated: () => void;
 }
@@ -83,8 +83,8 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
 
       onStoreUpdated();
       onClose();
-    } catch (error: any) {
-      setError(error.message || 'Error al actualizar la tienda.');
+    } catch (error: unknown) {
+      setError((error as Error).message || 'Error al actualizar la tienda.');
     } finally {
       setIsSubmitting(false);
     }

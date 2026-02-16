@@ -1,7 +1,7 @@
 // src/components/WeeklyAnalytics.tsx
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Eye, ShoppingCart, TrendingUp, Calendar, Info, Package } from 'lucide-react';
+import { ShoppingCart, TrendingUp, Calendar, Info, Package } from 'lucide-react';
 import { AnalyticsHeatmap } from './AnalyticsHeatmap';
 
 type HeatmapData = {

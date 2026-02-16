@@ -43,11 +43,13 @@ describe('Backend RLS and Data Flow Test', () => {
 
         // Mock from() for different tables
         mockFrom.mockImplementation((table: string) => {
-            const chain: any = {};
-            chain.insert = vi.fn().mockReturnValue(chain);
-            chain.select = vi.fn().mockReturnValue(chain);
-            chain.eq = vi.fn().mockReturnValue(chain);
-            chain.single = vi.fn();
+            const chain = {
+                insert: vi.fn().mockReturnThis(),
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                single: vi.fn(),
+                then: (onfulfilled: (value: { data: unknown[]; error: unknown }) => unknown) => onfulfilled({ data: [], error: null }),
+            };
 
             if (table === 'stores') {
                 chain.single.mockResolvedValue({
@@ -55,7 +57,7 @@ describe('Backend RLS and Data Flow Test', () => {
                     error: null,
                 });
                 // For the select all query (returns array-like via thenable)
-                chain.then = (onFulfilled: any) => {
+                chain.then = (onFulfilled: (value: { data: unknown[]; error: unknown }) => unknown) => {
                     return Promise.resolve(onFulfilled({
                         data: [{ id: 'mock-store-id', name: 'RLS Test Store' }],
                         error: null,
@@ -66,7 +68,7 @@ describe('Backend RLS and Data Flow Test', () => {
                     data: { id: 'mock-product-id', store_id: 'mock-store-id', title: 'RLS Test Product', price: 10.99 },
                     error: null,
                 });
-                chain.then = (onFulfilled: any) => {
+                chain.then = (onFulfilled: (value: { data: unknown[]; error: unknown }) => unknown) => {
                     return Promise.resolve(onFulfilled({
                         data: [{ id: 'mock-product-id', store_id: 'mock-store-id', title: 'RLS Test Product', price: 10.99 }],
                         error: null,

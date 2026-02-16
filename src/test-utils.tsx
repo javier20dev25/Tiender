@@ -29,7 +29,26 @@ const renderWithProviders = (
 };
 
 // Re-export everything from testing-library
-export * from '@testing-library/react';
+export {
+  fireEvent,
+  screen,
+  waitFor,
+  cleanup,
+  within,
+  configure,
+  createEvent,
+  getConfig,
+  getElementError,
+  getNodeText,
+  getQueriesForElement,
+  getRoles,
+  logRoles,
+  prettyDOM,
+  queries,
+  queryAllByAttribute,
+  queryByAttribute,
+  buildQueries
+} from '@testing-library/react';
 // Override the render method with our custom one
 export { renderWithProviders as render };
 

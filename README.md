@@ -1,73 +1,32 @@
-# React + TypeScript + Vite
+# Tiender: Vende en WhatsApp con el Estilo de las Redes Sociales 🚀
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Tiender** es la plataforma diseñada para que los emprendedores vendan de forma moderna, rápida y humana. Transformamos tu catálogo estático en una **Tienda Social** dinámica que tus clientes amarán navegar.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🧐 ¿Qué es Tiender?
 
-## React Compiler
+La mayoría de las tiendas online son aburridas y complicadas. **Tiender** rompe ese esquema permitiéndote crear un escaparate digital que se siente como una red social (interfaz tipo *swipe*). Cuando un cliente encuentra algo que le gusta, el pedido llega directamente a tu **WhatsApp**, listo para cerrar la venta.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ ¿Cómo funciona?
 
-## Expanding the ESLint configuration
+1.  **Crea tu Escaparate:** Sube tus productos en segundos desde tu panel de control.
+2.  **Comparte tu Link:** Pon tu tienda en tu biografía de Instagram, TikTok o envíala por mensajes.
+3.  **Recibe Pedidos Estructurados:** Olvídate de los mensajes confusos. Recibirás un mensaje de WhatsApp con el detalle exacto de lo que el cliente quiere, su total y sus datos.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## ✨ ¿Por qué elegir Tiender?
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+-   **Experiencia Visual "Social":** Tus clientes navegan tus productos con gestos naturales, como si estuvieran viendo historias o reels.
+-   **Cero Fricción:** No obligamos a los clientes a crear cuentas complejas. El checkout es fluido y directo a tu chat.
+-   **Gestión Directa:** Tú mantienes la relación con el cliente. WhatsApp es el canal de comunicación más potente del mundo; nosotros lo convertimos en tu terminal de ventas.
+-   **Carrito Inteligente:** Los clientes pueden sumar varios productos y tú recibirás la lista completa en un solo mensaje organizado.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## 🎯 Ideal para:
+-   Marcas de ropa y accesorios.
+-   Venta de comida y repostería.
+-   Emprendedores digitales.
+-   Cualquier negocio que ya use WhatsApp para vender pero quiera verse más profesional.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+*Tiender - El puente entre tus productos y tus clientes.*

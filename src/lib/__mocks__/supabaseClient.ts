@@ -30,7 +30,7 @@ const mockSupabase = {
     limit: vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue({ data: {}, error: null }),
     // Mock thenable for promise-like behavior
-    then: (onfulfilled: any) => onfulfilled({ data: [], error: null }),
+    then: (onfulfilled: (value: { data: unknown[]; error: unknown }) => unknown) => onfulfilled({ data: [], error: null }),
   })),
   rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
   functions: {

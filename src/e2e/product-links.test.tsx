@@ -2,6 +2,7 @@
 // Tests the flow of adding external/video links to products and viewing them.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import DashboardPage from '../pages/DashboardPage';
 
@@ -68,20 +69,21 @@ describe('Product Links E2E Flow', () => {
     mockProducts[0].external_link = '';
     mockProducts[0].video_link = '';
 
-    mockFrom.mockImplementation((tableName: string) => {
-      const chain: any = {};
-      chain.select = vi.fn().mockReturnValue(chain);
-      chain.eq = vi.fn().mockReturnValue(chain);
-      chain.order = vi.fn().mockResolvedValue({ data: mockProducts, error: null });
-      chain.single = vi.fn().mockResolvedValue({ data: mockStore, error: null });
-      chain.insert = vi.fn().mockResolvedValue({ data: [], error: null });
-      chain.update = vi.fn().mockImplementation((updatedData: any) => {
-        mockProducts = mockProducts.map(p =>
-          p.id === 'prod-abc' ? { ...p, ...updatedData } : p
-        );
-        return { eq: vi.fn().mockResolvedValue({ data: [mockProducts[0]], error: null }) };
-      });
-      chain.delete = vi.fn().mockReturnValue(chain);
+    mockFrom.mockImplementation(() => {
+      const chain = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: mockProducts, error: null }),
+        single: vi.fn().mockResolvedValue({ data: mockStore, error: null }),
+        insert: vi.fn().mockResolvedValue({ data: [], error: null }),
+        update: vi.fn().mockImplementation((updatedData: Record<string, unknown>) => {
+          mockProducts = mockProducts.map(p =>
+            p.id === 'prod-abc' ? { ...p, ...updatedData } as typeof mockProducts[0] : p
+          );
+          return { eq: vi.fn().mockResolvedValue({ data: [mockProducts[0]], error: null }) };
+        }),
+        delete: vi.fn().mockReturnThis(),
+      };
       return chain;
     });
   });
@@ -99,7 +101,7 @@ describe('Product Links E2E Flow', () => {
     });
 
     // Click "Editar" button on the product
-    const editButton = screen.getByText('Editar');
+    const editButton = screen.getByLabelText('Editar');
     fireEvent.click(editButton);
 
     // Wait for edit form to appear and verify link inputs exist

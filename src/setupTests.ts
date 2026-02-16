@@ -43,7 +43,7 @@ vi.mock('./lib/supabaseClient', () => {
 
   // --- Mock Client ---
   const fromImplementation = (tableName: string) => {
-    const query: any = {
+    const query = {
       select: vi.fn().mockReturnThis(),
       insert: vi.fn().mockResolvedValue({ data: [{}], error: null }),
       update: vi.fn().mockResolvedValue({ data: [{}], error: null }),
@@ -59,7 +59,8 @@ vi.mock('./lib/supabaseClient', () => {
       csv: vi.fn().mockReturnThis(),
     };
 
-    let promise;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let promise: Promise<{ data: any; error: any }>;
 
     if (tableName === 'stores') {
       query.single.mockResolvedValue({ data: mockStoreStandard, error: null });
@@ -87,12 +88,14 @@ vi.mock('./lib/supabaseClient', () => {
     }
 
     // Make the query object thenable to simulate awaiting a query
-    query.then = (onfulfilled: any, onrejected: any) => promise.then(onfulfilled, onrejected);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (query as any).then = (onfulfilled: (value: any) => any, onrejected: (reason: any) => any) => promise.then(onfulfilled, onrejected);
 
     return query;
   };
 
-  const rpcImplementation = (fnName: string, params: any) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const rpcImplementation = (fnName: string, _params: unknown) => {
     if (fnName === 'get_weekly_heatmap_analytics') {
       return Promise.resolve({
         data: {
@@ -112,7 +115,8 @@ vi.mock('./lib/supabaseClient', () => {
     return Promise.resolve({ data: null, error: new Error(`RPC function '${fnName}' not mocked`) });
   }
 
-  const functionsImplementation = (fnName: string, { body }: { body: any }) => {
+  const functionsImplementation = (fnName: string, options: { body?: { planId?: string } } = {}) => {
+    const { body = {} } = options;
     if (fnName === 'create-paypal-subscription') {
       if (body.planId === 'invalid-plan') {
         return Promise.resolve({ error: { message: 'Error de PayPal: Invalid plan' } });

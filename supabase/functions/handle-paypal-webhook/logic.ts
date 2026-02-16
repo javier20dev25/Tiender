@@ -25,7 +25,8 @@ export type PlanMap = { [key: string]: 'standard' | 'full' };
  * @param paypalStatus The status string from PayPal's webhook resource (e.g., "ACTIVE").
  * @returns Our corresponding SubscriptionStatus ENUM value, or null if unhandled.
  */
-function mapPayPalStatusToEnum(paypalStatus: string): SubscriptionStatus | null {
+function mapPayPalStatusToEnum(paypalStatus: string | undefined): SubscriptionStatus | null {
+  if (!paypalStatus) return null;
   const status = paypalStatus.toLowerCase();
   switch (status) {
     case 'active':
@@ -40,9 +41,9 @@ function mapPayPalStatusToEnum(paypalStatus: string): SubscriptionStatus | null 
 }
 
 async function getUserIdByEmail(supabase: SupabaseClient, email: string): Promise<string> {
-    const { data: userId, error } = await supabase.rpc('get_user_id_by_email', { user_email: email });
-    if (error || !userId) throw new Error(`Usuario no encontrado para el email ${email}: ${error?.message}`);
-    return userId;
+  const { data: userId, error } = await supabase.rpc('get_user_id_by_email', { user_email: email });
+  if (error || !userId) throw new Error(`Usuario no encontrado para el email ${email}: ${error?.message}`);
+  return userId;
 }
 
 // --- Lógica Principal Exportable para Testing ---
@@ -70,27 +71,27 @@ export async function processWebhookEvent(
       .select('status')
       .eq('provider_subscription_id', subscriptionId)
       .single();
-      
+
     if (selectError) throw selectError;
 
     if (currentSub?.status !== 'canceled') {
-        const { error } = await supabaseAdmin
-          .from('subscriptions')
-          .update({ status: 'canceled' }) // Use our strict ENUM value
-          .eq('provider_subscription_id', subscriptionId);
-        if (error) throw error;
+      const { error } = await supabaseAdmin
+        .from('subscriptions')
+        .update({ status: 'canceled' }) // Use our strict ENUM value
+        .eq('provider_subscription_id', subscriptionId);
+      if (error) throw error;
     } else {
-        console.log(`Idempotency check: La subscripción ${subscriptionId} ya está cancelada. No se necesita acción.`);
+      console.log(`Idempotency check: La subscripción ${subscriptionId} ya está cancelada. No se necesita acción.`);
     }
 
   } else if (event.event_type === 'BILLING.SUBSCRIPTION.SUSPENDED') {
-      console.log(`Procesando SUSPENDED para subscripción ${subscriptionId}`);
-      // Map 'suspended' to our internal 'past_due' state
-      const { error } = await supabaseAdmin
-        .from('subscriptions')
-        .update({ status: 'past_due' })
-        .eq('provider_subscription_id', subscriptionId);
-      if (error) throw error;
+    console.log(`Procesando SUSPENDED para subscripción ${subscriptionId}`);
+    // Map 'suspended' to our internal 'past_due' state
+    const { error } = await supabaseAdmin
+      .from('subscriptions')
+      .update({ status: 'past_due' })
+      .eq('provider_subscription_id', subscriptionId);
+    if (error) throw error;
 
   } else if (event.event_type === 'BILLING.SUBSCRIPTION.ACTIVATED') {
     console.log(`Procesando ACTIVATED para subscripción ${subscriptionId}`);
@@ -120,11 +121,11 @@ export async function processWebhookEvent(
 
   } else if (event.event_type === 'BILLING.SUBSCRIPTION.UPDATED') {
     console.log(`Procesando UPDATED para subscripción ${subscriptionId}`);
-    
+
     // Only update the status if we have a valid mapping
     if (eventStatus) {
       const newPlanType = planMap[planId!] || null;
-      
+
       const { error: subError } = await supabaseAdmin
         .from('subscriptions')
         .update({
