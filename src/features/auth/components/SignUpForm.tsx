@@ -69,6 +69,8 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
       const normalizedPhone = fullPhone.replace(/\D/g, '');
       let codesGenerated = false;
 
+      let receivedCodes: string[] | null = null;
+
       if (useEmail) {
         const { data: signUpData, error: signUpError } = await getSupabase().auth.signUp({ email, password });
         if (signUpError) throw signUpError;
@@ -80,7 +82,8 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
           });
           const { data: codesData, error: codesError } = invokeResponse;
           if (!codesError && codesData?.plain_codes) {
-            setBackupCodes(codesData.plain_codes);
+            receivedCodes = codesData.plain_codes;
+            setBackupCodes(receivedCodes);
             codesGenerated = true;
           }
         } catch (codesErr) {
@@ -101,8 +104,9 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
         if (orchestrateData?.error_code) throw new Error(orchestrateData.message);
 
         // Get backup codes from the same response (if generated)
-        if (orchestrateData?.backup_codes) {
-          setBackupCodes(orchestrateData.backup_codes);
+        receivedCodes = orchestrateData?.backup_codes;
+        if (receivedCodes) {
+          setBackupCodes(receivedCodes);
           codesGenerated = true;
         }
 
