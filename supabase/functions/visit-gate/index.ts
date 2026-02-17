@@ -1,6 +1,6 @@
 // supabase/functions/visit-gate/index.ts
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { create, getNumericDate } from 'https://deno.land/x/djwt@v2.8/mod.ts';
 
@@ -21,38 +21,38 @@ async function sha256(text: string): Promise<string> {
 }
 
 async function calculateTrustScore(
-    signals: { referer: string, userAgent: string, ipHash: string },
-    supabase: SupabaseClient
+  signals: { referer: string, userAgent: string, ipHash: string },
+  supabase: SupabaseClient
 ): Promise<number> {
-    let score = 0;
+  let score = 0;
 
-    // 1. Referer check
-    if (SOCIAL_REFERERS.some(r => signals.referer.includes(r))) {
-        score += 35;
-    }
+  // 1. Referer check
+  if (SOCIAL_REFERERS.some(r => signals.referer.includes(r))) {
+    score += 35;
+  }
 
-    // 2. User-Agent check
-    if (signals.userAgent && !BOT_KEYWORDS.some(b => signals.userAgent.toLowerCase().includes(b))) {
-        score += 25;
-    } else {
-        score -= 20; // Penalize missing or bot-like user agents
-    }
+  // 2. User-Agent check
+  if (signals.userAgent && !BOT_KEYWORDS.some(b => signals.userAgent.toLowerCase().includes(b))) {
+    score += 25;
+  } else {
+    score -= 20; // Penalize missing or bot-like user agents
+  }
 
-    // 3. Rate limiting check (DB query)
-    const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
-    const { count, error } = await supabase
-        .from('visits')
-        .select('*', { count: 'exact', head: true })
-        .eq('ip_hash', signals.ipHash)
-        .gte('created_at', oneMinuteAgo);
-    
-    if (error) {
-        console.error('Error checking rate limit:', error);
-    } else if (count && count > 25) { // More than 25 requests in a minute from the same IP
-        score -= 50;
-    }
+  // 3. Rate limiting check (DB query)
+  const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+  const { count, error } = await supabase
+    .from('visits')
+    .select('*', { count: 'exact', head: true })
+    .eq('ip_hash', signals.ipHash)
+    .gte('created_at', oneMinuteAgo);
 
-    return score;
+  if (error) {
+    console.error('Error checking rate limit:', error);
+  } else if (count && count > 25) { // More than 25 requests in a minute from the same IP
+    score -= 50;
+  }
+
+  return score;
 }
 
 
@@ -83,7 +83,7 @@ serve(async (req, connInfo) => {
 
     // 2. Calculate Trust Score
     const trustScore = await calculateTrustScore({ referer, userAgent, ipHash }, supabaseAdmin);
-    
+
     // 3. Determine status and prepare for DB update
     const isVerified = trustScore >= VERIFICATION_THRESHOLD;
     const status = isVerified ? 'verified' : 'bot_suspected';
@@ -92,17 +92,17 @@ serve(async (req, connInfo) => {
 
     // 4. If verified, generate JWT
     if (isVerified) {
-        visitToken = await create(
-            { alg: 'HS256', typ: 'JWT' },
-            {
-                store_id: store_id,
-                trust_score: trustScore,
-                exp: getNumericDate(expiresAt),
-            },
-            JWT_SECRET
-        );
+      visitToken = await create(
+        { alg: 'HS256', typ: 'JWT' },
+        {
+          store_id: store_id,
+          trust_score: trustScore,
+          exp: getNumericDate(expiresAt),
+        },
+        JWT_SECRET
+      );
     }
-    
+
     // 5. Insert the complete visit record
     const { data: visit, error: insertError } = await supabaseAdmin
       .from('visits')
