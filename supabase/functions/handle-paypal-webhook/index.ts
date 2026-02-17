@@ -2,7 +2,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from '@supabase/supabase-js';
 import { corsHeaders } from '../_shared/cors.ts';
-import { verifyPayPalWebhookSignature } from '../../../lib/paypal/webhook.ts';
+import { verifyPayPalWebhookSignature } from '../_shared/paypal.ts';
 import { processWebhookEvent, PlanMap } from './logic.ts'; // Import from logic file
 
 console.log('Función "handle-paypal-webhook" iniciada.');

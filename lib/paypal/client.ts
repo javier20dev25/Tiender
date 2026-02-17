@@ -39,8 +39,8 @@ export async function getAccessToken(): Promise<string> {
   if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
     throw new Error('PayPal Client ID or Secret not configured.');
   }
-  const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`).toString('base64');
-  
+  const auth = btoa(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`);
+
   const response = await fetch(`${PAYPAL_API_URL}/v1/oauth2/token`, {
     method: 'POST',
     headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -61,69 +61,69 @@ export async function listProducts(accessToken: string): Promise<PayPalProduct[]
     headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
   });
   if (!response.ok) throw new Error(`Error listing PayPal products: ${response.status} - ${await response.text()}`);
-  return (await response.json() as {products: PayPalProduct[]}).products || []; 
+  return (await response.json() as { products: PayPalProduct[] }).products || [];
 }
 
 export async function createProduct(accessToken: string): Promise<PayPalProduct> {
-    const PAYPAL_API_URL = process.env.PAYPAL_API_URL || (typeof Deno !== 'undefined' && Deno.env.get('PAYPAL_API_URL')) || 'https://api-m.sandbox.paypal.com';
-    console.log(`\n--- Creating PayPal Product "${TIENDER_PRODUCT_NAME}" ---`);
-    const response = await fetch(`${PAYPAL_API_URL}/v1/catalogs/products`, {
-        method: 'POST',
-        headers: { 
-            'Authorization': `Bearer ${accessToken}`, 
-            'Content-Type': 'application/json',
-            'PayPal-Request-Id': `PRODUCT-${crypto.randomUUID()}` // Prevent duplicate creation
-        },
-        body: JSON.stringify({
-            name: TIENDER_PRODUCT_NAME,
-            description: "Suscripción para acceder a las funcionalidades completas de Tiender.",
-            type: "SERVICE",
-            category: "SOFTWARE"
-        }),
-    });
-    if (!response.ok) throw new Error(`Error creating PayPal product: ${response.status} - ${await response.text()}`);
-    return await response.json() as PayPalProduct; 
+  const PAYPAL_API_URL = process.env.PAYPAL_API_URL || (typeof Deno !== 'undefined' && Deno.env.get('PAYPAL_API_URL')) || 'https://api-m.sandbox.paypal.com';
+  console.log(`\n--- Creating PayPal Product "${TIENDER_PRODUCT_NAME}" ---`);
+  const response = await fetch(`${PAYPAL_API_URL}/v1/catalogs/products`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'PayPal-Request-Id': `PRODUCT-${crypto.randomUUID()}` // Prevent duplicate creation
+    },
+    body: JSON.stringify({
+      name: TIENDER_PRODUCT_NAME,
+      description: "Suscripción para acceder a las funcionalidades completas de Tiender.",
+      type: "SERVICE",
+      category: "SOFTWARE"
+    }),
+  });
+  if (!response.ok) throw new Error(`Error creating PayPal product: ${response.status} - ${await response.text()}`);
+  return await response.json() as PayPalProduct;
 }
 
 export async function listPlans(accessToken: string): Promise<PayPalPlan[]> {
-    const PAYPAL_API_URL = process.env.PAYPAL_API_URL || (typeof Deno !== 'undefined' && Deno.env.get('PAYPAL_API_URL')) || 'https://api-m.sandbox.paypal.com';
-    const response = await fetch(`${PAYPAL_API_URL}/v1/billing/plans?page_size=20`, {
-      headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) throw new Error(`Error listing PayPal plans: ${response.status} - ${await response.text()}`);
-    return (await response.json() as {plans: PayPalPlan[]}).plans || [];
+  const PAYPAL_API_URL = process.env.PAYPAL_API_URL || (typeof Deno !== 'undefined' && Deno.env.get('PAYPAL_API_URL')) || 'https://api-m.sandbox.paypal.com';
+  const response = await fetch(`${PAYPAL_API_URL}/v1/billing/plans?page_size=20`, {
+    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(`Error listing PayPal plans: ${response.status} - ${await response.text()}`);
+  return (await response.json() as { plans: PayPalPlan[] }).plans || [];
 }
 
 export async function createPlan(accessToken: string, productId: string): Promise<PayPalPlan> {
-    const PAYPAL_API_URL = process.env.PAYPAL_API_URL || (typeof Deno !== 'undefined' && Deno.env.get('PAYPAL_API_URL')) || 'https://api-m.sandbox.paypal.com';
-    console.log(`--- Creating PayPal Plan "${TIENDER_PLAN_NAME}" for product ${productId}... ---`);
-    const response = await fetch(`${PAYPAL_API_URL}/v1/billing/plans`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-            'PayPal-Request-Id': `PLAN-${crypto.randomUUID()}`
-        },
-        body: JSON.stringify({
-            product_id: productId,
-            name: TIENDER_PLAN_NAME,
-            description: "Acceso completo a todas las funcionalidades de Tiender.",
-            status: "ACTIVE",
-            billing_cycles: [{
-                frequency: { interval_unit: "MONTH", interval_count: 1 },
-                tenure_type: "REGULAR",
-                sequence: 1,
-                total_cycles: 0, // 0 means it recurs indefinitely until cancelled
-                pricing_scheme: {
-                    fixed_price: { value: TIENDER_PLAN_PRICE, currency_code: "USD" }
-                }
-            }],
-            payment_preferences: {
-                auto_bill_outstanding: true, 
-                setup_fee_failure_action: "CONTINUE", 
-            },
-        }),
-    });
-    if (!response.ok) throw new Error(`Error creating PayPal plan: ${response.status} - ${await response.text()}`);
-    return await response.json() as PayPalPlan; 
+  const PAYPAL_API_URL = process.env.PAYPAL_API_URL || (typeof Deno !== 'undefined' && Deno.env.get('PAYPAL_API_URL')) || 'https://api-m.sandbox.paypal.com';
+  console.log(`--- Creating PayPal Plan "${TIENDER_PLAN_NAME}" for product ${productId}... ---`);
+  const response = await fetch(`${PAYPAL_API_URL}/v1/billing/plans`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'PayPal-Request-Id': `PLAN-${crypto.randomUUID()}`
+    },
+    body: JSON.stringify({
+      product_id: productId,
+      name: TIENDER_PLAN_NAME,
+      description: "Acceso completo a todas las funcionalidades de Tiender.",
+      status: "ACTIVE",
+      billing_cycles: [{
+        frequency: { interval_unit: "MONTH", interval_count: 1 },
+        tenure_type: "REGULAR",
+        sequence: 1,
+        total_cycles: 0, // 0 means it recurs indefinitely until cancelled
+        pricing_scheme: {
+          fixed_price: { value: TIENDER_PLAN_PRICE, currency_code: "USD" }
+        }
+      }],
+      payment_preferences: {
+        auto_bill_outstanding: true,
+        setup_fee_failure_action: "CONTINUE",
+      },
+    }),
+  });
+  if (!response.ok) throw new Error(`Error creating PayPal plan: ${response.status} - ${await response.text()}`);
+  return await response.json() as PayPalPlan;
 }

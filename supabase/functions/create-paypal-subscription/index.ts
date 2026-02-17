@@ -2,7 +2,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
-import { getAccessToken } from '../../../lib/paypal/client.ts'; // Import from the new client module
+import { getAccessToken } from '../_shared/paypal.ts';
 
 console.log('Función "create-paypal-subscription" iniciada.');
 
@@ -63,7 +63,7 @@ serve(async (req) => {
     } else { // planType === 'full'
       PAYPAL_PLAN_ID = Deno.env.get('PAYPAL_PLAN_ID_FULL');
     }
-    
+
     if (!PAYPAL_PLAN_ID) {
       throw new Error(`Falta la variable de entorno para el plan PayPal '${planType}': PAYPAL_PLAN_ID_${planType.toUpperCase()}.`);
     }
@@ -97,9 +97,9 @@ serve(async (req) => {
     });
 
     if (!subscriptionResponse.ok) {
-        const errorDetails = await subscriptionResponse.json();
-        console.error(`Error al crear la suscripción en PayPal para el plan ${planType} (ID: ${PAYPAL_PLAN_ID}):`, errorDetails);
-        throw new Error(`No se pudo crear la suscripción en PayPal. Detalles: ${JSON.stringify(errorDetails)}`);
+      const errorDetails = await subscriptionResponse.json();
+      console.error(`Error al crear la suscripción en PayPal para el plan ${planType} (ID: ${PAYPAL_PLAN_ID}):`, errorDetails);
+      throw new Error(`No se pudo crear la suscripción en PayPal. Detalles: ${JSON.stringify(errorDetails)}`);
     }
 
     const subscriptionData = await subscriptionResponse.json();
@@ -110,8 +110,8 @@ serve(async (req) => {
     if (!approveUrl) {
       throw new Error('No se encontró el enlace de aprobación en la respuesta de PayPal.');
     }
-    
-    return new Response(JSON.stringify({ approve_url: approveUrl }), {
+
+    return new Response(JSON.stringify({ approvalUrl: approveUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });

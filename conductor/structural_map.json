@@ -1,6 +1,6 @@
 {
-  "last_updated": "2026-02-16T17:18:21.907178",
-  "file_count": 51,
+  "last_updated": "2026-02-17T14:50:24.724124",
+  "file_count": 53,
   "files": [
     "src\\App.test.tsx",
     "src\\App.tsx",
@@ -42,9 +42,11 @@
     "src\\pages\\DashboardPage.tsx",
     "src\\pages\\HomePage.tsx",
     "src\\pages\\NotFoundPage.tsx",
+    "src\\pages\\PrivacyPage.tsx",
     "src\\pages\\RecoveryPage.tsx",
     "src\\pages\\SocialStorePage.test.tsx",
     "src\\pages\\SocialStorePage.tsx",
+    "src\\pages\\TermsPage.tsx",
     "src\\pages\\UpgradePage.tsx",
     "src\\pages\\VerifyOtpPage.tsx",
     "src\\setupTests.ts",

@@ -2,7 +2,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
-import { getAccessToken } from '../../../lib/paypal/client.ts'; // Importar utilidad para token
+import { getAccessToken } from '../_shared/paypal.ts';
 
 console.log('Función "revise-paypal-subscription" iniciada.');
 
@@ -62,7 +62,7 @@ serve(async (req) => {
     } else { // planType === 'full'
       PAYPAL_PLAN_ID = Deno.env.get('PAYPAL_PLAN_ID_FULL');
     }
-    
+
     if (!PAYPAL_PLAN_ID) {
       throw new Error(`Falta la variable de entorno para el plan PayPal '${planType}': PAYPAL_PLAN_ID_${planType.toUpperCase()}.`);
     }
@@ -100,9 +100,9 @@ serve(async (req) => {
     });
 
     if (!subscriptionResponse.ok) {
-        const errorDetails = await subscriptionResponse.json();
-        console.error(`Error al revisar la suscripción ${subscription.provider_subscription_id} en PayPal:`, errorDetails);
-        throw new Error(`No se pudo revisar la suscripción en PayPal. Detalles: ${JSON.stringify(errorDetails)}`);
+      const errorDetails = await subscriptionResponse.json();
+      console.error(`Error al revisar la suscripción ${subscription.provider_subscription_id} en PayPal:`, errorDetails);
+      throw new Error(`No se pudo revisar la suscripción en PayPal. Detalles: ${JSON.stringify(errorDetails)}`);
     }
 
     // La respuesta de PATCH puede variar, pero si la llamada es exitosa, procedemos a actualizar nuestra BD.
@@ -135,10 +135,10 @@ serve(async (req) => {
       .eq('provider_subscription_id', subscription.provider_subscription_id);
 
     if (updateSubError) {
-        console.error(`Error al actualizar la suscripción ${subscription.provider_subscription_id} en nuestra BD:`, updateSubError);
-        // Considerar si esto es un error crítico o si solo registramos el log
+      console.error(`Error al actualizar la suscripción ${subscription.provider_subscription_id} en nuestra BD:`, updateSubError);
+      // Considerar si esto es un error crítico o si solo registramos el log
     }
-    
+
     console.log(`Suscripción ${subscription.provider_subscription_id} para el usuario ${user.id} actualizada al plan ${planType}.`);
 
     return new Response(JSON.stringify({ success: true, message: `Suscripción actualizada a ${planType}.` }), {

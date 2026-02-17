@@ -2,7 +2,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from '@supabase/supabase-js';
 import { corsHeaders } from '../_shared/cors.ts';
-import { getAccessToken } from '../../../lib/paypal/client.ts';
+import { getAccessToken } from '../_shared/paypal.ts';
 
 console.log('Función "sync-paypal-subscription" iniciada.');
 
@@ -48,9 +48,9 @@ serve(async (req) => {
       .single();
 
     if (dbError || !subscription) {
-      return new Response(JSON.stringify({ status: 'no_subscription_found' }), { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      return new Response(JSON.stringify({ status: 'no_subscription_found' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
@@ -73,15 +73,15 @@ serve(async (req) => {
 
     if (!mappedPaypalStatus) {
       console.warn(`Estado de PayPal no manejado ('${paypalSub.status}') recibido para la subscripción ${subscription.provider_subscription_id}. No se tomarán acciones.`);
-      return new Response(JSON.stringify({ status: 'in_sync', current_status: dbStatus, message: 'Unhandled PayPal status ignored.' }), { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      return new Response(JSON.stringify({ status: 'in_sync', current_status: dbStatus, message: 'Unhandled PayPal status ignored.' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
     if (mappedPaypalStatus !== dbStatus) {
       console.log(`Desincronización detectada para ${subscription.provider_subscription_id}: BD='${dbStatus}', PayPal='${mappedPaypalStatus}'. Actualizando...`);
-      
+
       const { error: updateError } = await supabaseClient
         .from('subscriptions')
         .update({ status: mappedPaypalStatus })
@@ -90,23 +90,23 @@ serve(async (req) => {
       if (updateError) {
         throw new Error(`Error al actualizar el estado de la suscripción en la BD: ${updateError.message}`);
       }
-      
-      return new Response(JSON.stringify({ status: 'reconciled', old_status: dbStatus, new_status: mappedPaypalStatus }), { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+
+      return new Response(JSON.stringify({ status: 'reconciled', old_status: dbStatus, new_status: mappedPaypalStatus }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    return new Response(JSON.stringify({ status: 'in_sync', current_status: dbStatus }), { 
-      status: 200, 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    return new Response(JSON.stringify({ status: 'in_sync', current_status: dbStatus }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
     console.error('Error fatal en sync-paypal-subscription:', error.message);
-    return new Response(JSON.stringify({ error: error.message }), { 
-      status: 500, 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });
