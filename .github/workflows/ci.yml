@@ -46,7 +46,8 @@ jobs:
           supabase secrets set \
             PAYPAL_CLIENT_ID=${{ secrets.PAYPAL_CLIENT_ID }} \
             PAYPAL_CLIENT_SECRET=${{ secrets.PAYPAL_CLIENT_SECRET }} \
-            PAYPAL_PLAN_ID=${{ secrets.PAYPAL_PLAN_ID }} \
+            PAYPAL_PLAN_ID_STANDARD=${{ secrets.PAYPAL_PLAN_ID_STANDARD }} \
+            PAYPAL_PLAN_ID_FULL=${{ secrets.PAYPAL_PLAN_ID_FULL }} \
             PAYPAL_WEBHOOK_ID=${{ secrets.PAYPAL_WEBHOOK_ID }} \
             PAYPAL_API_URL=${{ secrets.PAYPAL_API_URL }}
         env:
@@ -80,7 +81,7 @@ jobs:
           echo "Checking for required PayPal secrets in Supabase project: $PROJECT_ID"
           
           # Check for required PayPal secrets
-          REQUIRED_SECRETS=("PAYPAL_CLIENT_ID" "PAYPAL_CLIENT_SECRET" "PAYPAL_PLAN_ID" "PAYPAL_WEBHOOK_ID" "PAYPAL_API_URL")
+          REQUIRED_SECRETS=("PAYPAL_CLIENT_ID" "PAYPAL_CLIENT_SECRET" "PAYPAL_PLAN_ID_STANDARD" "PAYPAL_PLAN_ID_FULL" "PAYPAL_WEBHOOK_ID" "PAYPAL_API_URL")
           MISSING_SECRETS=""
 
           for secret in "${REQUIRED_SECRETS[@]}"; do
