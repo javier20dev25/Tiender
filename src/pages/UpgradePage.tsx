@@ -17,11 +17,16 @@ const UpgradePage: React.FC = () => {
     setLoading(planType);
     setError(null);
     try {
+      console.log('[UpgradePage] Calling create-paypal-subscription with planType:', planType);
       const { data, error: functionError } = await getSupabase().functions.invoke(
         'create-paypal-subscription',
         { body: { planType } }
       );
-      if (functionError) throw new Error(`Error de la función: ${functionError.message}`);
+      if (functionError) {
+        console.error('[UpgradePage] Function error:', functionError);
+        throw new Error(`Error de la función: ${functionError.message}`);
+      }
+      console.log('[UpgradePage] Function response data:', data);
       if (data?.approvalUrl) {
         window.location.href = data.approvalUrl;
       } else {
@@ -34,7 +39,7 @@ const UpgradePage: React.FC = () => {
       setLoading(null);
     }
   };
-  
+
   const handleCancelSuccess = () => {
     setModalOpen(false);
     // Idealmente, aquí se mostraría un toast o una notificación más elegante.
@@ -65,7 +70,7 @@ const UpgradePage: React.FC = () => {
             <div className="mt-8">
               <h2 className="text-lg font-semibold text-gray-800">Cancelar tu suscripción</h2>
               <p className="mt-2 text-gray-600">
-                Puedes cancelar tu suscripción en cualquier momento. Tu acceso a las funciones premium continuará 
+                Puedes cancelar tu suscripción en cualquier momento. Tu acceso a las funciones premium continuará
                 hasta el final de tu ciclo de facturación actual.
               </p>
               <button
@@ -97,7 +102,7 @@ const UpgradePage: React.FC = () => {
           <h1 className="text-5xl font-extrabold text-gray-900 mb-2">Elige el Plan Perfecto Para Ti</h1>
           <p className="text-lg text-gray-600">Comienza con una prueba gratuita de 7 días en cualquier plan. Cancela cuando quieras.</p>
         </header>
-        
+
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-6" role="alert">
             <strong className="font-bold">Error: </strong>
@@ -106,14 +111,14 @@ const UpgradePage: React.FC = () => {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <PlanCard 
+          <PlanCard
             planName="Standard"
             price="$10"
             features={standardFeatures}
             onSelect={() => handlePlanSelection('standard')}
             loading={loading === 'standard'}
           />
-          <PlanCard 
+          <PlanCard
             planName="Full"
             price="$25"
             features={fullFeatures}

@@ -30,12 +30,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Fetches both store and subscription data for a given user
   const refreshUserSessionData = useCallback(async (userId: string) => {
+    console.log('[AuthContext] refreshUserSessionData start', userId);
     const { data: refreshedStore, error: storeError } = await getSupabase()
       .from('stores')
       .select('id, name, slug, logo_url, whatsapp_number, user_id, created_at, trial_ends_at, plan_type, community_link, product_limit')
       .eq('user_id', userId)
       .single();
-    if (storeError) throw storeError;
+    if (storeError) {
+      console.error('[AuthContext] Error fetching store:', storeError);
+      throw storeError;
+    }
+    console.log('[AuthContext] Store fetched:', refreshedStore);
     setStore(refreshedStore as Store | null);
 
     const { data: refreshedSub, error: subError } = await getSupabase()
@@ -43,8 +48,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .select('status, current_period_end')
       .eq('user_id', userId)
       .single();
-    if (subError) console.warn('Could not fetch subscription details.', subError); // Not a fatal error if sub doesn't exist
+    if (subError) console.warn('[AuthContext] Could not fetch subscription details.', subError);
+    console.log('[AuthContext] Subscription fetched:', refreshedSub);
     setSubscription(refreshedSub as Subscription | null);
+    console.log('[AuthContext] refreshUserSessionData end');
   }, []);
 
   // Calls the sync function and then refreshes all user data
@@ -70,15 +77,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const getInitialSession = async () => {
+      console.log('[AuthContext] getInitialSession start');
       const { data: { session: currentSession } } = await getSupabase().auth.getSession();
+      console.log('[AuthContext] Session fetched:', currentSession?.user?.id);
       setSession(currentSession);
       const currentUser = currentSession?.user ?? null;
       setUser(currentUser);
 
       if (currentUser) {
-        await refreshUserSessionData(currentUser.id).catch((err: unknown) => console.error("Error fetching initial session data:", err));
+        console.log('[AuthContext] User found, refreshing data...');
+        await refreshUserSessionData(currentUser.id).catch((err: unknown) => console.error("[AuthContext] Error fetching initial session data:", err));
         syncAndRefreshSession(currentUser.id); // Sync in background
       }
+      console.log('[AuthContext] Setting loading to false');
       setLoading(false);
     };
 
