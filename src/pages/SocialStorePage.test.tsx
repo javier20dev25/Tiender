@@ -20,6 +20,8 @@ const mockProducts = [
 
 describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
 
+  let invokeMock: any;
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal('open', vi.fn());
@@ -36,7 +38,7 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
     });
 
     // 3. Mock for `functions.invoke`
-    const invokeMock = vi.fn().mockImplementation(async (fnName) => {
+    invokeMock = vi.fn().mockImplementation(async (fnName) => {
       if (fnName === 'visit-gate') {
         return { data: { visit_token: 'fake-token-123' }, error: null };
       }
@@ -89,7 +91,7 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
     fireEvent.click(likeButton);
 
     await waitFor(() => {
-      expect(getSupabase().functions.invoke).toHaveBeenCalledWith('record-verified-event',
+      expect(invokeMock).toHaveBeenCalledWith('record-verified-event',
         expect.objectContaining({
           body: expect.objectContaining({ event_type: 'LIKE', product_id: 'prod_1' })
         })
@@ -108,7 +110,7 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
       // 1. Verificar que el producto cambió
       expect(screen.getByText('Gorra JS')).toBeInTheDocument();
       // 2. Verificar el evento de "dislike"
-      expect(getSupabase().functions.invoke).toHaveBeenCalledWith('record-verified-event',
+      expect(invokeMock).toHaveBeenCalledWith('record-verified-event',
         expect.objectContaining({
           body: expect.objectContaining({ event_type: 'DISLIKE', product_id: 'prod_1' })
         })
@@ -121,7 +123,7 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
     await waitFor(() => expect(screen.getByText('Camisa React')).toBeInTheDocument());
 
     await waitFor(() => {
-      expect(getSupabase().functions.invoke).toHaveBeenCalledWith('record-verified-event',
+      expect(invokeMock).toHaveBeenCalledWith('record-verified-event',
         expect.objectContaining({
           body: expect.objectContaining({ event_type: 'VISIT' })
         })
@@ -138,7 +140,7 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
     fireEvent.click(cartButton);
 
     await waitFor(() => {
-      expect(getSupabase().functions.invoke).toHaveBeenCalledWith('record-verified-event',
+      expect(invokeMock).toHaveBeenCalledWith('record-verified-event',
         expect.objectContaining({
           body: expect.objectContaining({ event_type: 'ADD_TO_CART', product_id: 'prod_1' })
         })
@@ -146,18 +148,66 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
     });
 
     // 2. Abrir Modal de Compra y Finalizar
-    fireEvent.click(screen.getByText(/Ver mi pedido/i));
+    const viewCartButton = await screen.findByText(/Ver mi pedido/i);
+    fireEvent.click(viewCartButton);
 
-    // Suponiendo que el modal tiene un botón de confirmar
     const finalizeButton = screen.getByText(/Finalizar por WhatsApp/i);
     fireEvent.click(finalizeButton);
 
-    // 3. Verificar que se llama a window.open con el enlace de WhatsApp
+    // 3. Verificar que se llama a window.open con el enlace de WhatsApp (después del timeout de 1.5s)
     await waitFor(() => {
       expect(window.open).toHaveBeenCalledWith(
         expect.stringContaining('https://wa.me/'),
         '_blank'
       );
+    }, { timeout: 3000 });
+  });
+
+  it('debe manejar correctamente el fallo de visit-gate (Anti-Bot)', async () => {
+    // Override mock via the shared variable
+    invokeMock.mockImplementation(async (fnName: string) => {
+      if (fnName === 'visit-gate') {
+        return { data: null, error: new Error('Bot detected') };
+      }
+      return { data: null, error: null };
     });
+
+    renderWithRouter();
+
+    // Verify error UI - using getByRole to be specific
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /Acceso Denegado/i })).toBeInTheDocument();
+      expect(screen.getByText(/sospechosa/i)).toBeInTheDocument();
+    }, { timeout: 4000 });
+  });
+
+  it('debe prevenir doble envío al finalizar compra', async () => {
+    renderWithRouter();
+    await waitFor(() => expect(screen.getByText('Camisa React')).toBeInTheDocument());
+
+    const cartButton = screen.getByText('Añadir');
+    fireEvent.click(cartButton);
+
+    // Open cart
+    const viewCartButton = await screen.findByText(/Ver mi pedido/i);
+    fireEvent.click(viewCartButton);
+
+    // Use getByRole query to correctly select the button
+    const finalizeButton = screen.getByRole('button', { name: /Finalizar por WhatsApp/i });
+
+    // First click
+    fireEvent.click(finalizeButton);
+    expect(finalizeButton).toBeDisabled();
+    expect(screen.getByText('Procesando...')).toBeInTheDocument();
+
+    // Try second click immediately (should be prevented by disabled attribute)
+    fireEvent.click(finalizeButton);
+
+    // Wait for the process to complete (timeout in component is 1500ms)
+    await waitFor(() => {
+      expect(window.open).toHaveBeenCalledTimes(1);
+      // Modal should be closed, so button should not be in the document
+      expect(screen.queryByText(/Finalizar por WhatsApp/i)).not.toBeInTheDocument();
+    }, { timeout: 3000 });
   });
 });

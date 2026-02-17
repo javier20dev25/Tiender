@@ -22,6 +22,7 @@ const SocialStorePage: React.FC = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const hasLoggedVisit = useRef(false);
 
   // Motion values for swipe effect
@@ -325,16 +326,27 @@ const SocialStorePage: React.FC = () => {
 
               <button
                 onClick={() => {
-                  const items = cart.map(i => `${i.title} (x${i.quantity})`).join(', ');
-                  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2);
-                  const message = encodeURIComponent(`¡Hola! Me gustaría comprar: ${items}. Total: $${total}`);
-                  window.open(`https://wa.me/${store.whatsapp_number}?text=${message}`, '_blank');
-                  setIsCartOpen(false);
+                  if (isSubmitting) return;
+                  setIsSubmitting(true);
+                  // Simulate a short delay to prevent accidental double-clicks and show feedback
+                  setTimeout(() => {
+                    const items = cart.map(i => `${i.title} (x${i.quantity})`).join(', ');
+                    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2);
+                    const message = encodeURIComponent(`¡Hola! Me gustaría comprar: ${items}. Total: $${total}`);
+                    window.open(`https://wa.me/${store.whatsapp_number}?text=${message}`, '_blank');
+                    setIsCartOpen(false);
+                    setIsSubmitting(false);
+                  }, 1500);
                 }}
-                className="w-full py-5 bg-brand-neon text-brand-dark font-black text-xl rounded-2xl shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                disabled={isSubmitting}
+                className={`w-full py-5 ${isSubmitting ? 'bg-zinc-200 text-zinc-400' : 'bg-brand-neon text-brand-dark hover:scale-[1.02] active:scale-[0.98]'} font-black text-xl rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3`}
               >
-                <ShoppingBag className="w-6 h-6" />
-                <span>Finalizar por WhatsApp</span>
+                {isSubmitting ? (
+                  <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-6 h-6 border-4 border-zinc-400 border-t-transparent rounded-full" />
+                ) : (
+                  <ShoppingBag className="w-6 h-6" />
+                )}
+                <span>{isSubmitting ? 'Procesando...' : 'Finalizar por WhatsApp'}</span>
               </button>
             </motion.div>
           </div>

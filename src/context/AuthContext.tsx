@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshUserSessionData = useCallback(async (userId: string) => {
     const { data: refreshedStore, error: storeError } = await getSupabase()
       .from('stores')
-      .select('*')
+      .select('id, name, slug, logo_url, whatsapp_number, user_id, created_at, trial_ends_at, plan_type, community_link, product_limit')
       .eq('user_id', userId)
       .single();
     if (storeError) throw storeError;

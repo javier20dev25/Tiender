@@ -21,7 +21,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   // Define los estados que permiten el acceso a rutas protegidas.
-  const hasActiveSubscription = subscription?.status === 'active' || subscription?.status === 'trialing';
+  // Se incluye 'past_due' para permitir el Periodo de Gracia (el usuario ve un banner pero puede usar la app).
+  const hasActiveSubscription = subscription?.status === 'active' || subscription?.status === 'trialing' || subscription?.status === 'past_due';
 
   if (hasActiveSubscription) {
     // Si el usuario tiene una suscripción activa o de prueba, permitir el acceso.

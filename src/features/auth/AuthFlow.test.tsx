@@ -59,20 +59,28 @@ describe('Authentication Flow Integration Test', () => {
   test('should allow a new user to sign up and see the backup codes modal', async () => {
     const onSwitchToSignIn = vi.fn();
 
+    // orchestrate-signup now returns backup_codes atomically
+    mockFunctionsInvoke.mockImplementation(async (functionName) => {
+      if (functionName === 'orchestrate-signup') {
+        return { data: { success: true, user_id: mockUser.id, backup_codes: ['code-abc-123', 'code-def-456'] }, error: null };
+      }
+      if (functionName === 'generate-backup-codes') {
+        return { data: { plain_codes: ['code-abc-123', 'code-def-456'] }, error: null };
+      }
+    });
+
     render(
       <MemoryRouter>
         <SignUpForm onSwitchToSignIn={onSwitchToSignIn} />
       </MemoryRouter>
     );
 
-    // The form defaults to WhatsApp mode
     const phoneInput = screen.getByPlaceholderText(/8888 8888/i);
     const passwordInput = screen.getByPlaceholderText(/••••••••/i);
 
     expect(phoneInput).toBeInTheDocument();
     expect(passwordInput).toBeInTheDocument();
 
-    // Fill out and submit the sign-up form
     fireEvent.change(phoneInput, { target: { value: '70000001' } });
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
     fireEvent.click(screen.getByRole('button', { name: /crear mi tienda/i }));
@@ -82,14 +90,9 @@ describe('Authentication Flow Integration Test', () => {
       expect(screen.getByText('code-abc-123')).toBeInTheDocument();
     }, { timeout: 5000 });
 
-    // Verify the correct Supabase calls were made
-    expect(mockSignUp).toHaveBeenCalledWith({
-      phone: testPhone,
-      password: 'password123',
-    });
-
-    expect(mockFunctionsInvoke).toHaveBeenCalledWith('generate-backup-codes', {
-      body: { userId: mockUser.id },
+    // Verify the correct Edge Function call was made
+    expect(mockFunctionsInvoke).toHaveBeenCalledWith('orchestrate-signup', {
+      body: { phone: '+50570000001', password: 'password123' },
     });
   });
 

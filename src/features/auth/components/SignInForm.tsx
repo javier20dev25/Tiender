@@ -17,8 +17,16 @@ const SignInForm: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
+      let loginIdentifier = phone.trim();
+
+      // If it doesn't look like an email, assume it's a phone number and transform to shadow email
+      if (!loginIdentifier.includes('@')) {
+        const normalizedPhone = loginIdentifier.replace(/\D/g, '');
+        loginIdentifier = `${normalizedPhone}@tiender.app`;
+      }
+
       const { error } = await getSupabase().auth.signInWithPassword({
-        email: phone,
+        email: loginIdentifier,
         password,
       });
 
@@ -51,12 +59,14 @@ const SignInForm: React.FC = () => {
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="space-y-4">
           <div className="relative group">
+            <label htmlFor="signin-phone" className="sr-only">Número de WhatsApp o Email</label>
             <Phone className={iconClasses} />
             <input
-              id="phone"
+              id="signin-phone"
               name="phone"
-              type="tel"
-              placeholder="Número de WhatsApp"
+              type="text"
+              autoComplete="username"
+              placeholder="Número de WhatsApp o Email"
               required
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -64,11 +74,13 @@ const SignInForm: React.FC = () => {
             />
           </div>
           <div className="relative group">
+            <label htmlFor="signin-password" className="sr-only">Contraseña</label>
             <Lock className={iconClasses} />
             <input
-              id="password"
+              id="signin-password"
               name="password"
               type="password"
+              autoComplete="current-password"
               placeholder="Tu Contraseña"
               required
               value={password}

@@ -1,5 +1,5 @@
 // src/test-utils.tsx
-import { type ReactElement } from 'react';
+import { type ReactElement, Suspense } from 'react';
 import { render, type RenderOptions } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -22,7 +22,9 @@ const renderWithProviders = (
 
   return render(
     <MemoryRouter initialEntries={[route]}>
-      <AuthProvider>{ui}</AuthProvider>
+      <Suspense fallback={<div>Loading...</div>}>
+        <AuthProvider>{ui}</AuthProvider>
+      </Suspense>
     </MemoryRouter>,
     renderOptions
   );

@@ -1,6 +1,6 @@
 // src/pages/HomePage.tsx
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Zap, ChevronRight, Share2, ShoppingBag } from 'lucide-react';
 import { PlanCard } from '../components/PlanCard';
@@ -145,10 +145,23 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Footer Branding */}
-      <footer className="px-6 py-20 border-t border-white/5 text-center">
-        <div className="text-4xl font-black italic tracking-tighter uppercase mb-4 opacity-50">Tiender.</div>
-        <p className="text-zinc-700 text-[10px] font-black uppercase tracking-[0.3em]">Built for the Social Era</p>
+      {/* Footer */}
+      <footer className="px-6 py-20 border-t border-white/5">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="text-center md:text-left">
+            <div className="text-3xl font-black italic tracking-tighter uppercase mb-2 opacity-50">Tiender.</div>
+            <p className="text-zinc-700 text-[10px] font-black uppercase tracking-[0.3em]">Built for the Social Era</p>
+          </div>
+          <div className="flex items-center gap-6">
+            <Link to="/terminos" className="text-zinc-600 hover:text-zinc-400 text-xs font-bold uppercase tracking-wider transition-colors">
+              Términos
+            </Link>
+            <Link to="/privacidad" className="text-zinc-600 hover:text-zinc-400 text-xs font-bold uppercase tracking-wider transition-colors">
+              Privacidad
+            </Link>
+          </div>
+          <p className="text-zinc-800 text-xs font-medium">© {new Date().getFullYear()} Tiender. Todos los derechos reservados.</p>
+        </div>
       </footer>
     </div>
   );

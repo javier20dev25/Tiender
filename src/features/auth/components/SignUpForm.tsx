@@ -41,6 +41,22 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
     }
   }, [navigate]);
 
+  /** Extract a meaningful error message from a Supabase Edge Function error */
+  const extractEdgeFunctionError = async (error: unknown): Promise<string> => {
+    // FunctionsHttpError has a .context property which is the Response object
+    if (error && typeof error === 'object' && 'context' in error) {
+      try {
+        const response = (error as { context: Response }).context;
+        const body = await response.json();
+        if (body?.message) return body.message;
+      } catch {
+        // Fall through to generic message
+      }
+    }
+    if (error instanceof Error) return error.message;
+    return 'Error inesperado al procesar tu solicitud.';
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -49,28 +65,62 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
     setIsModalOpen(true);
 
     try {
-      const credentials = useEmail
-        ? { email, password }
-        : { phone: `${countryCode}${whatsapp.trim()}`, password };
+      const fullPhone = `${countryCode}${whatsapp.trim()}`;
+      const normalizedPhone = fullPhone.replace(/\D/g, '');
+      let codesGenerated = false;
 
-      const { data: signUpData, error: signUpError } = await getSupabase().auth.signUp(credentials);
-      if (signUpError) throw signUpError;
-      if (!signUpData.user) throw new Error("User creation failed.");
+      if (useEmail) {
+        const { data: signUpData, error: signUpError } = await getSupabase().auth.signUp({ email, password });
+        if (signUpError) throw signUpError;
+        if (!signUpData.user) throw new Error("User creation failed.");
 
-      const invokeResponse = await getSupabase().functions.invoke('generate-backup-codes', {
-        body: { userId: signUpData.user.id },
-      });
+        try {
+          const invokeResponse = await getSupabase().functions.invoke('generate-backup-codes', {
+            body: { userId: signUpData.user.id },
+          });
+          const { data: codesData, error: codesError } = invokeResponse;
+          if (!codesError && codesData?.plain_codes) {
+            setBackupCodes(codesData.plain_codes);
+            codesGenerated = true;
+          }
+        } catch (codesErr) {
+          console.error("Non-blocking error generating backup codes:", codesErr);
+        }
 
-      const { data: codesData, error: codesError } = invokeResponse || {
-        data: { plain_codes: ['XXXX-XXXX', 'XXXX-XXXX'] },
-        error: null
-      };
+        await getSupabase().auth.signInWithPassword({ email, password });
+      } else {
+        // WhatsApp flow: Use Edge Function (creates user, store, trial, AND codes atomically)
+        const { data: orchestrateData, error: orchestrateError } = await getSupabase().functions.invoke('orchestrate-signup', {
+          body: { phone: fullPhone, password }
+        });
 
-      if (codesError) throw new Error(`Failed code generation: ${codesError.message}`);
-      setBackupCodes(codesData.plain_codes);
+        if (orchestrateError) {
+          const msg = await extractEdgeFunctionError(orchestrateError);
+          throw new Error(msg);
+        }
+        if (orchestrateData?.error_code) throw new Error(orchestrateData.message);
 
-      await getSupabase().auth.signInWithPassword(credentials);
+        // Get backup codes from the same response (if generated)
+        if (orchestrateData?.backup_codes) {
+          setBackupCodes(orchestrateData.backup_codes);
+          codesGenerated = true;
+        }
+
+        // Login using shadow email
+        const { error: signInError } = await getSupabase().auth.signInWithPassword({
+          email: `${normalizedPhone}@tiender.app`,
+          password,
+        });
+        if (signInError) throw signInError;
+      }
+
       setIsLoadingCodes(false);
+
+      // If no backup codes were generated, skip the modal and go directly to dashboard
+      if (!codesGenerated) {
+        setIsModalOpen(false);
+        navigate('/dashboard');
+      }
     } catch (error: unknown) {
       setErrorMessage((error as Error).message || 'Error inesperado.');
       setIsModalOpen(false);
@@ -104,10 +154,13 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
         <div className="space-y-6">
           {useEmail ? (
             <div className="relative group">
-              <label className={labelClasses}><Mail className="w-3 h-3" /> Email</label>
+              <label htmlFor="signup-email" className={labelClasses}><Mail className="w-3 h-3" /> Email</label>
               <Mail className={iconClasses} />
               <input
+                id="signup-email"
+                name="email"
                 type="email"
+                autoComplete="email"
                 placeholder="tu@correo.com"
                 required
                 value={email}
@@ -118,19 +171,25 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
           ) : (
             <div className="space-y-4">
               <div className="relative group flex flex-col">
-                <label className={labelClasses}><Phone className="w-3 h-3" /> WhatsApp del Negocio</label>
+                <label htmlFor="signup-whatsapp" className={labelClasses}><Phone className="w-3 h-3" /> WhatsApp del Negocio</label>
                 <div className="flex gap-2">
                   <select
+                    id="signup-country-code"
+                    name="countryCode"
                     value={countryCode}
                     onChange={(e) => setCountryCode(e.target.value)}
                     className="w-[100px] bg-zinc-800/50 border border-white/5 rounded-2xl px-3 py-4 text-white text-xs focus:outline-none focus:ring-2 focus:ring-brand-pink/50 transition-all appearance-none text-center font-bold"
+                    aria-label="Código de país"
                   >
                     {countries.map(c => <option key={c.code} value={c.code} className="bg-zinc-900">{c.flag} {c.code}</option>)}
                   </select>
                   <div className="relative flex-grow group">
                     <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 group-focus-within:text-brand-pink" />
                     <input
+                      id="signup-whatsapp"
+                      name="whatsapp"
                       type="tel"
+                      autoComplete="tel"
                       placeholder="8888 8888"
                       required
                       value={whatsapp}
@@ -160,10 +219,13 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
           </div>
 
           <div className="relative group">
-            <label className={labelClasses}><Lock className="w-3 h-3" /> Password</label>
+            <label htmlFor="signup-password" className={labelClasses}><Lock className="w-3 h-3" /> Password</label>
             <Lock className={iconClasses} />
             <input
+              id="signup-password"
+              name="password"
               type="password"
+              autoComplete="new-password"
               placeholder="••••••••"
               required
               value={password}
@@ -177,7 +239,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
           <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex flex-col gap-2">
             <div className="flex items-center gap-2 text-red-500 text-[10px] font-black uppercase">
               <AlertCircle className="w-4 h-4" />
-              {errorMessage.split('.')[0]}
+              {errorMessage}
             </div>
             <button type="button" onClick={onSwitchToSignIn} className="text-[9px] font-bold text-zinc-500 hover:text-white underline text-left ml-6">
               ¿Ya tienes cuenta? Inicia sesión

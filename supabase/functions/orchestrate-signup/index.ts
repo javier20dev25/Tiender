@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
       .select('*')
       .eq('whatsapp_number', normalizedPhone)
       .single();
-    
+
     let identity = initialIdentity;
 
     if (identityError && identityError.code !== 'PGRST116') { // 'No rows found'
@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
         status: 'TRIAL_ACTIVE', // El trial se activa inmediatamente.
       })
       .eq('id', identity.id);
-    
+
     if (updateError) throw new Error(`Error al asociar la identidad: ${updateError.message}`);
 
     await logEvent(supabaseAdmin, 'TRIAL_ACTIVATED', { auth_user_id: user.id });
@@ -191,8 +191,51 @@ Deno.serve(async (req) => {
     }
     await logEvent(supabaseAdmin, 'STORE_CREATED', { auth_user_id: user.id });
 
+    // 5. Generate backup codes (non-blocking — signup succeeds even if this fails)
+    let plainTextCodes: string[] = [];
+    try {
+      const generateCode = () => {
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = '';
+        for (let i = 0; i < 8; i++) {
+          result += characters.charAt(Math.floor(Math.random() * characters.length));
+        }
+        return result;
+      };
+
+      plainTextCodes = Array.from({ length: 8 }, generateCode);
+
+      // Hash using Web Crypto API (SHA-256) — more reliable than bcrypt in Deno Edge Functions
+      const encoder = new TextEncoder();
+      const hashedCodes = await Promise.all(
+        plainTextCodes.map(async (code) => {
+          const data = encoder.encode(code);
+          const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        })
+      );
+
+      await supabaseAdmin.auth.admin.updateUserById(user.id, {
+        user_metadata: {
+          backup_codes: hashedCodes,
+          backup_codes_generated_at: new Date().toISOString(),
+        }
+      });
+      console.log('Backup codes generated and stored successfully for user:', user.id);
+    } catch (codesErr) {
+      // Log the error but DON'T fail the signup
+      console.error('Warning: Failed to generate backup codes:', (codesErr as Error).message);
+      plainTextCodes = []; // Clear so client knows codes weren't generated
+    }
+
     // Éxito: el usuario está creado y activo.
-    return new Response(JSON.stringify({ success: true, user_id: user.id, message: 'Usuario creado y activado correctamente.' }), {
+    return new Response(JSON.stringify({
+      success: true,
+      user_id: user.id,
+      backup_codes: plainTextCodes.length > 0 ? plainTextCodes : null,
+      message: 'Usuario creado y activado correctamente.',
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });

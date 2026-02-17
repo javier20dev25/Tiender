@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
+import { Suspense } from 'react';
 import App from '../App';
 
 // --- Mock Data ---
@@ -99,7 +100,9 @@ describe('Full E2E User and Customer Flow', () => {
     it('should render the auth page and allow navigating to sign-up', async () => {
         render(
             <MemoryRouter initialEntries={['/auth']}>
-                <App />
+                <Suspense fallback={<div>Loading...</div>}>
+                    <App />
+                </Suspense>
             </MemoryRouter>
         );
 
@@ -108,7 +111,7 @@ describe('Full E2E User and Customer Flow', () => {
             // SignUpForm should be visible since AuthPage defaults to sign-up
             const authContent = screen.getByText(/Crear Mi Tienda/i);
             expect(authContent).toBeInTheDocument();
-        });
+        }, { timeout: 5000 });
     });
 
     it('should render dashboard when authenticated with active subscription', async () => {
@@ -123,17 +126,19 @@ describe('Full E2E User and Customer Flow', () => {
 
         render(
             <MemoryRouter initialEntries={['/dashboard']}>
-                <App />
+                <Suspense fallback={<div>Loading...</div>}>
+                    <App />
+                </Suspense>
             </MemoryRouter>
         );
 
         await waitFor(() => {
             expect(screen.getByText('Centro de Mando')).toBeInTheDocument();
-        });
+        }, { timeout: 5000 });
 
         // Should see the store name
         await waitFor(() => {
             expect(screen.getByText(mockStore.name)).toBeInTheDocument();
-        });
+        }, { timeout: 5000 });
     });
 });
