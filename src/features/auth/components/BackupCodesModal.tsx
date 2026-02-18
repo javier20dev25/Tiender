@@ -10,13 +10,6 @@ interface BackupCodesModalProps {
 }
 
 const BackupCodesModal: React.FC<BackupCodesModalProps> = ({ codes, isLoading, onClose, onDownload, onConfirm }) => {
-  const handleDownloadClick = () => {
-    onDownload();
-  };
-
-  const handleConfirmClick = () => {
-    onConfirm();
-  };
 
   return (
     <div className="fixed inset-0 bg-brand-dark/80 backdrop-blur-md flex items-center justify-center z-[999] p-6">
