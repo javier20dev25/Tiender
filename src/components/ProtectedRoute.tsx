@@ -2,6 +2,8 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+import PageLoader from './PageLoader';
+
 interface ProtectedRouteProps {
   children: React.ReactElement;
 }
@@ -11,8 +13,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const location = useLocation();
 
   if (loading) {
-    // Muestra un indicador de carga mientras se obtiene el estado de autenticación y suscripción
-    return <div>Loading session...</div>;
+    return <PageLoader />;
   }
 
   if (!user) {

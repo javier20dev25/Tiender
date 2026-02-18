@@ -13,12 +13,7 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 
-// Minimal loading fallback
-const PageLoader = () => (
-  <div className="min-h-screen bg-brand-dark flex items-center justify-center">
-    <div className="w-10 h-10 border-4 border-brand-neon border-t-transparent rounded-full animate-spin"></div>
-  </div>
-);
+import PageLoader from './components/PageLoader';
 
 function App() {
   return (

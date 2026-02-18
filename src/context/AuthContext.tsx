@@ -28,6 +28,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [subscription, setSubscription] = useState<Subscription | null>(null); // State for subscription
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    console.log('[AuthContext] State changed:', { user: user?.id, store: !!store, subscription: !!subscription, loading });
+  }, [user, store, subscription, loading]);
+
   // Fetches both store and subscription data for a given user
   const refreshUserSessionData = useCallback(async (userId: string) => {
     console.log('[AuthContext] refreshUserSessionData start', userId);
@@ -116,25 +120,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       async (event, newSession) => {
         console.log('[AuthContext] onAuthStateChange', event);
 
-        // Si hay una sesión nueva, no quitamos el loading hasta tener los datos
-        if (newSession?.user) {
+        const newUser = newSession?.user ?? null;
+
+        // Solo mostramos loading si el usuario cambia y no lo tenemos aún
+        if (newUser && newUser.id !== user?.id) {
           setLoading(true);
         }
 
         setSession(newSession);
-        const newUser = newSession?.user ?? null;
         setUser(newUser);
 
         if (newUser) {
           try {
-            await refreshUserSessionData(newUser.id);
-            syncAndRefreshSession(newUser.id);
+            // Evitar refrescar si ya tenemos los datos y el evento es redundante
+            if (newUser.id !== user?.id || !store) {
+              await refreshUserSessionData(newUser.id);
+              syncAndRefreshSession(newUser.id);
+            }
           } catch (err: unknown) {
             console.error("Error refreshing session data:", err);
           } finally {
             setLoading(false);
           }
-        } else if (event === 'SIGNED_OUT') {
+        } else if (event === 'SIGNED_OUT' || !newSession) {
           setStore(null);
           setSubscription(null);
           setLoading(false);
