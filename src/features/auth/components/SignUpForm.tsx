@@ -1,6 +1,6 @@
 // src/features/auth/components/SignUpForm.tsx
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Phone, Mail, Lock, Rocket, AlertCircle, Info, Hash } from 'lucide-react';
 import { getSupabase } from '../../../lib/supabaseClient';
@@ -23,6 +23,8 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoadingCodes, setIsLoadingCodes] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as any)?.from?.pathname || '/dashboard';
 
   const handleDownloadCodes = useCallback(async () => {
     const codesContainer = document.getElementById('recovery-codes-content');
@@ -35,7 +37,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
       link.download = 'tiender-recovery-codes.png';
       link.href = image;
       link.click();
-      navigate('/dashboard');
+      navigate(from);
     } catch (error) {
       console.error("Error downloading codes:", error);
     }
@@ -123,7 +125,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
       // If no backup codes were generated, skip the modal and go directly to dashboard
       if (!codesGenerated) {
         setIsModalOpen(false);
-        navigate('/dashboard');
+        navigate(from);
       }
     } catch (error: unknown) {
       setErrorMessage((error as Error).message || 'Error inesperado.');
@@ -267,12 +269,12 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
           isLoading={isLoadingCodes}
           onClose={() => {
             setIsModalOpen(false);
-            if (backupCodes) navigate('/dashboard');
+            if (backupCodes) navigate(from);
           }}
           onDownload={handleDownloadCodes}
           onConfirm={() => {
             setIsModalOpen(false);
-            if (backupCodes) navigate('/dashboard');
+            if (backupCodes) navigate(from);
           }}
         />
       )}

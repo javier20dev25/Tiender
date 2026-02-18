@@ -1,6 +1,6 @@
 // src/features/auth/components/SignInForm.tsx
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Phone, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 import { getSupabase } from '../../../lib/supabaseClient';
@@ -11,6 +11,8 @@ const SignInForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as any)?.from?.pathname || '/dashboard';
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -38,7 +40,7 @@ const SignInForm: React.FC = () => {
         }
         throw error;
       }
-      navigate('/dashboard');
+      navigate(from);
     } catch (err) {
       console.error('Sign in failed:', err);
     } finally {
