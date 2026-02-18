@@ -21,8 +21,10 @@ const UpgradePage: React.FC = () => {
   useEffect(() => {
     const planParam = searchParams.get('plan') as PlanType;
     const hasActiveSub = store && (store.plan_type === 'standard' || store.plan_type === 'full');
+    const isTrialActive = store?.trial_ends_at ? new Date(store.trial_ends_at) > new Date() : false;
 
-    if (planParam && !hasActiveSub && !loading && !error && !isAutoProcessing) {
+    // Solo auto-disparar si NO tiene suscripción activa Y el trial ya venció (o no tiene trial)
+    if (planParam && !hasActiveSub && !isTrialActive && !loading && !error && !isAutoProcessing) {
       if (planParam === 'standard' || planParam === 'full') {
         setIsAutoProcessing(true);
         handlePlanSelection(planParam);

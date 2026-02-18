@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
+import TrialBanner from './components/TrialBanner';
 
 // Lazy-loaded pages for code splitting
 const AuthPage = lazy(() => import('./pages/AuthPage'));
@@ -23,6 +24,7 @@ const PageLoader = () => (
 function App() {
   return (
     <Suspense fallback={<PageLoader />}>
+      <TrialBanner />
       <Routes>
         {/* Rutas Públicas */}
         <Route path="/auth" element={<AuthPage />} />

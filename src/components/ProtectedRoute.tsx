@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user, subscription, loading } = useAuth();
+  const { user, subscription, store, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -21,16 +21,19 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   // Define los estados que permiten el acceso a rutas protegidas.
-  // Se incluye 'past_due' para permitir el Periodo de Gracia (el usuario ve un banner pero puede usar la app).
-  const hasActiveSubscription = subscription?.status === 'active' || subscription?.status === 'trialing' || subscription?.status === 'past_due';
+  const hasActivePayPalSubscription = subscription?.status === 'active' || subscription?.status === 'trialing' || subscription?.status === 'past_due';
 
-  if (hasActiveSubscription) {
-    // Si el usuario tiene una suscripción activa o de prueba, permitir el acceso.
+  // Nuevo: Verificar si el trial manual aún está vigente
+  const isTrialActive = store?.trial_ends_at ? new Date(store.trial_ends_at) > new Date() : false;
+
+  const hasAccess = hasActivePayPalSubscription || isTrialActive;
+
+  if (hasAccess) {
+    // Si el usuario tiene una suscripción activa o el trial vigente, permitir el acceso.
     return children;
   } else {
-    // Para cualquier otro caso (past_due, canceled, unpaid, o sin suscripción),
+    // Para cualquier otro caso (canceled, unpaid, o sin suscripción/trial),
     // redirigir a la página de "upgrade".
-    // Se previene el bucle de redirección si ya se está en /upgrade.
     if (location.pathname !== '/upgrade') {
       return <Navigate to={`/upgrade${location.search}`} replace />;
     }

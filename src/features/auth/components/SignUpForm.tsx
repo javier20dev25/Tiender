@@ -95,8 +95,15 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
         await getSupabase().auth.signInWithPassword({ email, password });
       } else {
         // WhatsApp flow: Use Edge Function (creates user, store, trial, AND codes atomically)
+        const searchParams = new URLSearchParams(location.search);
+        const selectedPlan = searchParams.get('plan') || 'standard';
+
         const { data: orchestrateData, error: orchestrateError } = await getSupabase().functions.invoke('orchestrate-signup', {
-          body: { phone: fullPhone, password }
+          body: {
+            phone: fullPhone,
+            password,
+            selectedPlan
+          }
         });
 
         if (orchestrateError) {

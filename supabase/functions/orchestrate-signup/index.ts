@@ -83,8 +83,8 @@ Deno.serve(async (req) => {
     }
     // --- FIN: Lógica de Rate Limiting ---
 
-    const { phone, password }: SignUpData = await req.json();
-    console.log('Iniciando orchestrate-signup con body:', { phone, password: password ? '[REDACTED]' : 'N/A' });
+    const { phone, password, selectedPlan }: { phone: string; password?: string; selectedPlan?: 'standard' | 'full' } = await req.json();
+    console.log('Iniciando orchestrate-signup con body:', { phone, password: password ? '[REDACTED]' : 'N/A', selectedPlan });
     console.log('Contraseña recibida (longitud):', password?.length);
 
 
@@ -177,14 +177,15 @@ Deno.serve(async (req) => {
 
     // 4. Crear la tienda por defecto para el usuario y establecer el fin del trial.
     const trialEndsDate = new Date();
-    trialEndsDate.setDate(trialEndsDate.getDate() + 7);
+    const trialDays = selectedPlan === 'full' ? 3 : 7;
+    trialEndsDate.setDate(trialEndsDate.getDate() + trialDays);
 
     const { error: storeError } = await supabaseAdmin.from('stores').insert({
       user_id: user.id,
       name: 'Mi Tienda', // Nombre por defecto
       whatsapp_number: normalizedPhone,
       trial_ends_at: trialEndsDate.toISOString(), // Establecer el fin del trial
-      plan_type: 'trial', // Asegurar que inicie en trial para disparar el flujo de pago si se seleccionó uno
+      plan_type: selectedPlan || 'standard', // Usar el plan seleccionado o standard por defecto
     });
 
     if (storeError) {
