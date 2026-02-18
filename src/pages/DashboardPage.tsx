@@ -193,7 +193,16 @@ const DashboardPage: React.FC = () => {
                 )}
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-white tracking-tight">{store.name}</h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-2xl font-bold text-white tracking-tight">{store.name}</h2>
+                  <button
+                    onClick={() => setShowEditStoreForm(true)}
+                    className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 hover:text-brand-neon hover:bg-zinc-700 transition-all group"
+                    title="Editar perfil de la tienda"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                </div>
                 <div className="flex items-center gap-3 mt-1.5">
                   <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 bg-zinc-800 text-brand-cyan rounded-full border border-brand-cyan/20">Plan {store.plan_type}</span>
                   {store.plan_type !== 'full' && (

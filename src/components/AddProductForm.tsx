@@ -43,6 +43,44 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
     }
   };
 
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1200;
+
+          if (width > height && width > maxDim) {
+            height *= maxDim / width;
+            width = maxDim;
+          } else if (height > maxDim) {
+            width *= maxDim / height;
+            height = maxDim;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+            } else {
+              resolve(file);
+            }
+          }, 'image/jpeg', 0.8);
+        };
+      };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -55,13 +93,14 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
     setIsSubmitting(true);
 
     try {
-      const fileExtension = imageFile.name.split('.').pop();
+      const compressedFile = await compressImage(imageFile);
+      const fileExtension = compressedFile.name.split('.').pop();
       const fileName = `${uuidv4()}.${fileExtension}`;
       const filePath = `${storeId}/${fileName}`;
 
       const { error: uploadError } = await getSupabase().storage
         .from('product-images')
-        .upload(filePath, imageFile);
+        .upload(filePath, compressedFile);
 
       if (uploadError) throw uploadError;
 

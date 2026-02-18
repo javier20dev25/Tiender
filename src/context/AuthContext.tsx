@@ -94,11 +94,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (currentUser) {
           console.log('[AuthContext] User found, refreshing data...');
-          await refreshUserSessionData(currentUser.id).catch((err: unknown) => {
+          try {
+            await refreshUserSessionData(currentUser.id);
+            syncAndRefreshSession(currentUser.id); // Sync in background
+          } catch (err: unknown) {
             console.error("[AuthContext] Error fetching initial session data:", err);
-            // Even if it fails, we want to stop loading
-          });
-          syncAndRefreshSession(currentUser.id); // Sync in background
+          }
         }
       } catch (err) {
         console.error('[AuthContext] Unexpected error in getInitialSession:', err);
@@ -114,13 +115,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: authListener } = getSupabase().auth.onAuthStateChange(
       async (event, newSession) => {
         console.log('[AuthContext] onAuthStateChange', event);
+
+        // Si hay una sesión nueva, no quitamos el loading hasta tener los datos
+        if (newSession?.user) {
+          setLoading(true);
+        }
+
         setSession(newSession);
         const newUser = newSession?.user ?? null;
         setUser(newUser);
 
         if (newUser) {
-          await refreshUserSessionData(newUser.id).catch((err: unknown) => console.error("Error refreshing session data:", err));
-          syncAndRefreshSession(newUser.id);
+          try {
+            await refreshUserSessionData(newUser.id);
+            syncAndRefreshSession(newUser.id);
+          } catch (err: unknown) {
+            console.error("Error refreshing session data:", err);
+          } finally {
+            setLoading(false);
+          }
         } else if (event === 'SIGNED_OUT') {
           setStore(null);
           setSubscription(null);
