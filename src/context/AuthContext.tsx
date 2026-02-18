@@ -78,25 +78,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const getInitialSession = async () => {
       console.log('[AuthContext] getInitialSession start');
-      const { data: { session: currentSession } } = await getSupabase().auth.getSession();
-      console.log('[AuthContext] Session fetched:', currentSession?.user?.id);
-      setSession(currentSession);
-      const currentUser = currentSession?.user ?? null;
-      setUser(currentUser);
 
-      if (currentUser) {
-        console.log('[AuthContext] User found, refreshing data...');
-        await refreshUserSessionData(currentUser.id).catch((err: unknown) => console.error("[AuthContext] Error fetching initial session data:", err));
-        syncAndRefreshSession(currentUser.id); // Sync in background
+      // Safety timeout: ensure loading is false after 5 seconds no matter what
+      const safetyTimeout = setTimeout(() => {
+        console.warn('[AuthContext] Safety timeout reached, forcing loading to false');
+        setLoading(false);
+      }, 5000);
+
+      try {
+        const { data: { session: currentSession } } = await getSupabase().auth.getSession();
+        console.log('[AuthContext] Session fetched:', currentSession?.user?.id);
+        setSession(currentSession);
+        const currentUser = currentSession?.user ?? null;
+        setUser(currentUser);
+
+        if (currentUser) {
+          console.log('[AuthContext] User found, refreshing data...');
+          await refreshUserSessionData(currentUser.id).catch((err: unknown) => {
+            console.error("[AuthContext] Error fetching initial session data:", err);
+            // Even if it fails, we want to stop loading
+          });
+          syncAndRefreshSession(currentUser.id); // Sync in background
+        }
+      } catch (err) {
+        console.error('[AuthContext] Unexpected error in getInitialSession:', err);
+      } finally {
+        clearTimeout(safetyTimeout);
+        console.log('[AuthContext] Setting loading to false');
+        setLoading(false);
       }
-      console.log('[AuthContext] Setting loading to false');
-      setLoading(false);
     };
 
     getInitialSession();
 
     const { data: authListener } = getSupabase().auth.onAuthStateChange(
       async (event, newSession) => {
+        console.log('[AuthContext] onAuthStateChange', event);
         setSession(newSession);
         const newUser = newSession?.user ?? null;
         setUser(newUser);
