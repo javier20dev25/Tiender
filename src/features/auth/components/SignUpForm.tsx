@@ -132,7 +132,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
       // If no backup codes were generated, skip the modal and go directly to dashboard
       if (!codesGenerated) {
         setIsModalOpen(false);
-        navigate(from);
+        navigate('/dashboard');
       }
     } catch (error: unknown) {
       setErrorMessage((error as Error).message || 'Error inesperado.');
@@ -276,12 +276,12 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
           isLoading={isLoadingCodes}
           onClose={() => {
             setIsModalOpen(false);
-            if (backupCodes) navigate(from);
+            if (backupCodes) navigate('/dashboard');
           }}
           onDownload={handleDownloadCodes}
           onConfirm={() => {
             setIsModalOpen(false);
-            if (backupCodes) navigate(from);
+            if (backupCodes) navigate('/dashboard');
           }}
         />
       )}

@@ -18,6 +18,7 @@ import MobileMenu from '../components/MobileMenu';
 import CancellationModal from '../components/CancellationModal';
 import ReportModal from '../components/ReportModal';
 import SubscriptionStatusBanner from '../components/SubscriptionStatusBanner';
+import TrialBanner from '../components/TrialBanner';
 import CreateStoreForm from '../components/CreateStoreForm';
 
 import type { WeeklyAnalyticsData } from '../types';
@@ -174,6 +175,7 @@ const DashboardPage: React.FC = () => {
 
       return (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full text-left space-y-8">
+          <TrialBanner />
           <SubscriptionStatusBanner subscription={subscription} />
 
           {/* Business Header */}

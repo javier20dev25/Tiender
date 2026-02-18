@@ -4,33 +4,44 @@ import { motion } from 'framer-motion';
 import { getSupabase } from '../lib/supabaseClient';
 import { PlanCard } from '../components/PlanCard';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import CancellationModal from '../components/CancellationModal';
 
 type PlanType = 'standard' | 'full';
 
 // --- Main Page Component ---
 const UpgradePage: React.FC = () => {
-  const { store, loading: authLoading } = useAuth();
+  const { store, subscription, loading: authLoading } = useAuth();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [isModalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState<PlanType | null>(null);
   const [isAutoProcessing, setIsAutoProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Auto-trigger plan selection if 'plan' param is present
+  // Determinar si el usuario tiene una suscripción de PayPal activa (no solo trial)
+  const hasActivePayPalSubscription = subscription?.status === 'active' || subscription?.status === 'trialing';
+  const isTrialActive = store?.trial_ends_at ? new Date(store.trial_ends_at) > new Date() : false;
+
+  // Si el usuario está en trial activo y llega a /upgrade, redirigirlo al dashboard
+  useEffect(() => {
+    if (!authLoading && isTrialActive && !hasActivePayPalSubscription) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [authLoading, isTrialActive, hasActivePayPalSubscription, navigate]);
+
+  // Auto-trigger plan selection if 'plan' param is present AND trial expired AND no active sub
   useEffect(() => {
     const planParam = searchParams.get('plan') as PlanType;
-    const hasActiveSub = store && (store.plan_type === 'standard' || store.plan_type === 'full');
-    const isTrialActive = store?.trial_ends_at ? new Date(store.trial_ends_at) > new Date() : false;
 
-    // Solo auto-disparar si NO tiene suscripción activa Y el trial ya venció (o no tiene trial)
-    if (planParam && !hasActiveSub && !isTrialActive && !loading && !error && !isAutoProcessing) {
+    // Solo auto-disparar si NO tiene suscripción activa Y el trial ya venció
+    if (planParam && !hasActivePayPalSubscription && !isTrialActive && !loading && !error && !isAutoProcessing) {
       if (planParam === 'standard' || planParam === 'full') {
         setIsAutoProcessing(true);
         handlePlanSelection(planParam);
       }
     }
-  }, [searchParams, store]);
+  }, [searchParams, store, subscription]);
 
   const handlePlanSelection = async (planType: PlanType) => {
     setLoading(planType);
@@ -82,8 +93,8 @@ const UpgradePage: React.FC = () => {
     );
   }
 
-  // --- Vista de Gestión para usuarios con plan activo ---
-  if (store && (store.plan_type === 'standard' || store.plan_type === 'full')) {
+  // --- Vista de Gestión SOLO para usuarios con suscripción PayPal activa ---
+  if (store && hasActivePayPalSubscription) {
     return (
       <>
         <div className="bg-gray-50 min-h-screen p-4 sm:p-8">
