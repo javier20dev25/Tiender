@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { getSupabase } from '../lib/supabaseClient';
 import { PlanCard } from '../components/PlanCard';
 import { useAuth } from '../context/AuthContext';
@@ -9,9 +11,24 @@ type PlanType = 'standard' | 'full';
 // --- Main Page Component ---
 const UpgradePage: React.FC = () => {
   const { store, loading: authLoading } = useAuth();
+  const [searchParams] = useSearchParams();
   const [isModalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState<PlanType | null>(null);
+  const [isAutoProcessing, setIsAutoProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-trigger plan selection if 'plan' param is present
+  useEffect(() => {
+    const planParam = searchParams.get('plan') as PlanType;
+    const hasActiveSub = store && (store.plan_type === 'standard' || store.plan_type === 'full');
+
+    if (planParam && !hasActiveSub && !loading && !error && !isAutoProcessing) {
+      if (planParam === 'standard' || planParam === 'full') {
+        setIsAutoProcessing(true);
+        handlePlanSelection(planParam);
+      }
+    }
+  }, [searchParams, store]);
 
   const handlePlanSelection = async (planType: PlanType) => {
     setLoading(planType);
@@ -47,10 +64,18 @@ const UpgradePage: React.FC = () => {
     // Podríamos forzar una recarga de los datos del usuario si fuera necesario.
   };
 
-  if (authLoading) {
+  if (authLoading || isAutoProcessing) {
     return (
-      <div className="bg-gray-50 min-h-screen flex items-center justify-center">
-        <p className="text-lg text-gray-600">Cargando información de tu cuenta...</p>
+      <div className="bg-brand-dark min-h-screen flex flex-col items-center justify-center text-white p-6">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+          className="w-12 h-12 border-4 border-brand-pink border-t-transparent rounded-full mb-6"
+        />
+        <h2 className="text-2xl font-black uppercase italic tracking-tighter mb-2">Preparando Transmisión</h2>
+        <p className="text-zinc-500 font-medium animate-pulse">
+          {isAutoProcessing ? 'Redirigiendo a PayPal para activar tu plan...' : 'Cargando información de tu cuenta...'}
+        </p>
       </div>
     );
   }

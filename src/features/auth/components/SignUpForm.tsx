@@ -24,7 +24,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
   const [isLoadingCodes, setIsLoadingCodes] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as any)?.from?.pathname || '/dashboard';
+  const from = (location.state as any)?.from || { pathname: '/dashboard' };
 
   const handleDownloadCodes = useCallback(async () => {
     const codesContainer = document.getElementById('recovery-codes-content');

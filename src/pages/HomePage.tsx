@@ -8,8 +8,8 @@ import { PlanCard } from '../components/PlanCard';
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
 
-  const handlePlanSelection = () => {
-    navigate('/upgrade');
+  const handlePlanSelection = (planType: string) => {
+    navigate(`/upgrade?plan=${planType.toLowerCase()}`);
   };
 
   const standardFeatures = [
@@ -128,7 +128,7 @@ const HomePage: React.FC = () => {
               planName="Standard"
               price="$10"
               features={standardFeatures}
-              onSelect={handlePlanSelection}
+              onSelect={() => handlePlanSelection('Standard')}
               loading={false}
               buttonText="Lanzar Standard"
             />
@@ -136,7 +136,7 @@ const HomePage: React.FC = () => {
               planName="Full"
               price="$25"
               features={fullFeatures}
-              onSelect={handlePlanSelection}
+              onSelect={() => handlePlanSelection('Full')}
               loading={false}
               isFeatured={true}
               buttonText="Escalar al Full"

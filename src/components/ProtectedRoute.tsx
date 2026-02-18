@@ -32,7 +32,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     // redirigir a la página de "upgrade".
     // Se previene el bucle de redirección si ya se está en /upgrade.
     if (location.pathname !== '/upgrade') {
-      return <Navigate to="/upgrade" replace />;
+      return <Navigate to={`/upgrade${location.search}`} replace />;
     }
     // Si ya está en /upgrade, permite que la página se renderice.
     return children;

@@ -184,6 +184,7 @@ Deno.serve(async (req) => {
       name: 'Mi Tienda', // Nombre por defecto
       whatsapp_number: normalizedPhone,
       trial_ends_at: trialEndsDate.toISOString(), // Establecer el fin del trial
+      plan_type: 'trial', // Asegurar que inicie en trial para disparar el flujo de pago si se seleccionó uno
     });
 
     if (storeError) {
