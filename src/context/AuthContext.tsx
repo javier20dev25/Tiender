@@ -83,11 +83,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const getInitialSession = async () => {
       console.log('[AuthContext] getInitialSession start');
 
-      // Safety timeout: ensure loading is false after 5 seconds no matter what
+      // Safety timeout: ensure loading is false after 10 seconds no matter what
       const safetyTimeout = setTimeout(() => {
         console.warn('[AuthContext] Safety timeout reached, forcing loading to false');
         setLoading(false);
-      }, 5000);
+      }, 10000);
 
       try {
         const { data: { session: currentSession } } = await getSupabase().auth.getSession();

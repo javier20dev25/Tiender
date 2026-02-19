@@ -34,14 +34,19 @@ const UpgradePage: React.FC = () => {
   useEffect(() => {
     const planParam = searchParams.get('plan') as PlanType;
 
-    // Solo auto-disparar si NO tiene suscripción activa Y el trial ya venció
-    if (planParam && !hasActivePayPalSubscription && !isTrialActive && !loading && !error && !isAutoProcessing) {
+    // Solo auto-disparar si:
+    // 1. Hay un parámetro de plan.
+    // 2. TENEMOS los datos de la tienda cargados (store !== null).
+    // 3. NO tiene suscripción activa de PayPal.
+    // 4. El trial ya venció.
+    // 5. No estamos ya procesando algo.
+    if (planParam && store && !hasActivePayPalSubscription && !isTrialActive && !loading && !error && !isAutoProcessing) {
       if (planParam === 'standard' || planParam === 'full') {
         setIsAutoProcessing(true);
         handlePlanSelection(planParam);
       }
     }
-  }, [searchParams, store, subscription]);
+  }, [searchParams, store, subscription, loading, error, isAutoProcessing, hasActivePayPalSubscription, isTrialActive]);
 
   const handlePlanSelection = async (planType: PlanType) => {
     setLoading(planType);
