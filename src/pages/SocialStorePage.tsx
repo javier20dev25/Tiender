@@ -1,4 +1,3 @@
-// src/pages/SocialStorePage.tsx
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
@@ -7,8 +6,30 @@ import { getSupabase } from '../lib/supabaseClient';
 import type { Store, Product } from '../types';
 
 // --- Types ---
-type CartItem = Product & { quantity: number; final_price?: number };
+type CartItem = Product & { quantity: number };
 type VerificationStatus = 'pending' | 'verified' | 'failed';
+
+// --- Components ---
+const DiscountTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
+  const [timeLeft, setTimeLeft] = useState(seconds);
+  useEffect(() => {
+    setTimeLeft(seconds);
+    const interval = setInterval(() => {
+      setTimeLeft(prev => prev > 0 ? prev - 1 : 0);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [seconds]);
+
+  if (timeLeft === 0) return null;
+  const mins = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+  const secs = (timeLeft % 60).toString().padStart(2, '0');
+
+  return (
+    <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
+      ⏳ {mins}:{secs}
+    </span>
+  );
+};
 
 const SocialStorePage: React.FC = () => {
   const { storeId } = useParams<{ storeId: string }>();
@@ -120,6 +141,33 @@ const SocialStorePage: React.FC = () => {
     logEvent('ADD_TO_CART');
   };
 
+  const updateQuantity = (index: number, delta: number) => {
+    setCart(prev => {
+      const newCart = [...prev];
+      const newQuantity = newCart[index].quantity + delta;
+      if (newQuantity <= 0) {
+        newCart.splice(index, 1);
+      } else {
+        newCart[index].quantity = newQuantity;
+      }
+      return newCart;
+    });
+  };
+
+  const getProductPrice = (product: Product) => {
+    if (product.discount_percentage) {
+      return product.price * (1 - product.discount_percentage / 100);
+    }
+    return product.price;
+  };
+
+  const getCartItemPrice = (item: CartItem) => {
+    if (item.wholesale_threshold && item.quantity >= item.wholesale_threshold && item.wholesale_price) {
+      return item.wholesale_price;
+    }
+    return getProductPrice(item);
+  };
+
   if (verificationStatus === 'pending') {
     return (
       <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50">
@@ -156,6 +204,11 @@ const SocialStorePage: React.FC = () => {
           </div>
         )}
         <h1 className="text-2xl font-bold tracking-tight text-center">{store.name}</h1>
+        {store.community_link && (
+          <a href={store.community_link} target="_blank" rel="noreferrer" className="mt-2 text-sm text-brand-pink font-semibold hover:underline">
+            Unirse a la Comunidad
+          </a>
+        )}
       </header>
 
       <main className="px-4 max-w-lg mx-auto mt-4 relative">
@@ -200,15 +253,47 @@ const SocialStorePage: React.FC = () => {
 
                 {/* Content Overlay */}
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-6 pt-20">
-                  <div className="flex justify-between items-end mb-2">
-                    <div className="max-w-[70%]">
-                      <h2 className="text-2xl font-bold text-white leading-tight mb-1">{currentProduct.title}</h2>
-                      <p className="text-white/70 text-sm line-clamp-2 font-medium">{currentProduct.description}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="block text-2xl font-bold text-brand-neon mb-1">${currentProduct.price.toFixed(2)}</span>
+                  <div className="flex flex-col gap-2 mb-2">
+                    {/* Badges row */}
+                    {(currentProduct.is_hot || currentProduct.discount_percentage || currentProduct.discount_timer_seconds) && (
+                      <div className="flex flex-wrap gap-2">
+                        {currentProduct.is_hot && <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">🔥 Hot</span>}
+                        {currentProduct.discount_percentage && <span className="bg-brand-pink text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">{currentProduct.discount_percentage}% OFF</span>}
+                        {currentProduct.discount_timer_seconds && <DiscountTimer seconds={currentProduct.discount_timer_seconds} />}
+                      </div>
+                    )}
+                    <div className="flex justify-between items-end">
+                      <div className="max-w-[65%]">
+                        <h2 className="text-2xl font-bold text-white leading-tight mb-1">{currentProduct.title}</h2>
+                        <p className="text-white/70 text-sm line-clamp-2 font-medium">{currentProduct.description}</p>
+                      </div>
+                      <div className="text-right">
+                        {currentProduct.discount_percentage ? (
+                           <>
+                             <span className="block text-sm font-medium text-white/50 line-through mb-0.5">${currentProduct.price.toFixed(2)}</span>
+                             <span className="block text-2xl font-bold text-brand-neon mb-1">${getProductPrice(currentProduct).toFixed(2)}</span>
+                           </>
+                        ) : (
+                           <span className="block text-2xl font-bold text-brand-neon mb-1">${currentProduct.price.toFixed(2)}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  {/* Links Row */}
+                  {(currentProduct.external_link || currentProduct.video_link) && (
+                    <div className="flex gap-2 mt-4">
+                      {currentProduct.external_link && (
+                        <a href={currentProduct.external_link.startsWith('http') ? currentProduct.external_link : `https://${currentProduct.external_link}`} target="_blank" rel="noreferrer" className="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white px-4 py-2.5 rounded-xl text-center text-sm font-bold transition-colors">
+                          Ver en Tienda
+                        </a>
+                      )}
+                      {currentProduct.video_link && (
+                        <a href={currentProduct.video_link.startsWith('http') ? currentProduct.video_link : `https://${currentProduct.video_link}`} target="_blank" rel="noreferrer" className="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white px-4 py-2.5 rounded-xl text-center text-sm font-bold transition-colors">
+                          Video Demo
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -295,17 +380,29 @@ const SocialStorePage: React.FC = () => {
 
               <div className="flex-grow overflow-y-auto space-y-6 pr-2 mb-8 scroll-smooth">
                 {cart.map((item, idx) => (
-                  <div key={idx} className="flex gap-4 items-center">
-                    <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-sm flex-shrink-0">
+                  <div key={idx} className="flex gap-4 items-center bg-gray-50 p-3 rounded-2xl">
+                    <div className="w-20 h-20 rounded-xl overflow-hidden shadow-sm flex-shrink-0 bg-white">
                       <img src={item.image_url || 'https://placehold.co/100x100'} alt="" className="w-full h-full object-cover" />
                     </div>
                     <div className="flex-grow">
-                      <h4 className="font-bold text-lg leading-tight mb-1">{item.title}</h4>
-                      <p className="text-gray-500 font-medium">${item.price.toFixed(2)} × {item.quantity}</p>
+                      <h4 className="font-bold text-[15px] leading-tight mb-1">{item.title}</h4>
+                      <div className="flex flex-col mb-2">
+                        <span className="text-brand-dark font-bold">${getCartItemPrice(item).toFixed(2)}</span>
+                        {item.wholesale_threshold && item.quantity >= item.wholesale_threshold && item.wholesale_price && (
+                           <span className="text-[10px] font-bold text-brand-pink uppercase tracking-wider">Mayorista Activado</span>
+                        )}
+                      </div>
+                      
+                      {/* Quantity Controls */}
+                      <div className="flex items-center gap-1.5 bg-white border border-gray-100 rounded-full w-fit p-1 shadow-sm">
+                        <button onClick={() => updateQuantity(idx, -1)} className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center font-black text-gray-500 hover:bg-gray-100 transition-colors">-</button>
+                        <span className="font-bold text-sm w-4 text-center">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(idx, 1)} className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center font-black text-gray-500 hover:bg-gray-100 transition-colors">+</button>
+                      </div>
                     </div>
                     <button
                       onClick={() => setCart(prev => prev.filter((_, i) => i !== idx))}
-                      className="p-2 text-red-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                      className="p-3 text-red-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all self-start mt-1"
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>
@@ -314,13 +411,12 @@ const SocialStorePage: React.FC = () => {
               </div>
 
               <div className="border-t border-gray-100 pt-6 mb-8">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-gray-500 font-medium">Subtotal</span>
-                  <span className="font-bold">${cart.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-2xl font-bold tracking-tight">Total</span>
-                  <span className="text-3xl font-bold text-brand-neon">${cart.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}</span>
+                <div className="flex justify-between items-end">
+                  <div>
+                     <span className="block text-sm text-gray-400 font-bold mb-1">TOTAL</span>
+                     <span className="text-xl font-bold tracking-tight text-gray-900">{cart.reduce((sum, item) => sum + item.quantity, 0)} artículos</span>
+                  </div>
+                  <span className="text-4xl font-black text-brand-pink tracking-tight">${cart.reduce((sum, item) => sum + (getCartItemPrice(item) * item.quantity), 0).toFixed(2)}</span>
                 </div>
               </div>
 
@@ -331,7 +427,7 @@ const SocialStorePage: React.FC = () => {
                   // Simulate a short delay to prevent accidental double-clicks and show feedback
                   setTimeout(() => {
                     const items = cart.map(i => `${i.title} (x${i.quantity})`).join(', ');
-                    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2);
+                    const total = cart.reduce((sum, item) => sum + (getCartItemPrice(item) * item.quantity), 0).toFixed(2);
                     const message = encodeURIComponent(`¡Hola! Me gustaría comprar: ${items}. Total: $${total}`);
                     window.open(`https://wa.me/${store.whatsapp_number}?text=${message}`, '_blank');
                     setIsCartOpen(false);
