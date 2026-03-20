@@ -147,7 +147,7 @@ const DashboardPage: React.FC = () => {
     setIsSharing(true);
     try {
       await getSupabase().functions.invoke('generate-share-image', { body: { storeId: store.id } });
-      const shareUrl = `${window.location.origin}/s/${store.id}`;
+      const shareUrl = `${window.location.origin}/tienda/${store.id}`;
       if (navigator.share) {
         await navigator.share({ title: `Visita ${store.name}`, text: `Mira mis productos en Tiender`, url: shareUrl });
       } else {
@@ -236,7 +236,7 @@ const DashboardPage: React.FC = () => {
             <div className="p-6 rounded-[30px] bg-zinc-900 border border-white/5 flex flex-col justify-between h-40 group hover:border-brand-neon/30 transition-all cursor-default">
               <div className="flex justify-between items-start">
                 <div className="p-2.5 bg-brand-neon/10 rounded-2xl text-brand-neon group-hover:scale-110 transition-transform"><Eye className="w-5 h-5" /></div>
-                <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Hoy</div>
+                <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Semana</div>
               </div>
               <div>
                 <div className="text-4xl font-black text-white">{weeklyAnalyticsData?.total_summary.total_visits || 0}</div>
@@ -246,7 +246,7 @@ const DashboardPage: React.FC = () => {
             <div className="p-6 rounded-[30px] bg-zinc-900 border border-white/5 flex flex-col justify-between h-40 group hover:border-brand-pink/30 transition-all cursor-default">
               <div className="flex justify-between items-start">
                 <div className="p-2.5 bg-brand-pink/10 rounded-2xl text-brand-pink group-hover:scale-110 transition-transform"><ShoppingCart className="w-5 h-5" /></div>
-                <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Hoy</div>
+                <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Semana</div>
               </div>
               <div>
                 <div className="text-4xl font-black text-white">{weeklyAnalyticsData?.total_summary.total_adds_to_cart || 0}</div>
@@ -378,7 +378,7 @@ const DashboardPage: React.FC = () => {
       <AnimatePresence>
         {showAddProductForm && store && <AddProductForm storeId={store.id} plan_type={store.plan_type} onClose={() => setShowAddProductForm(false)} onProductAdded={() => fetchProducts(store.id)} />}
         {editingProduct && store && <EditProductForm product={editingProduct} plan_type={store.plan_type} onClose={() => setEditingProduct(null)} onProductUpdated={() => fetchProducts(store.id)} />}
-        {showEditStoreForm && store && <EditStoreForm store={store} onClose={() => setShowEditStoreForm(false)} onStoreUpdated={() => { }} />}
+        {showEditStoreForm && store && <EditStoreForm store={store} onClose={() => setShowEditStoreForm(false)} onStoreUpdated={() => window.location.reload()} />}
       </AnimatePresence>
 
       <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onOpenCancelModal={() => setIsCancelModalOpen(true)} />

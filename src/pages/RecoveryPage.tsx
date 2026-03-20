@@ -63,11 +63,26 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
   const handlePasswordReset = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
+
+    if (newPassword.length < 6) {
+      setErrorMessage('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      alert("Contraseña restablecida correctamente.");
-      navigate('/auth');
+      const { data, error } = await getSupabase().functions.invoke('verify-backup-code', {
+        body: { phone: whatsapp, code: recoveryCode, newPassword },
+      });
+
+      if (error) throw new Error(error.message || 'Error al restablecer la contraseña.');
+
+      if (data?.success) {
+        navigate('/auth', { state: { passwordReset: true } });
+      } else {
+        throw new Error(data?.error || 'Error inesperado al restablecer la contraseña.');
+      }
     } catch (error: unknown) {
       setErrorMessage((error as Error).message);
     } finally {

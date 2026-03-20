@@ -18,6 +18,7 @@ interface EditProductFormProps {
 
 const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, onClose, onProductUpdated }) => {
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [externalLink, setExternalLink] = useState('');
   const [videoLink, setVideoLink] = useState('');
@@ -34,6 +35,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
   useEffect(() => {
     if (product) {
       setTitle(product.title);
+      setDescription(product.description || '');
       setPrice(product.price.toString());
       setExternalLink(product.external_link || '');
       setVideoLink(product.video_link || '');
@@ -67,6 +69,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
 
       const updatePayload: Record<string, unknown> = {
         title,
+        description: description || null,
         price: parseFloat(price),
         external_link: externalLink || null,
         video_link: videoLink || null,
@@ -156,6 +159,10 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
               <div>
                 <label className={labelClasses}><Package className="w-3.5 h-3.5" /> Nombre / Título</label>
                 <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej: Camiseta Oversized" className={inputClasses} required />
+              </div>
+              <div>
+                <label className={labelClasses}><Hash className="w-3.5 h-3.5" /> Descripción (Opcional)</label>
+                <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalles de tu producto..." className={`${inputClasses} h-24 resize-none`} />
               </div>
               <div>
                 <label className={labelClasses}><DollarSign className="w-3.5 h-3.5" /> Precio Venta</label>

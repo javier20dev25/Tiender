@@ -18,6 +18,7 @@ interface AddProductFormProps {
 
 const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onClose, onProductAdded }) => {
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -111,6 +112,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
       const insertPayload: Record<string, unknown> = {
         store_id: storeId,
         title,
+        description: description || null,
         price: parseFloat(price),
         image_url: imageUrl,
         external_link: externalLink || null,
@@ -190,6 +192,10 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
               <div>
                 <label className={labelClasses}><Package className="w-3.5 h-3.5" /> Nombre / Título</label>
                 <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej: Camiseta Oversized" className={inputClasses} required />
+              </div>
+              <div>
+                <label className={labelClasses}><Hash className="w-3.5 h-3.5" /> Descripción (Opcional)</label>
+                <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalles de tu producto..." className={`${inputClasses} h-24 resize-none`} />
               </div>
               <div>
                 <label className={labelClasses}><DollarSign className="w-3.5 h-3.5" /> Precio Venta</label>

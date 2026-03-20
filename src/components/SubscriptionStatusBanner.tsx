@@ -1,5 +1,5 @@
-// src/components/SubscriptionStatusBanner.tsx
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AlertTriangle, XCircle, Clock, ExternalLink } from 'lucide-react';
 
@@ -10,6 +10,8 @@ interface SubscriptionStatusBannerProps {
 }
 
 const SubscriptionStatusBanner: React.FC<SubscriptionStatusBannerProps> = ({ subscription }) => {
+  const navigate = useNavigate();
+
   if (!subscription) return null;
 
   const { status, current_period_end } = subscription;
@@ -39,7 +41,7 @@ const SubscriptionStatusBanner: React.FC<SubscriptionStatusBannerProps> = ({ sub
               Tu último pago no pudo procesarse. Por favor, revisa tus datos para evitar interrupciones en tu tienda.
             </p>
           </div>
-          <button className="px-4 py-2 bg-red-500 text-white text-[10px] font-black uppercase rounded-xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-all">
+          <button onClick={() => navigate('/upgrade')} className="px-4 py-2 bg-red-500 text-white text-[10px] font-black uppercase rounded-xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-all">
             Actualizar <ExternalLink className="w-3 h-3" />
           </button>
         </motion.div>
@@ -55,7 +57,7 @@ const SubscriptionStatusBanner: React.FC<SubscriptionStatusBannerProps> = ({ sub
             <h4 className="text-sm font-black text-white uppercase tracking-widest mb-1">Suscripción Suspendida</h4>
             <p className="text-xs text-zinc-500 font-medium">No hemos podido cobrar tu mensualidad. Tu tienda ya no es visible para el público.</p>
           </div>
-          <button className="px-6 py-2.5 bg-white text-black text-[10px] font-black uppercase rounded-xl transition-transform hover:scale-105">
+          <button onClick={() => navigate('/upgrade')} className="px-6 py-2.5 bg-white text-black text-[10px] font-black uppercase rounded-xl transition-transform hover:scale-105">
             Reactivar Ahora
           </button>
         </motion.div>
@@ -73,7 +75,7 @@ const SubscriptionStatusBanner: React.FC<SubscriptionStatusBannerProps> = ({ sub
               Tu plan Full vence el <span className="text-brand-yellow font-bold">{formatDate(current_period_end)}</span>. Conservarás tus funciones premium hasta entonces.
             </p>
           </div>
-          <button className="px-6 py-2 bg-brand-yellow/10 text-brand-yellow border border-brand-yellow/30 text-[10px] font-black uppercase rounded-xl transition-all hover:bg-brand-yellow hover:text-brand-dark">
+          <button onClick={() => navigate('/upgrade?plan=full')} className="px-6 py-2 bg-brand-yellow/10 text-brand-yellow border border-brand-yellow/30 text-[10px] font-black uppercase rounded-xl transition-all hover:bg-brand-yellow hover:text-brand-dark">
             Renovar
           </button>
         </motion.div>

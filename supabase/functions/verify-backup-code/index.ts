@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { compare } from 'https://deno.land/x/bcrypt@v0.4.1/mod.ts'; // For comparing hashes
+import { compare } from 'https://deno.land/x/bcrypt@v0.4.1/mod.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
@@ -8,9 +8,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { userId, code } = await req.json();
-    if (!userId || !code) {
-      throw new Error('userId and code are required.');
+    const { phone, code, newPassword } = await req.json();
+    if (!phone || !code) {
+      throw new Error('phone and code are required.');
     }
 
     const supabaseAdmin = createClient(
@@ -18,64 +18,79 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // 1. Fetch user's hashed backup codes from metadata
-    const { data: userData, error: fetchUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    // 1. Look up user by phone (shadow email pattern: <digits>@tiender.app)
+    const normalizedPhone = phone.replace(/\D/g, '');
+    const shadowEmail = `${normalizedPhone}@tiender.app`;
 
-    if (fetchUserError || !userData?.user) {
-      throw new Error(`User not found or error fetching user: ${fetchUserError?.message || ''}`);
+    const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    if (listError) throw new Error(`Error looking up users: ${listError.message}`);
+
+    const targetUser = usersData.users.find(u => u.email === shadowEmail);
+    if (!targetUser) {
+      throw new Error('No se encontró una cuenta asociada a este número.');
     }
 
-    const hashedCodes: string[] | undefined = userData.user.user_metadata?.backup_codes;
+    // 2. Fetch user's hashed backup codes from metadata
+    const hashedCodes: string[] | undefined = targetUser.user_metadata?.backup_codes;
 
     if (!hashedCodes || hashedCodes.length === 0) {
-      throw new Error('No backup codes found for this user.');
+      throw new Error('No hay códigos de recuperación para esta cuenta.');
     }
 
-    // 2. Compare the provided code against the stored hashes
+    // 3. Compare the provided code against the stored hashes
     let codeIsValid = false;
-    const updatedHashedCodes = [...hashedCodes]; // Copy array to modify
+    const updatedHashedCodes = [...hashedCodes];
 
     for (let i = 0; i < hashedCodes.length; i++) {
       const isMatch = await compare(code, hashedCodes[i]);
       if (isMatch) {
         codeIsValid = true;
-        // Remove the used code's hash from the array
         updatedHashedCodes.splice(i, 1);
-        break; // Found a match, no need to check further
+        break;
       }
     }
 
     if (!codeIsValid) {
-      throw new Error('Invalid recovery code.');
+      throw new Error('Código de recuperación inválido o ya utilizado.');
     }
 
-    // 3. Update user metadata to remove the used code
-    const { error: updateUserError } = await supabaseAdmin.auth.admin.updateUserById(
-      userId,
-      {
-        user_metadata: {
-          backup_codes: updatedHashedCodes,
-          // Optionally update a timestamp for code usage
-        }
+    // 4. Build update payload: always remove used code, optionally reset password
+    const updatePayload: Record<string, unknown> = {
+      user_metadata: {
+        backup_codes: updatedHashedCodes,
       }
+    };
+
+    if (newPassword) {
+      if (newPassword.length < 6) {
+        throw new Error('La contraseña debe tener al menos 6 caracteres.');
+      }
+      updatePayload.password = newPassword;
+    }
+
+    const { error: updateUserError } = await supabaseAdmin.auth.admin.updateUserById(
+      targetUser.id,
+      updatePayload
     );
 
     if (updateUserError) {
-      throw new Error(`Failed to update user metadata after code usage: ${updateUserError.message}`);
+      throw new Error(`Error al actualizar la cuenta: ${updateUserError.message}`);
     }
 
-    // 4. Return a success signal. The frontend will then trigger the password reset flow.
-    // A more advanced flow could involve generating a temporary auth token here.
-    return new Response(JSON.stringify({ success: true, message: 'Recovery code verified. Proceed to reset password.' }), {
+    const message = newPassword
+      ? 'Contraseña restablecida correctamente.'
+      : 'Código verificado. Procede a restablecer tu contraseña.';
+
+    return new Response(JSON.stringify({ success: true, message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
 
   } catch (err) {
     console.error('Error verifying backup code:', err);
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
-      status: 500,
+    return new Response(JSON.stringify({ success: false, error: (err as Error).message }), {
+      status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+});
