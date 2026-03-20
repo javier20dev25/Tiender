@@ -66,8 +66,11 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
 
         if (uploadError) throw uploadError;
 
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        newLogoUrl = `${supabaseUrl}/storage/v1/object/public/store-logos/${filePath}`;
+        const { data: publicData } = getSupabase().storage
+          .from('store-logos')
+          .getPublicUrl(filePath);
+          
+        newLogoUrl = publicData.publicUrl;
       }
 
       const { error: updateError } = await getSupabase()

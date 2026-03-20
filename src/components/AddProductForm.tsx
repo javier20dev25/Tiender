@@ -91,6 +91,16 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
       return;
     }
 
+    if (title.trim().length < 2 || title.trim().length > 100) {
+      setError('El título debe tener entre 2 y 100 caracteres.');
+      return;
+    }
+
+    if (parseFloat(price) <= 0) {
+      setError('El precio debe ser mayor a 0.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -105,8 +115,11 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
 
       if (uploadError) throw uploadError;
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const imageUrl = `${supabaseUrl}/storage/v1/object/public/product-images/${filePath}`;
+      const { data: publicData } = getSupabase().storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+      
+      const imageUrl = publicData.publicUrl;
       const hashtagsArray = hashtags.split(',').map(h => h.trim()).filter(h => h);
 
       const insertPayload: Record<string, unknown> = {

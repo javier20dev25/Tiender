@@ -102,23 +102,27 @@ const UpgradePage: React.FC = () => {
   if (store && hasActivePayPalSubscription) {
     return (
       <>
-        <div className="bg-gray-50 min-h-screen p-4 sm:p-8">
-          <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-md">
-            <header className="mb-6 border-b pb-6">
-              <h1 className="text-3xl font-bold text-gray-900">Gestionar Suscripción</h1>
-              <p className="text-lg text-gray-600 mt-2">
-                Actualmente estás en el plan <span className="font-semibold capitalize text-indigo-600">{store.plan_type}</span>.
+        <div className="bg-brand-dark min-h-screen p-4 sm:p-8">
+          <div className="max-w-2xl mx-auto bg-zinc-900 border border-white/5 p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-brand-pink via-brand-neon to-brand-cyan opacity-50"></div>
+            <header className="mb-6 border-b border-white/5 pb-6">
+              <h1 className="text-3xl font-black text-white italic tracking-tighter uppercase">Gestionar Suscripción</h1>
+              <p className="text-sm text-zinc-400 mt-2 font-medium">
+                Actualmente estás en el plan <span className="font-bold capitalize text-brand-neon px-2 py-1 bg-brand-neon/10 rounded-md ml-1">{store.plan_type}</span>.
               </p>
             </header>
             <div className="mt-8">
-              <h2 className="text-lg font-semibold text-gray-800">Cancelar tu suscripción</h2>
-              <p className="mt-2 text-gray-600">
+              <h2 className="text-lg font-bold text-white uppercase tracking-widest flex items-center gap-2 mb-2">
+                <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                Cancelar tu suscripción
+              </h2>
+              <p className="text-sm text-zinc-400 font-medium leading-relaxed">
                 Puedes cancelar tu suscripción en cualquier momento. Tu acceso a las funciones premium continuará
                 hasta el final de tu ciclo de facturación actual.
               </p>
               <button
                 onClick={() => setModalOpen(true)}
-                className="mt-6 w-full rounded-lg bg-red-600 px-5 py-3 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-300"
+                className="mt-8 w-full rounded-2xl bg-red-500/10 border border-red-500/20 px-5 py-4 text-sm font-black uppercase tracking-tighter italic text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-95"
               >
                 Solicitar Cancelación de Suscripción
               </button>
@@ -139,16 +143,17 @@ const UpgradePage: React.FC = () => {
   const fullFeatures = ["Hasta 60 productos", "Analíticas y reportes de IA", "Integración con WhatsApp", "Chat con IA (Próximamente)", "Sin branding 'Crea tu tienda...'"];
 
   return (
-    <div className="bg-gray-50 min-h-screen p-4 sm:p-8">
+    <div className="bg-brand-dark min-h-screen p-4 sm:p-8 pb-24">
       <div className="max-w-4xl mx-auto">
-        <header className="text-center mb-12">
-          <h1 className="text-5xl font-extrabold text-gray-900 mb-2">Elige el Plan Perfecto Para Ti</h1>
-          <p className="text-lg text-gray-600">Comienza con una prueba gratuita de 7 días en cualquier plan. Cancela cuando quieras.</p>
+        <header className="text-center mb-16 pt-8">
+          <h1 className="text-5xl sm:text-6xl font-black text-white uppercase italic tracking-tighter mb-4 leading-tight">
+            Elige el <span className="text-transparent bg-clip-text bg-sunset-gradient">Plan Perfecto</span><br/>Para Ti
+          </h1>
+          <p className="text-lg text-zinc-400 font-medium">Comienza con una prueba gratuita de 7 días. Cancela cuando quieras.</p>
         </header>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-6" role="alert">
-            <strong className="font-bold">Error: </strong>
+          <div className="bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-2xl relative mb-8 flex items-center gap-3 font-bold text-sm" role="alert">
             <span className="block sm:inline">{error}</span>
           </div>
         )}

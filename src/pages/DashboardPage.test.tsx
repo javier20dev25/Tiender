@@ -171,7 +171,7 @@ describe('DashboardPage - Product CRUD', () => {
     });
   });
 
-  it('should allow creating a store if one does not exist', async () => {
+  it('should display disabled store creation message if one does not exist', async () => {
     // ARRANGE
     mockedUseAuth.mockReturnValue({
       user: mockUser as unknown as User,
@@ -206,19 +206,10 @@ describe('DashboardPage - Product CRUD', () => {
     await waitFor(() => expect(screen.getByPlaceholderText('Ej: Urban Style Shop')).toBeInTheDocument());
 
     const input = screen.getByPlaceholderText('Ej: Urban Style Shop');
-    const submitBtn = screen.getByText('Empezar a Vender');
+    const submitBtn = screen.getByRole('button', { name: /Creación Deshabilitada/i });
 
-    fireEvent.change(input, { target: { value: 'Nueva Tienda' } });
-    fireEvent.click(submitBtn);
-
-    await waitFor(() => {
-      expect(insertMock).toHaveBeenCalledWith(expect.arrayContaining([
-        expect.objectContaining({
-          name: 'Nueva Tienda',
-          user_id: mockUser.id,
-        })
-      ]));
-    });
+    expect(input).toBeDisabled();
+    expect(submitBtn).toBeDisabled();
   });
 });
 

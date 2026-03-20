@@ -2,47 +2,18 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Rocket, AlertCircle } from 'lucide-react';
-import { getSupabase } from '../lib/supabaseClient';
 
 interface CreateStoreFormProps {
     onClose: () => void;
-    onStoreCreated: () => void;
 }
 
-const CreateStoreForm: React.FC<CreateStoreFormProps> = ({ onClose, onStoreCreated }) => {
+const CreateStoreForm: React.FC<CreateStoreFormProps> = ({ onClose }) => {
     const [name, setName] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim()) return;
-
-        setIsSubmitting(true);
-        setError('');
-
-        try {
-            const { data: { user } } = await getSupabase().auth.getUser();
-            if (!user) throw new Error('No usuario autenticado');
-
-            const { error: insertError } = await getSupabase()
-                .from('stores')
-                .insert([{
-                    name: name.trim(),
-                    user_id: user.id,
-                    plan_type: 'trial',
-                    whatsapp_number: user.user_metadata?.phone || user.phone || ''
-                }]);
-
-            if (insertError) throw insertError;
-
-            onStoreCreated();
-            onClose();
-        } catch (err: unknown) {
-            setError((err as Error).message || 'Error al crear la tienda');
-        } finally {
-            setIsSubmitting(false);
-        }
+        setError('La creación manual de tiendas está deshabilitada. Tu tienda se crea automáticamente al registrarte con WhatsApp. Si tienes problemas, contacta a soporte.');
     };
 
     return (
@@ -73,8 +44,9 @@ const CreateStoreForm: React.FC<CreateStoreFormProps> = ({ onClose, onStoreCreat
                             placeholder="Ej: Urban Style Shop"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl px-6 py-5 text-white placeholder-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-pink/50 transition-all font-bold"
+                            className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl px-6 py-5 text-white placeholder-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-pink/50 transition-all font-bold disabled:opacity-50"
                             required
+                            disabled
                         />
                     </div>
 
@@ -88,11 +60,11 @@ const CreateStoreForm: React.FC<CreateStoreFormProps> = ({ onClose, onStoreCreat
                     <div className="grid grid-cols-1 gap-4 pt-4">
                         <button
                             type="submit"
-                            disabled={isSubmitting || !name.trim()}
-                            className="w-full py-5 rounded-[22px] bg-sunset-gradient text-white font-black uppercase tracking-tighter italic flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 disabled:grayscale shadow-xl shadow-brand-pink/10"
+                            disabled
+                            className="w-full py-5 rounded-[22px] bg-zinc-800 text-zinc-500 font-black uppercase tracking-tighter italic flex items-center justify-center gap-2 cursor-not-allowed shadow-xl"
                         >
-                            {isSubmitting ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" /> : <Rocket className="w-5 h-5" />}
-                            <span>{isSubmitting ? 'Creando...' : 'Empezar a Vender'}</span>
+                            <Rocket className="w-5 h-5" />
+                            <span>Creación Deshabilitada</span>
                         </button>
                         <button
                             type="button"

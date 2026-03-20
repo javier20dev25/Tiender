@@ -12,7 +12,8 @@ const SignInForm: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as any)?.from || { pathname: '/dashboard' };
+  const state = location.state as { from?: { pathname: string } } | null;
+  const from = state?.from || { pathname: '/dashboard' };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
