@@ -1,10 +1,10 @@
 # Mapa Estructural del Proyecto
 
-*Última actualización: 2026-02-18T10:39:55.141148*
+*Última actualización: 2026-02-15T12:46:34.263395*
 
 ## Resumen
 
-- **Archivos de código fuente analizados:** 53
+- **Archivos de código fuente analizados:** 49
 - **Archivo de contexto principal:** `GEMINI.md`
 - **Planes de trabajo detectados:** 8
 
