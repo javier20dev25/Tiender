@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     // --- INICIO: Lógica de Rate Limiting ---
     // Obtiene la IP del cliente, manejando el caso de estar detrás de proxies.
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? req.headers.get('host') ?? 'unknown-ip';
-    const MAX_REQUESTS = 10; // Límite de 10 peticiones
+    const MAX_REQUESTS = 30; // Aumentado a 30 para facilitar pruebas
     const TIME_WINDOW_MS = 60 * 60 * 1000; // por 1 hora
 
     const { data: tracker, error: trackerError } = await supabaseAdmin

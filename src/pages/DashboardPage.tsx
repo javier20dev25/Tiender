@@ -79,14 +79,25 @@ const DashboardPage: React.FC = () => {
 
   const handleUpgrade = async () => {
     setIsSubmitting(true);
+    setError('');
     try {
+      console.log('[DashboardPage] handleUpgrade: Calling create-paypal-subscription');
       const { data, error } = await getSupabase().functions.invoke('create-paypal-subscription', {
         body: { planType: 'full' },
       });
       if (error) throw error;
-      if (data.approve_url) window.location.href = data.approve_url;
-    } catch {
-      setError('Error al iniciar la mejora de plan.');
+      console.log('[DashboardPage] handleUpgrade: Response received', data);
+      
+      if (data?.approvalUrl) {
+        window.location.href = data.approvalUrl;
+      } else if (data?.approve_url) {
+        window.location.href = data.approve_url;
+      } else {
+        throw new Error('No se recibió una URL de aprobación de PayPal.');
+      }
+    } catch (err: any) {
+      console.error('[DashboardPage] handleUpgrade error:', err);
+      setError(err?.message || 'Error al iniciar la mejora de plan.');
       setIsSubmitting(false);
     }
   };
