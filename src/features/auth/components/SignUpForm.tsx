@@ -50,14 +50,13 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
 
   /** Extract a meaningful error message from a Supabase Edge Function error */
   const extractEdgeFunctionError = async (error: unknown): Promise<string> => {
-    // FunctionsHttpError has a .context property which is the Response object
     if (error && typeof error === 'object' && 'context' in error) {
       try {
         const response = (error as { context: Response }).context;
         const body = await response.json();
         if (body?.message) return body.message;
       } catch {
-        // Fall through to generic message
+        // Fall through
       }
     }
     if (error instanceof Error) return error.message;
@@ -66,7 +65,10 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setLoading(true);
+    setErrorMessage(null);
     const cleanedWhatsapp = whatsapp.replace(/\D/g, '');
+    
     if (cleanedWhatsapp.length !== currentCountry.length) {
       setErrorMessage(`El número para ${currentCountry.flag} debe tener exactamente ${currentCountry.length} dígitos.`);
       triggerShake();
@@ -94,13 +96,23 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
       }
       if (orchestrateData?.error_code) throw new Error(orchestrateData.message);
 
+      console.log('Orchestrate signup successful, attempting automatic login...');
+      
       // Login using shadow email
       const { error: signInError } = await getSupabase().auth.signInWithPassword({
-        email: `${cleanedWhatsapp}@tiender.app`, // We still use normalized phone for auth email
+        email: `${cleanedWhatsapp}@tiender.app`,
         password,
       });
-      if (signInError) throw signInError;
 
+      if (signInError) {
+        console.error('Auto-login failed after signup:', signInError);
+        if (signInError.message.includes('Invalid login credentials')) {
+          throw new Error('Cuenta creada con éxito, pero hubo un problema iniciando tu sesión automática. Por favor, ve a "Iniciar Sesión" e ingresa con tu número y contraseña.');
+        }
+        throw signInError;
+      }
+
+      console.log('Auto-login successful, redirecting to dashboard...');
       navigate('/dashboard');
     } catch (error: unknown) {
       setErrorMessage((error as Error).message || 'Error inesperado.');
@@ -113,8 +125,6 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
   const inputClasses = "w-full bg-zinc-800/50 border border-white/5 rounded-2xl px-12 py-4 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-pink/50 focus:border-brand-pink/50 transition-all text-sm";
   const labelClasses = "flex items-center gap-2 text-[10px] font-bold text-zinc-600 uppercase tracking-widest ml-1 mb-2";
   const iconClasses = "absolute left-4 top-[42px] w-5 h-5 text-zinc-600 group-focus-within:text-brand-pink transition-colors";
-
-
 
   return (
     <div className="w-full space-y-8">
