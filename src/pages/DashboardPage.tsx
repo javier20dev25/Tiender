@@ -202,7 +202,7 @@ const DashboardPage: React.FC = () => {
       <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onOpenCancelModal={() => setIsCancelModalOpen(true)} />
       <CancellationModal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)} onSuccess={() => { setIsCancelModalOpen(false); alert('Suscripción cancelada.'); }} />
       {report && <ReportModal report={report} onClose={() => setReport(null)} />}
-      {showCreateStoreForm && <CreateStoreForm onClose={() => setShowCreateStoreForm(false)} onStoreCreated={() => window.location.reload()} />}
+      {showCreateStoreForm && <CreateStoreForm onClose={() => setShowCreateStoreForm(false)} />}
     </div>
   );
 };
