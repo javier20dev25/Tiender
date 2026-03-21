@@ -101,19 +101,29 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
       return;
     }
 
-    setIsSubmitting(true);
-
     try {
+      console.log('[AddProductForm] Iniciando guardado de producto:', { title, price, hasImage: !!imageFile });
+      
+      const compressionStart = Date.now();
+      console.log('[AddProductForm] Comprimiendo imagen...');
       const compressedFile = await compressImage(imageFile);
+      console.log(`[AddProductForm] Imagen comprimida en ${Date.now() - compressionStart}ms. Nuevo tamaño: ${compressedFile.size} bytes`);
+      
+      const uploadStart = Date.now();
       const fileExtension = compressedFile.name.split('.').pop();
       const fileName = `${uuidv4()}.${fileExtension}`;
       const filePath = `${storeId}/${fileName}`;
 
+      console.log('[AddProductForm] Subiendo a storage...');
       const { error: uploadError } = await getSupabase().storage
         .from('product-images')
         .upload(filePath, compressedFile);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('[AddProductForm] Error de upload:', uploadError);
+        throw uploadError;
+      }
+      console.log(`[AddProductForm] Upload exitoso en ${Date.now() - uploadStart}ms`);
 
       const { data: publicData } = getSupabase().storage
         .from('product-images')
@@ -144,13 +154,19 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
         }
       }
 
+      console.log('[AddProductForm] Insertando en base de datos...');
       const { error: insertError } = await getSupabase().from('products').insert(insertPayload);
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('[AddProductForm] Error de inserción:', insertError);
+        throw insertError;
+      }
 
+      console.log('[AddProductForm] Producto guardado con éxito.');
       onProductAdded();
       onClose();
-    } catch (error: unknown) {
-      setError((error as Error).message || 'Error al guardar el producto.');
+    } catch (error: any) {
+      console.error('[AddProductForm] Error fatal:', error);
+      setError(error.message || 'Error al guardar el producto.');
     } finally {
       setIsSubmitting(false);
     }

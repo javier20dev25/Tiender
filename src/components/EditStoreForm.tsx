@@ -51,11 +51,10 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
       return;
     }
 
-    setIsSubmitting(true);
-    let newLogoUrl = currentLogoUrl;
-
     try {
+      console.log('[EditStoreForm] Iniciando guardado de tienda:', { name, currentLogoUrl, hasNewLogo: !!logoFile });
       if (logoFile) {
+        console.log('[EditStoreForm] Subiendo nuevo logo...');
         const fileExtension = logoFile.name.split('.').pop();
         const fileName = `${uuidv4()}.${fileExtension}`;
         const filePath = `${store.id}/${fileName}`;
@@ -64,30 +63,41 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
           .from('store-logos')
           .upload(filePath, logoFile, { upsert: true });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('[EditStoreForm] Error al subir logo:', uploadError);
+          throw uploadError;
+        }
 
         const { data: publicData } = getSupabase().storage
           .from('store-logos')
           .getPublicUrl(filePath);
           
         newLogoUrl = publicData.publicUrl;
+        console.log('[EditStoreForm] Logo subido con éxito:', newLogoUrl);
       }
 
-      const { error: updateError } = await getSupabase()
+      console.log('[EditStoreForm] Actualizando datos en tabla "stores"...');
+      const { data: updateData, error: updateError } = await getSupabase()
         .from('stores')
         .update({
           name: name.trim(),
           logo_url: newLogoUrl,
           community_link: communityLink.trim(),
         })
-        .eq('id', store.id);
+        .eq('id', store.id)
+        .select();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('[EditStoreForm] Error al actualizar stores:', updateError);
+        throw updateError;
+      }
 
+      console.log('[EditStoreForm] Actualización exitosa:', updateData);
       onStoreUpdated();
       onClose();
-    } catch (error: unknown) {
-      setError((error as Error).message || 'Error al actualizar la tienda.');
+    } catch (error: any) {
+      console.error('[EditStoreForm] Error fatal:', error);
+      setError(error.message || 'Error al actualizar la tienda.');
     } finally {
       setIsSubmitting(false);
     }
