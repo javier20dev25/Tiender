@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { getSupabase } from '../lib/supabaseClient';
 import { PlanCard } from '../components/PlanCard';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import CancellationModal from '../components/CancellationModal';
 
 type PlanType = 'standard' | 'full';
@@ -13,7 +12,6 @@ type PlanType = 'standard' | 'full';
 const UpgradePage: React.FC = () => {
   const { store, subscription, loading: authLoading } = useAuth();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [isModalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState<PlanType | null>(null);
   const [isAutoProcessing, setIsAutoProcessing] = useState(false);
