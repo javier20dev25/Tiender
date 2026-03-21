@@ -21,11 +21,19 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/auth" replace state={{ from: location }} />;
   }
 
+  // Si el usuario existe pero los datos de la tienda aún no se han cargado,
+  // mostrar loader en lugar de redirigir prematuramente a /upgrade.
+  // Esto previene el bug donde un usuario recién registrado es redirigido
+  // antes de que AuthContext termine de obtener los datos de la tienda.
+  if (!store) {
+    return <PageLoader />;
+  }
+
   // Define los estados que permiten el acceso a rutas protegidas.
   const hasActivePayPalSubscription = subscription?.status === 'active' || subscription?.status === 'trialing' || subscription?.status === 'past_due';
 
   // Nuevo: Verificar si el trial manual aún está vigente
-  const isTrialActive = store?.trial_ends_at ? new Date(store.trial_ends_at) > new Date() : false;
+  const isTrialActive = store.trial_ends_at ? new Date(store.trial_ends_at) > new Date() : false;
 
   const hasAccess = hasActivePayPalSubscription || isTrialActive;
 

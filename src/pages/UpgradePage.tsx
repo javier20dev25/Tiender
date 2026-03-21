@@ -36,13 +36,14 @@ const UpgradePage: React.FC = () => {
     // 3. NO tiene suscripción activa de PayPal.
     // 4. El trial ya venció.
     // 5. No estamos ya procesando algo.
-    if (planParam && store && !hasActivePayPalSubscription && !isTrialActive && !loading && !error && !isAutoProcessing) {
+    // 6. No estamos aún cargando datos de auth.
+    if (planParam && store && !authLoading && !hasActivePayPalSubscription && !isTrialActive && !loading && !error && !isAutoProcessing) {
       if (planParam === 'standard' || planParam === 'full') {
         setIsAutoProcessing(true);
         handlePlanSelection(planParam);
       }
     }
-  }, [searchParams, store, subscription, loading, error, isAutoProcessing, hasActivePayPalSubscription, isTrialActive]);
+  }, [searchParams, store, subscription, loading, error, isAutoProcessing, hasActivePayPalSubscription, isTrialActive, authLoading]);
 
   const handlePlanSelection = async (planType: PlanType) => {
     setLoading(planType);
