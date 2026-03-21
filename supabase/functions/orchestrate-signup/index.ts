@@ -83,8 +83,8 @@ Deno.serve(async (req) => {
     }
     // --- FIN: Lógica de Rate Limiting ---
 
-    const { phone, password, selectedPlan }: { phone: string; password?: string; selectedPlan?: 'standard' | 'full' } = await req.json();
-    console.log('Iniciando orchestrate-signup con body:', { phone, password: password ? '[REDACTED]' : 'N/A', selectedPlan });
+    const { phone, password, selectedPlan, recovery_email }: { phone: string; password?: string; selectedPlan?: 'standard' | 'full'; recovery_email?: string } = await req.json();
+    console.log('Iniciando orchestrate-signup con body:', { phone, password: password ? '[REDACTED]' : 'N/A', selectedPlan, recovery_email });
     console.log('Contraseña recibida (longitud):', password?.length);
 
 
@@ -147,6 +147,10 @@ Deno.serve(async (req) => {
       phone: normalizedPhone,
       phone_confirm: true, // Auto-confirma al usuario inmediatamente
       email_confirm: true, // ¡CRUCIAL! Auto-confirma el email falso también
+      user_metadata: {
+        recovery_email: recovery_email || null,
+        registration_source: 'whatsapp_web'
+      }
     });
 
     console.log('Resultado de createUser:', { user: user?.id, error: userError?.message || null });
@@ -193,43 +197,8 @@ Deno.serve(async (req) => {
     }
     await logEvent(supabaseAdmin, 'STORE_CREATED', { auth_user_id: user.id });
 
-    // 5. Generate backup codes (non-blocking — signup succeeds even if this fails)
-    let plainTextCodes: string[] = [];
-    try {
-      const generateCode = () => {
-        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let result = '';
-        for (let i = 0; i < 8; i++) {
-          result += characters.charAt(Math.floor(Math.random() * characters.length));
-        }
-        return result;
-      };
-
-      plainTextCodes = Array.from({ length: 3 }, generateCode);
-
-      // Hash using Web Crypto API (SHA-256) — more reliable than bcrypt in Deno Edge Functions
-      const encoder = new TextEncoder();
-      const hashedCodes = await Promise.all(
-        plainTextCodes.map(async (code) => {
-          const data = encoder.encode(code);
-          const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-          const hashArray = Array.from(new Uint8Array(hashBuffer));
-          return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        })
-      );
-
-      await supabaseAdmin.auth.admin.updateUserById(user.id, {
-        user_metadata: {
-          backup_codes: hashedCodes,
-          backup_codes_generated_at: new Date().toISOString(),
-        }
-      });
-      console.log('Backup codes generated and stored successfully for user:', user.id);
-    } catch (codesErr) {
-      // Log the error but DON'T fail the signup
-      console.error('Warning: Failed to generate backup codes:', (codesErr as Error).message);
-      plainTextCodes = []; // Clear so client knows codes weren't generated
-    }
+    // Backup codes generation removed in favor of Email Recovery.
+    const plainTextCodes: string[] = [];
 
     // Éxito: el usuario está creado y activo.
     return new Response(JSON.stringify({

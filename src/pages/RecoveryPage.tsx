@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, Key, Lock, ArrowLeft, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
+import { Hash, Key, Lock, ArrowLeft, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
 import { getSupabase } from '../lib/supabaseClient';
 
 interface RecoveryPageProps {
@@ -11,12 +11,43 @@ interface RecoveryPageProps {
 
 const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
   const [whatsapp, setWhatsapp] = useState('');
-  const [recoveryCode, setRecoveryCode] = useState('');
+  const [countryCode, setCountryCode] = useState('+505');
+  const [recoveryOTP, setRecoveryOTP] = useState('');
+  const [maskedEmail, setMaskedEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [step, setStep] = useState<'enter_phone' | 'enter_code' | 'reset_password'>('enter_phone');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isShake, setIsShake] = useState(false);
   const navigate = useNavigate();
+
+  const triggerShake = () => {
+    setIsShake(true);
+    setTimeout(() => setIsShake(false), 500);
+  };
+
+  const countries = [
+    { code: '+505', flag: '🇳🇮', length: 8 },
+    { code: '+52', flag: '🇲🇽', length: 10 },
+    { code: '+57', flag: '🇨🇴', length: 10 },
+    { code: '+1', flag: '🇺🇸', length: 10 },
+    { code: '+34', flag: '🇪🇸', length: 9 },
+    { code: '+54', flag: '🇦🇷', length: 10 },
+    { code: '+56', flag: '🇨🇱', length: 9 },
+    { code: '+51', flag: '🇵🇪', length: 9 },
+    { code: '+506', flag: '🇨🇷', length: 8 },
+    { code: '+502', flag: '🇬🇹', length: 8 },
+    { code: '+504', flag: '🇭🇳', length: 8 },
+    { code: '+503', flag: '🇸🇻', length: 8 },
+    { code: '+507', flag: '🇵🇦', length: 8 },
+    { code: '+591', flag: '🇧🇴', length: 8 },
+    { code: '+593', flag: '🇪🇨', length: 9 },
+    { code: '+598', flag: '🇺🇾', length: 8 },
+    { code: '+595', flag: '🇵🇾', length: 9 },
+    { code: '+58', flag: '🇻🇪', length: 10 }
+  ];
+
+  const currentCountry = countries.find(c => c.code === countryCode) || countries[0];
 
   const handleSwitchToSignIn = () => {
     if (onSwitchToSignIn) {
@@ -26,14 +57,34 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
     }
   };
 
-  const handleFindUser = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleFindUser = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage(null);
-    if (!whatsapp) {
-      setErrorMessage('Introduce tu número de WhatsApp.');
+    const cleanedWhatsapp = whatsapp.replace(/\D/g, '');
+    
+    if (cleanedWhatsapp.length !== currentCountry.length) {
+      setErrorMessage(`El número debe tener ${currentCountry.length} dígitos.`);
+      triggerShake();
       return;
     }
-    setStep('enter_code');
+
+    setLoading(true);
+    try {
+      const { data, error } = await getSupabase().functions.invoke('request-password-reset', {
+        body: { phone: `${countryCode}${cleanedWhatsapp}` },
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.message);
+
+      setMaskedEmail(data.masked_email);
+      setStep('enter_code');
+    } catch (error: any) {
+      setErrorMessage(error.message || 'No pudimos encontrar tu cuenta o no tiene correo de recuperación.');
+      triggerShake();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleVerifyCode = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -42,19 +93,20 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
     setLoading(true);
 
     try {
-      const { data, error } = await getSupabase().functions.invoke('verify-backup-code', {
-        body: { phone: whatsapp, code: recoveryCode },
+      const { data, error } = await getSupabase().functions.invoke('verify-password-reset-otp', {
+        body: { 
+          phone: `${countryCode}${whatsapp.replace(/\D/g, '')}`, 
+          otp: recoveryOTP 
+        },
       });
 
-      if (error) throw new Error(error.message || 'Error al verificar el código.');
+      if (error) throw error;
+      if (!data.success) throw new Error(data.message);
 
-      if (data.success) {
-        setStep('reset_password');
-      } else {
-        throw new Error(data.message || 'Código inválido o expirado.');
-      }
-    } catch (error: unknown) {
-      setErrorMessage((error as Error).message);
+      setStep('reset_password');
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Código inválido o expirado.');
+      triggerShake();
     } finally {
       setLoading(false);
     }
@@ -66,25 +118,28 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
 
     if (newPassword.length < 6) {
       setErrorMessage('La contraseña debe tener al menos 6 caracteres.');
+      triggerShake();
       return;
     }
 
     setLoading(true);
 
     try {
-      const { data, error } = await getSupabase().functions.invoke('verify-backup-code', {
-        body: { phone: whatsapp, code: recoveryCode, newPassword },
+      const { data, error } = await getSupabase().functions.invoke('verify-password-reset-otp', {
+        body: { 
+          phone: `${countryCode}${whatsapp.replace(/\D/g, '')}`, 
+          otp: recoveryOTP, 
+          newPassword 
+        },
       });
 
-      if (error) throw new Error(error.message || 'Error al restablecer la contraseña.');
+      if (error) throw error;
+      if (!data.success) throw new Error(data.message);
 
-      if (data?.success) {
-        navigate('/auth', { state: { passwordReset: true } });
-      } else {
-        throw new Error(data?.error || 'Error inesperado al restablecer la contraseña.');
-      }
-    } catch (error: unknown) {
-      setErrorMessage((error as Error).message);
+      navigate('/auth', { state: { passwordReset: true } });
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Error al restablecer la contraseña.');
+      triggerShake();
     } finally {
       setLoading(false);
     }
@@ -121,37 +176,60 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
             >
               {step === 'enter_phone' && (
                 <form onSubmit={handleFindUser} className="space-y-6">
-                  <p className="text-zinc-400 text-sm text-center font-medium">Introduce tu número de WhatsApp para encontrar tu cuenta.</p>
-                  <div className="relative group">
-                    <Phone className={iconClasses} />
-                    <input
-                      type="tel"
-                      value={whatsapp}
-                      onChange={(e) => setWhatsapp(e.target.value)}
-                      placeholder="Tu WhatsApp"
-                      required
-                      className={inputClasses}
-                    />
+                  <p className="text-zinc-400 text-sm text-center font-medium">Introduce el WhatsApp de tu cuenta para recibir un código de acceso en tu correo de recuperación.</p>
+                  
+                  <div className="flex gap-2">
+                    <select
+                      value={countryCode}
+                      onChange={(e) => setCountryCode(e.target.value)}
+                      className="w-[90px] bg-zinc-800/50 border border-white/5 rounded-2xl px-2 py-4 text-white text-xs focus:outline-none focus:ring-2 focus:ring-brand-pink/50 transition-all appearance-none text-center font-bold"
+                    >
+                      {countries.map(c => <option key={c.code} value={c.code} className="bg-zinc-900">{c.flag} {c.code}</option>)}
+                    </select>
+                    
+                    <div className="relative flex-grow group">
+                      <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600 group-focus-within:text-brand-pink" />
+                      <input
+                        type="tel"
+                        value={whatsapp}
+                        maxLength={currentCountry.length}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          if (val.length <= currentCountry.length) setWhatsapp(val);
+                        }}
+                        placeholder="Tu WhatsApp"
+                        required
+                        className={`w-full bg-zinc-800/50 border border-white/5 rounded-2xl px-10 py-4 text-white placeholder-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-pink/50 transition-all font-bold text-sm ${isShake ? 'animate-shake' : ''}`}
+                      />
+                    </div>
                   </div>
+
                   <button type="submit" disabled={loading} className="w-full py-4 rounded-[22px] bg-sunset-gradient text-white font-black uppercase tracking-tighter italic flex items-center justify-center gap-2 hover:scale-[1.02] shadow-xl shadow-brand-pink/10 transition-all">
-                    <span>Continuar</span>
-                    <ArrowRight className="w-5 h-5" />
+                    {loading ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" /> : <ArrowRight className="w-5 h-5" />}
+                    <span>Enviar Código</span>
                   </button>
                 </form>
               )}
 
-              {step === 'enter_code' && (
+               {step === 'enter_code' && (
                 <form onSubmit={handleVerifyCode} className="space-y-6">
-                  <p className="text-zinc-400 text-sm text-center font-medium">Introduce uno de tus códigos de recuperación de 8 dígitos.</p>
+                  <div className="text-center space-y-2">
+                    <p className="text-zinc-400 text-sm font-medium">Hemos enviado un código de 6 dígitos a su correo:</p>
+                    <p className="text-brand-pink font-black text-sm uppercase tracking-wider">{maskedEmail}</p>
+                  </div>
                   <div className="relative group">
                     <Key className={iconClasses} />
                     <input
                       type="text"
-                      value={recoveryCode}
-                      onChange={(e) => setRecoveryCode(e.target.value)}
-                      placeholder="Ej: ABC123XYZ"
+                      value={recoveryOTP}
+                      maxLength={6}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        if (val.length <= 6) setRecoveryOTP(val);
+                      }}
+                      placeholder="000 000"
                       required
-                      className={inputClasses}
+                      className={`w-full bg-zinc-800/50 border border-white/5 rounded-2xl px-12 py-4 text-white placeholder-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-pink/50 transition-all font-black text-center text-lg tracking-[0.5em] ${isShake ? 'animate-shake' : ''}`}
                     />
                   </div>
                   <button type="submit" disabled={loading} className="w-full py-4 rounded-[22px] bg-sunset-gradient text-white font-black uppercase tracking-tighter italic flex items-center justify-center gap-2 hover:scale-[1.02] shadow-xl shadow-brand-pink/10 transition-all">

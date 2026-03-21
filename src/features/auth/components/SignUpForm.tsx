@@ -1,11 +1,9 @@
 // src/features/auth/components/SignUpForm.tsx
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Phone, Lock, Rocket, AlertCircle, Info, Hash } from 'lucide-react';
+import { Phone, Lock, Rocket, AlertCircle, Info, Hash, Mail } from 'lucide-react';
 import { getSupabase } from '../../../lib/supabaseClient';
-import BackupCodesModal from './BackupCodesModal';
-import html2canvas from 'html2canvas';
 
 interface SignUpFormProps {
   onSwitchToSignIn: () => void;
@@ -15,31 +13,40 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
   const [password, setPassword] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [countryCode, setCountryCode] = useState('+505');
+  const [recoveryEmail, setRecoveryEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLoadingCodes, setIsLoadingCodes] = useState(false);
+  const [isShake, setIsShake] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as any)?.from || { pathname: '/dashboard' };
 
-  const handleDownloadCodes = useCallback(async () => {
-    const codesContainer = document.getElementById('recovery-codes-content');
-    if (!codesContainer) return;
+  const triggerShake = () => {
+    setIsShake(true);
+    setTimeout(() => setIsShake(false), 500);
+  };
 
-    try {
-      const canvas = await html2canvas(codesContainer);
-      const image = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = 'tiender-recovery-codes.png';
-      link.href = image;
-      link.click();
-      navigate(from);
-    } catch (error) {
-      console.error("Error downloading codes:", error);
-    }
-  }, [navigate]);
+  const countries = [
+    { code: '+505', flag: '🇳🇮', length: 8 },
+    { code: '+52', flag: '🇲🇽', length: 10 },
+    { code: '+57', flag: '🇨🇴', length: 10 },
+    { code: '+1', flag: '🇺🇸', length: 10 },
+    { code: '+34', flag: '🇪🇸', length: 9 },
+    { code: '+54', flag: '🇦🇷', length: 10 },
+    { code: '+56', flag: '🇨🇱', length: 9 },
+    { code: '+51', flag: '🇵🇪', length: 9 },
+    { code: '+506', flag: '🇨🇷', length: 8 },
+    { code: '+502', flag: '🇬🇹', length: 8 },
+    { code: '+504', flag: '🇭🇳', length: 8 },
+    { code: '+503', flag: '🇸🇻', length: 8 },
+    { code: '+507', flag: '🇵🇦', length: 8 },
+    { code: '+591', flag: '🇧🇴', length: 8 },
+    { code: '+593', flag: '🇪🇨', length: 9 },
+    { code: '+598', flag: '🇺🇾', length: 8 },
+    { code: '+595', flag: '🇵🇾', length: 9 },
+    { code: '+58', flag: '🇻🇪', length: 10 }
+  ];
+
+  const currentCountry = countries.find(c => c.code === countryCode) || countries[0];
 
   /** Extract a meaningful error message from a Supabase Edge Function error */
   const extractEdgeFunctionError = async (error: unknown): Promise<string> => {
@@ -59,19 +66,16 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setErrorMessage(null);
-    setLoading(true);
-    setIsLoadingCodes(true);
-    setIsModalOpen(true);
+    const cleanedWhatsapp = whatsapp.replace(/\D/g, '');
+    if (cleanedWhatsapp.length !== currentCountry.length) {
+      setErrorMessage(`El número para ${currentCountry.flag} debe tener exactamente ${currentCountry.length} dígitos.`);
+      triggerShake();
+      setLoading(false);
+      return;
+    }
 
     try {
-      const fullPhone = `${countryCode}${whatsapp.trim()}`;
-      const normalizedPhone = fullPhone.replace(/\D/g, '');
-      let codesGenerated = false;
-
-      let receivedCodes: string[] | null = null;
-
-      // WhatsApp flow: Use Edge Function (creates user, store, trial, AND codes atomically)
+      const fullPhone = `${countryCode}${cleanedWhatsapp}`;
       const searchParams = new URLSearchParams(location.search);
       const selectedPlan = searchParams.get('plan') || 'standard';
 
@@ -79,7 +83,8 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
         body: {
           phone: fullPhone,
           password,
-          selectedPlan
+          selectedPlan,
+          recovery_email: recoveryEmail.trim() || null
         }
       });
 
@@ -89,31 +94,17 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
       }
       if (orchestrateData?.error_code) throw new Error(orchestrateData.message);
 
-      // Get backup codes from the same response (if generated)
-      receivedCodes = orchestrateData?.backup_codes;
-      if (receivedCodes) {
-        setBackupCodes(receivedCodes);
-        codesGenerated = true;
-      }
-
       // Login using shadow email
       const { error: signInError } = await getSupabase().auth.signInWithPassword({
-        email: `${normalizedPhone}@tiender.app`,
+        email: `${cleanedWhatsapp}@tiender.app`, // We still use normalized phone for auth email
         password,
       });
       if (signInError) throw signInError;
 
-      setIsLoadingCodes(false);
-
-      // If no backup codes were generated, skip the modal and go directly to dashboard
-      if (!codesGenerated) {
-        setIsModalOpen(false);
-        navigate('/dashboard');
-      }
+      navigate('/dashboard');
     } catch (error: unknown) {
       setErrorMessage((error as Error).message || 'Error inesperado.');
-      setIsModalOpen(false);
-      setIsLoadingCodes(false);
+      triggerShake();
     } finally {
       setLoading(false);
     }
@@ -123,14 +114,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
   const labelClasses = "flex items-center gap-2 text-[10px] font-bold text-zinc-600 uppercase tracking-widest ml-1 mb-2";
   const iconClasses = "absolute left-4 top-[42px] w-5 h-5 text-zinc-600 group-focus-within:text-brand-pink transition-colors";
 
-  const countries = [
-    { code: '+505', flag: '🇳🇮' }, { code: '+52', flag: '🇲🇽' }, { code: '+57', flag: '🇨🇴' },
-    { code: '+1', flag: '🇺🇸' }, { code: '+34', flag: '🇪🇸' }, { code: '+54', flag: '🇦🇷' },
-    { code: '+56', flag: '🇨🇱' }, { code: '+51', flag: '🇵🇪' }, { code: '+506', flag: '🇨🇷' },
-    { code: '+502', flag: '🇬🇹' }, { code: '+504', flag: '🇭🇳' }, { code: '+503', flag: '🇸🇻' },
-    { code: '+507', flag: '🇵🇦' }, { code: '+591', flag: '🇧🇴' }, { code: '+593', flag: '🇪🇨' },
-    { code: '+598', flag: '🇺🇾' }, { code: '+595', flag: '🇵🇾' }, { code: '+58', flag: '🇻🇪' }
-  ];
+
 
   return (
     <div className="w-full space-y-8">
@@ -163,12 +147,20 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
                     type="tel"
                     autoComplete="tel"
                     placeholder="8888 8888"
-                    maxLength={15}
+                    maxLength={currentCountry.length}
                     required
                     value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
-                    className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl px-10 py-4 text-white placeholder-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-pink/50 transition-all font-bold text-sm"
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      if (val.length <= currentCountry.length) setWhatsapp(val);
+                    }}
+                    className={`w-full bg-zinc-800/50 border border-white/5 rounded-2xl px-10 py-4 text-white placeholder-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-pink/50 transition-all font-bold text-sm ${isShake ? 'animate-shake' : ''}`}
                   />
+                  {whatsapp.length > 0 && whatsapp.length < currentCountry.length && (
+                    <span className="absolute -bottom-5 right-2 text-[9px] text-zinc-500 font-bold uppercase tabular-nums">
+                      Faltan {currentCountry.length - whatsapp.length} dígitos
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -195,6 +187,24 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
               className={inputClasses}
             />
           </div>
+
+          <div className="relative group">
+            <label htmlFor="signup-email" className={labelClasses}><Mail className="w-3 h-3" /> Correo de Recuperación (Opcional)</label>
+            <Mail className="absolute left-4 top-[42px] w-5 h-5 text-zinc-600 group-focus-within:text-brand-pink transition-colors" />
+            <input
+              id="signup-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder="tu@correo.com"
+              value={recoveryEmail}
+              onChange={(e) => setRecoveryEmail(e.target.value)}
+              className={inputClasses}
+            />
+            <p className="text-[9px] text-zinc-600 font-medium mt-2 ml-1">
+              Lo usaremos solo para recuperar tu cuenta si olvidas la contraseña.
+            </p>
+          </div>
         </div>
 
         {errorMessage && (
@@ -211,29 +221,13 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
 
         <button
           type="submit"
-          disabled={loading || isLoadingCodes}
+          disabled={loading}
           className="w-full py-4 rounded-[22px] bg-sunset-gradient text-white font-black uppercase tracking-tighter italic flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 shadow-xl shadow-brand-pink/10"
         >
-          {loading || isLoadingCodes ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" /> : <Rocket className="w-5 h-5" />}
-          <span>{loading || isLoadingCodes ? 'Preparando Cohete' : 'Crear Mi Tienda'}</span>
+          {loading ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" /> : <Rocket className="w-5 h-5" />}
+          <span>{loading ? 'Preparando Cohete' : 'Crear Mi Tienda'}</span>
         </button>
       </form>
-
-      {isModalOpen && (
-        <BackupCodesModal
-          codes={backupCodes}
-          isLoading={isLoadingCodes}
-          onClose={() => {
-            setIsModalOpen(false);
-            if (backupCodes) navigate('/dashboard');
-          }}
-          onDownload={handleDownloadCodes}
-          onConfirm={() => {
-            setIsModalOpen(false);
-            if (backupCodes) navigate('/dashboard');
-          }}
-        />
-      )}
     </div>
   );
 };
