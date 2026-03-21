@@ -98,9 +98,10 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
 
       console.log('Orchestrate signup successful, attempting automatic login...');
       
-      // Login using shadow email
+      const authPhone = fullPhone.replace(/\D/g, '');
+      // Login using shadow email (MUST match exactly the one created in orchestrate-signup)
       const { error: signInError } = await getSupabase().auth.signInWithPassword({
-        email: `${cleanedWhatsapp}@tiender.app`,
+        email: `${authPhone}@tiender.app`,
         password,
       });
 
