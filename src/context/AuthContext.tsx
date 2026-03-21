@@ -122,17 +122,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const newUser = newSession?.user ?? null;
 
-        // Solo mostramos loading si el usuario cambia y no lo tenemos aún
-        if (newUser && newUser.id !== user?.id) {
-          setLoading(true);
-        }
-
         setSession(newSession);
         setUser(newUser);
 
         if (newUser) {
           try {
-            // Evitar refrescar si ya tenemos los datos y el evento es redundante
+            // Only refresh if the user actually changed or we don't have store data
             if (newUser.id !== user?.id || !store) {
               await refreshUserSessionData(newUser.id);
               syncAndRefreshSession(newUser.id);
