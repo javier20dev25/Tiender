@@ -51,6 +51,9 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
       return;
     }
 
+    setIsSubmitting(true);
+    let newLogoUrl = currentLogoUrl;
+
     try {
       console.log('[EditStoreForm] Iniciando guardado de tienda:', { name, currentLogoUrl, hasNewLogo: !!logoFile });
       if (logoFile) {

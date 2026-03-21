@@ -184,9 +184,13 @@ Deno.serve(async (req) => {
     const trialDays = selectedPlan === 'full' ? 3 : 7;
     trialEndsDate.setDate(trialEndsDate.getDate() + trialDays);
 
+    const storeName = 'Mi Tienda';
+    const slug = storeName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + user.id.substring(0, 8);
+
     const { error: storeError } = await supabaseAdmin.from('stores').insert({
       user_id: user.id,
-      name: 'Mi Tienda', // Nombre por defecto
+      name: storeName,
+      slug,
       whatsapp_number: normalizedPhone,
       trial_ends_at: trialEndsDate.toISOString(), // Establecer el fin del trial
       plan_type: selectedPlan || 'standard', // Usar el plan seleccionado o standard por defecto

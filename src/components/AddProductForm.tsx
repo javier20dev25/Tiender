@@ -101,6 +101,8 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
       console.log('[AddProductForm] Iniciando guardado de producto:', { title, price, hasImage: !!imageFile });
       

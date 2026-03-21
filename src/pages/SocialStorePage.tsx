@@ -118,8 +118,10 @@ const SocialStorePage: React.FC = () => {
   }, [storeId]);
 
   useEffect(() => {
-    if (verificationStatus === 'verified') fetchStoreAndProducts();
-  }, [verificationStatus, fetchStoreAndProducts]);
+    if (verificationStatus === 'verified' && visitToken) {
+      fetchStoreAndProducts();
+    }
+  }, [verificationStatus, visitToken, fetchStoreAndProducts]);
 
   // --- Event Handlers ---
   const handleNextProduct = (type: 'LIKE' | 'DISLIKE') => {

@@ -14,7 +14,11 @@ export function useProducts(storeId: string | undefined) {
       .eq('store_id', id)
       .order('created_at', { ascending: false });
 
-    if (!productsError) setProducts(productsData || []);
+    if (productsError) {
+      console.error('[useProducts] Error fetching products:', productsError);
+    } else {
+      setProducts(productsData || []);
+    }
     setLoadingProducts(false);
   }, []);
 

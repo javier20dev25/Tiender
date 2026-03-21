@@ -24,11 +24,7 @@ const UpgradePage: React.FC = () => {
   // Si el usuario tiene una suscripción activa, permitir gestión
   // Si no tiene suscripción Y el trial ya venció, se queda en /upgrade para elegir plan con PayPal
   // Si está en trial, permitimos que se quede aquí para CAMBIAR de plan de prueba (sin pago)
-  useEffect(() => {
-    if (!authLoading && subscription?.status === 'active') {
-      // Si tiene suscripción activa de PayPal, no necesita estar en la vista de venta
-    }
-  }, [authLoading, subscription]);
+  // (Dead useEffect removed in Phase 9 cleanup)
 
   // Auto-trigger plan selection if 'plan' param is present AND trial expired AND no active sub
   useEffect(() => {

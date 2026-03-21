@@ -127,11 +127,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (newUser) {
           try {
-            // Only refresh if the user actually changed or we don't have store data
-            if (newUser.id !== user?.id || !store) {
+            // Always refresh on auth state change to avoid stale closure issues
               await refreshUserSessionData(newUser.id);
               syncAndRefreshSession(newUser.id);
-            }
           } catch (err: unknown) {
             console.error("Error refreshing session data:", err);
           } finally {
