@@ -78,15 +78,39 @@ const DashboardPage: React.FC = () => {
   };
 
   const handleUpgrade = async () => {
+    if (!store) return;
+    
+    // Si ya está en el plan Full, no hacer nada.
+    if (store.plan_type === 'full') {
+      alert('Ya tienes activo el plan FULL para tu prueba gratuita.');
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
     try {
+      const isTrialActive = store.trial_ends_at ? new Date(store.trial_ends_at) > new Date() : false;
+      const hasActivePayPalSubscription = subscription?.status === 'active' || subscription?.status === 'trialing';
+
+      if (isTrialActive && !hasActivePayPalSubscription) {
+        console.log('[DashboardPage] Trial active, upgrading to FULL via DB update.');
+        const { error: updateError } = await getSupabase()
+          .from('stores')
+          .update({ plan_type: 'full' })
+          .eq('id', store.id);
+
+        if (updateError) throw updateError;
+        
+        alert('¡Plan FULL activado para tu prueba gratuita!');
+        window.location.reload();
+        return;
+      }
+
       console.log('[DashboardPage] handleUpgrade: Calling create-paypal-subscription');
       const { data, error } = await getSupabase().functions.invoke('create-paypal-subscription', {
         body: { planType: 'full' },
       });
       if (error) throw error;
-      console.log('[DashboardPage] handleUpgrade: Response received', data);
       
       if (data?.approvalUrl) {
         window.location.href = data.approvalUrl;

@@ -23,12 +23,14 @@ const UpgradePage: React.FC = () => {
   const hasActivePayPalSubscription = subscription?.status === 'active' || subscription?.status === 'trialing';
   const isTrialActive = store?.trial_ends_at ? new Date(store.trial_ends_at) > new Date() : false;
 
-  // Si el usuario está en trial activo y llega a /upgrade, redirigirlo al dashboard
+  // Si el usuario tiene una suscripción activa, permitir gestión
+  // Si no tiene suscripción Y el trial ya venció, se queda en /upgrade para elegir plan con PayPal
+  // Si está en trial, permitimos que se quede aquí para CAMBIAR de plan de prueba (sin pago)
   useEffect(() => {
-    if (!authLoading && isTrialActive && !hasActivePayPalSubscription) {
-      navigate('/dashboard', { replace: true });
+    if (!authLoading && subscription?.status === 'active') {
+      // Si tiene suscripción activa de PayPal, no necesita estar en la vista de venta
     }
-  }, [authLoading, isTrialActive, hasActivePayPalSubscription, navigate]);
+  }, [authLoading, subscription]);
 
   // Auto-trigger plan selection if 'plan' param is present AND trial expired AND no active sub
   useEffect(() => {
@@ -52,6 +54,23 @@ const UpgradePage: React.FC = () => {
     setLoading(planType);
     setError(null);
     try {
+      if (isTrialActive && !hasActivePayPalSubscription) {
+        // --- FLUJO DE PRUEBA GRATUITA ---
+        console.log('[UpgradePage] Trial active, updating plan locally in DB:', planType);
+        const { error: updateError } = await getSupabase()
+          .from('stores')
+          .update({ plan_type: planType })
+          .eq('user_id', store?.user_id);
+
+        if (updateError) throw updateError;
+        
+        // Refrescar la página o navegar al dashboard
+        alert(`¡Plan ${planType.toUpperCase()} activado para tu prueba gratuita!`);
+        window.location.href = '/dashboard';
+        return;
+      }
+
+      // --- FLUJO DE PAGO (Trial vencido o suscripción explícita) ---
       console.log('[UpgradePage] Calling create-paypal-subscription with planType:', planType);
       const { data, error: functionError } = await getSupabase().functions.invoke(
         'create-paypal-subscription',
@@ -68,9 +87,9 @@ const UpgradePage: React.FC = () => {
         throw new Error('No se recibió una URL de aprobación de PayPal.');
       }
     } catch (e) {
-      console.error('Error al crear la suscripción de PayPal:', e);
+      console.error('Error al seleccionar el plan:', e);
       const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error inesperado.';
-      setError(`Error al iniciar la suscripción: ${errorMessage}`);
+      setError(`Error al procesar tu solicitud: ${errorMessage}`);
       setLoading(null);
     }
   };
