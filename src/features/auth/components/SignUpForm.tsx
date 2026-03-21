@@ -163,6 +163,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
                     type="tel"
                     autoComplete="tel"
                     placeholder="8888 8888"
+                    maxLength={15}
                     required
                     value={whatsapp}
                     onChange={(e) => setWhatsapp(e.target.value)}

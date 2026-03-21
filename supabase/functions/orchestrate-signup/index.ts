@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
         return result;
       };
 
-      plainTextCodes = Array.from({ length: 8 }, generateCode);
+      plainTextCodes = Array.from({ length: 3 }, generateCode);
 
       // Hash using Web Crypto API (SHA-256) — more reliable than bcrypt in Deno Edge Functions
       const encoder = new TextEncoder();

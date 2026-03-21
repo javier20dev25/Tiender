@@ -13,8 +13,8 @@ const BackupCodesModal: React.FC<BackupCodesModalProps> = ({ codes, isLoading, o
 
   return (
     <div className="fixed inset-0 bg-brand-dark/80 backdrop-blur-md flex items-center justify-center z-[999] p-6">
-      <div className="relative bg-zinc-900 border border-white/5 p-8 sm:p-10 rounded-[40px] shadow-2xl w-full max-w-md text-center max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="overflow-y-auto custom-scrollbar pr-2 flex-grow">
+      <div className="relative bg-zinc-900 border border-white/5 p-8 sm:p-10 rounded-[40px] shadow-2xl w-full max-w-md text-center flex flex-col">
+        <div className="flex-grow">
           {isLoading ? (
             <div className="py-12 flex flex-col items-center">
               <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter mb-4">Generando Códigos...</h2>
