@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:cov": "vitest run --coverage",
-    "check:functions": "deno check supabase/functions/**/*.ts"
+    "check:functions": "deno check supabase/functions/**/*.ts",
+    "build:check": "npm run build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.0",

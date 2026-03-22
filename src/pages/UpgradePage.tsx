@@ -29,16 +29,12 @@ const UpgradePage: React.FC = () => {
   // Auto-trigger plan selection if 'plan' param is present AND trial expired AND no active sub
   useEffect(() => {
     const planParam = searchParams.get('plan') as PlanType;
+    console.log('[UpgradePage] useEffect check:', { planParam, store: !!store, authLoading, hasActivePayPalSubscription, isTrialActive, isAutoProcessing, loading, error });
 
     // Solo auto-disparar si:
-    // 1. Hay un parámetro de plan.
-    // 2. TENEMOS los datos de la tienda cargados (store !== null).
-    // 3. NO tiene suscripción activa de PayPal.
-    // 4. El trial ya venció.
-    // 5. No estamos ya procesando algo.
-    // 6. No estamos aún cargando datos de auth.
     if (planParam && store && !authLoading && !hasActivePayPalSubscription && !isTrialActive && !loading && !error && !isAutoProcessing) {
       if (planParam === 'standard' || planParam === 'full') {
+        console.log('[UpgradePage] Auto-triggering plan selection:', planParam);
         setIsAutoProcessing(true);
         handlePlanSelection(planParam);
       }
@@ -46,6 +42,7 @@ const UpgradePage: React.FC = () => {
   }, [searchParams, store, subscription, loading, error, isAutoProcessing, hasActivePayPalSubscription, isTrialActive, authLoading]);
 
   const handlePlanSelection = async (planType: PlanType) => {
+    console.log('[UpgradePage] handlePlanSelection start:', planType);
     setLoading(planType);
     setError(null);
     try {
@@ -60,6 +57,7 @@ const UpgradePage: React.FC = () => {
         if (updateError) throw updateError;
         
         // Refrescar la página o navegar al dashboard
+        console.log('[UpgradePage] Plan updated successfully, redirecting...');
         alert(`¡Plan ${planType.toUpperCase()} activado para tu prueba gratuita!`);
         window.location.href = '/dashboard';
         return;
@@ -72,20 +70,28 @@ const UpgradePage: React.FC = () => {
         { body: { planType } }
       );
       if (functionError) {
-        console.error('[UpgradePage] Function error:', functionError);
+        console.error('[UpgradePage] Function invocation error:', functionError);
         throw new Error(`Error de la función: ${functionError.message}`);
       }
       console.log('[UpgradePage] Function response data:', data);
       if (data?.approvalUrl) {
+        console.log('[UpgradePage] Redirecting to PayPal:', data.approvalUrl);
         window.location.href = data.approvalUrl;
       } else {
         throw new Error('No se recibió una URL de aprobación de PayPal.');
       }
-    } catch (e) {
-      console.error('Error al seleccionar el plan:', e);
+    } catch (e: any) {
+      console.error('[UpgradePage] Error in handlePlanSelection:', e);
       const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error inesperado.';
       setError(`Error al procesar tu solicitud: ${errorMessage}`);
+      // Crucial: Reset these so the user can try again or see the error
       setLoading(null);
+      setIsAutoProcessing(false);
+    } finally {
+      // If we didn't redirect, ensure we stop the loading states eventually
+      setLoading(null);
+      // Wait a bit before resetting isAutoProcessing to allow browser to handle redirect
+      setTimeout(() => setIsAutoProcessing(false), 5000);
     }
   };
 
@@ -96,7 +102,7 @@ const UpgradePage: React.FC = () => {
     // Podríamos forzar una recarga de los datos del usuario si fuera necesario.
   };
 
-  if (authLoading || isAutoProcessing) {
+  if (authLoading || (isAutoProcessing && !error)) {
     return (
       <div className="bg-brand-dark min-h-screen flex flex-col items-center justify-center text-white p-6">
         <motion.div
@@ -105,9 +111,14 @@ const UpgradePage: React.FC = () => {
           className="w-12 h-12 border-4 border-brand-pink border-t-transparent rounded-full mb-6"
         />
         <h2 className="text-2xl font-black uppercase italic tracking-tighter mb-2">Preparando Transmisión</h2>
-        <p className="text-zinc-500 font-medium animate-pulse">
-          {isAutoProcessing ? 'Redirigiendo a PayPal para activar tu plan...' : 'Cargando información de tu cuenta...'}
+        <p className="text-zinc-500 font-medium animate-pulse text-center max-w-xs">
+          {isAutoProcessing 
+            ? 'Redirigiendo a PayPal para activar tu plan...' 
+            : 'Cargando información de tu cuenta...'}
         </p>
+        {authLoading && (
+           <p className="text-[10px] text-zinc-700 mt-4 uppercase tracking-widest font-bold">Verificando Credenciales</p>
+        )}
       </div>
     );
   }

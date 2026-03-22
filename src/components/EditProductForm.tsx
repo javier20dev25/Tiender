@@ -7,6 +7,7 @@ import {
   Layers, AlertCircle, Edit3
 } from 'lucide-react';
 import { getSupabase } from '../lib/supabaseClient';
+import { v4 as uuidv4 } from 'uuid';
 import type { Product } from '../types';
 
 interface EditProductFormProps {
@@ -31,6 +32,8 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
   const [wholesalePrice, setWholesalePrice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (product) {
@@ -40,6 +43,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
       setExternalLink(product.external_link || '');
       setVideoLink(product.video_link || '');
       setHashtags(product.hashtags ? product.hashtags.join(', ') : '');
+      setImagePreview(product.image_url);
 
       const hasDiscount = !!product.discount_percentage && !!product.discount_timer_seconds;
       setIsDiscountActive(hasDiscount);
@@ -53,6 +57,51 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
     }
   }, [product]);
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1200;
+          if (width > height && width > maxDim) {
+            height *= maxDim / width;
+            width = maxDim;
+          } else if (height > maxDim) {
+            width *= maxDim / height;
+            height = maxDim;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+            } else {
+              resolve(file);
+            }
+          }, 'image/jpeg', 0.8);
+        };
+      };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -65,12 +114,46 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
     setIsSubmitting(true);
 
     try {
+      console.log('[EditProductForm] Iniciando actualización de producto:', { id: product.id, title, hasNewImage: !!imageFile });
       const hashtagsArray = hashtags.split(',').map(h => h.trim()).filter(h => h);
+
+      let imageUrl = product.image_url;
+
+      if (imageFile) {
+        console.log('[EditProductForm] Comprimiendo nueva imagen...');
+        const compressionStart = Date.now();
+        const compressedFile = await compressImage(imageFile);
+        console.log(`[EditProductForm] Imagen comprimida en ${Date.now() - compressionStart}ms. tamaño: ${compressedFile.size} bytes`);
+
+        const fileExtension = compressedFile.name.split('.').pop();
+        const fileName = `${uuidv4()}.${fileExtension}`;
+        const filePath = `${product.store_id}/${fileName}`;
+
+        console.log('[EditProductForm] Subiendo a "product-images"...');
+        const uploadStart = Date.now();
+        const { error: uploadError } = await getSupabase().storage
+          .from('product-images')
+          .upload(filePath, compressedFile);
+
+        if (uploadError) {
+          console.error('[EditProductForm] Error de upload:', uploadError);
+          throw uploadError;
+        }
+        console.log(`[EditProductForm] Upload exitoso en ${Date.now() - uploadStart}ms`);
+
+        const { data: publicData } = getSupabase().storage
+          .from('product-images')
+          .getPublicUrl(filePath);
+        
+        imageUrl = publicData.publicUrl;
+        console.log('[EditProductForm] Nueva URL de imagen:', imageUrl);
+      }
 
       const updatePayload: Record<string, unknown> = {
         title,
         description: description || null,
         price: parseFloat(price),
+        image_url: imageUrl,
         external_link: externalLink || null,
         video_link: videoLink || null,
         hashtags: hashtagsArray.length > 0 ? hashtagsArray : null,
@@ -94,17 +177,23 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
         }
       }
 
+      console.log('[EditProductForm] Aplicando cambios en base de datos...');
       const { error: updateError } = await getSupabase()
         .from('products')
         .update(updatePayload)
         .eq('id', product.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('[EditProductForm] Error de base de datos:', updateError);
+        throw updateError;
+      }
 
+      console.log('[EditProductForm] Producto actualizado con éxito.');
       onProductUpdated();
       onClose();
-    } catch (error: unknown) {
-      setError((error as Error).message || 'Error al actualizar el producto.');
+    } catch (error: any) {
+      console.error('[EditProductForm] Error fatal:', error);
+      setError(error.message || 'Error al actualizar el producto.');
     } finally {
       setIsSubmitting(false);
     }
@@ -170,13 +259,17 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
               </div>
             </div>
 
-            {/* Thumbnail Preview (Static in Edit) */}
+            {/* Thumbnail Preview (Editable) */}
             <div>
-              <label className={labelClasses}><ImageIcon className="w-3.5 h-3.5" /> Imagen Actual</label>
-              <div className="aspect-square rounded-3xl border border-white/5 bg-zinc-800/30 overflow-hidden">
-                <img src={product.image_url || 'https://placehold.co/200x200'} alt="Current" className="w-full h-full object-cover" />
+              <label className={labelClasses}><ImageIcon className="w-3.5 h-3.5" /> Imagen</label>
+              <div className="relative aspect-square rounded-3xl border border-white/5 bg-zinc-800/30 overflow-hidden group">
+                <img src={imagePreview || 'https://placehold.co/200x200'} alt="Preview" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                  <span className="px-4 py-2 bg-white text-black font-bold rounded-xl hover:scale-105 transition-transform">Cambiar</span>
+                  <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                </label>
               </div>
-              <p className="text-[9px] text-zinc-600 mt-2 text-center uppercase font-bold tracking-tighter">Imagen fija durante edición</p>
+              <p className="text-[9px] text-zinc-600 mt-2 text-center uppercase font-bold tracking-tighter">Click para cambiar imagen</p>
             </div>
           </div>
 

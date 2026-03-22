@@ -81,6 +81,7 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
       const searchParams = new URLSearchParams(location.search);
       const selectedPlan = searchParams.get('plan') || 'standard';
 
+      console.log('[SignUpForm] Calling orchestrate-signup...', { selectedPlan });
       const { data: orchestrateData, error: orchestrateError } = await getSupabase().functions.invoke('orchestrate-signup', {
         body: {
           phone: fullPhone,
@@ -91,9 +92,12 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
       });
 
       if (orchestrateError) {
+        console.error('[SignUpForm] Edge Function error full object:', orchestrateError);
         const msg = await extractEdgeFunctionError(orchestrateError);
+        console.error('[SignUpForm] Extracted message:', msg);
         throw new Error(msg);
       }
+      console.log('[SignUpForm] Orchestrate Response:', orchestrateData);
       if (orchestrateData?.error_code) throw new Error(orchestrateData.message);
 
       console.log('Orchestrate signup successful, attempting automatic login...');

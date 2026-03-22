@@ -76,9 +76,17 @@ const SocialStorePage: React.FC = () => {
   const fetchStoreAndProducts = useCallback(async () => {
     if (!storeId) return;
     try {
-      const { data: storeData, error: storeError } = await getSupabase()
-        .from('stores').select('*').eq('id', storeId).single();
-      if (storeError) throw new Error('No se pudo cargar la tienda.');
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const query = getSupabase().from('stores').select('*');
+      
+      if (uuidRegex.test(storeId)) {
+        query.eq('id', storeId);
+      } else {
+        query.eq('slug', storeId);
+      }
+
+      const { data: storeData, error: storeError } = await query.single();
+      if (storeError || !storeData) throw new Error('No se pudo cargar la tienda.');
       setStore(storeData);
 
       const { data: productsData, error: productsError } = await getSupabase()
@@ -90,8 +98,8 @@ const SocialStorePage: React.FC = () => {
         logEvent('VISIT');
         hasLoggedVisit.current = true;
       }
-    } catch {
-      setError('No se pudo cargar la tienda. Inténtalo de nuevo.');
+    } catch (err: any) {
+      setError(err.message || 'No se pudo cargar la tienda. Inténtalo de nuevo.');
     }
   }, [storeId, logEvent]);
 
@@ -125,6 +133,10 @@ const SocialStorePage: React.FC = () => {
 
   // --- Event Handlers ---
   const handleNextProduct = (type: 'LIKE' | 'DISLIKE') => {
+    if (products.length <= 1) {
+      x.set(0);
+      return;
+    }
     logEvent(type);
     setCurrentIndex(prev => (prev + 1) % products.length);
     x.set(0);
@@ -218,7 +230,7 @@ const SocialStorePage: React.FC = () => {
           <div className="relative h-[65vh] w-full">
             {/* Next Card (The Stack Effect) */}
             <AnimatePresence>
-              {nextProduct && currentIndex < products.length - 1 && (
+              {nextProduct && products.length > 1 && (
                 <div className="absolute inset-0 scale-[0.94] translate-y-4 opacity-50 grayscale-[0.5] pointer-events-none">
                   <div className="bg-white rounded-3xl shadow-xl overflow-hidden h-full">
                     <img src={nextProduct.image_url || 'https://placehold.co/600x600'} alt="" className="w-full h-full object-cover" />
@@ -317,7 +329,8 @@ const SocialStorePage: React.FC = () => {
           </button>
           <button
             onClick={handleAddToCart}
-            className="h-16 px-8 rounded-full bg-brand-dark text-white font-bold shadow-xl flex items-center gap-3 hover:scale-105 active:scale-95 transition-all group"
+            disabled={products.length === 0}
+            className="h-16 px-8 rounded-full bg-brand-dark text-white font-bold shadow-xl flex items-center gap-3 hover:scale-105 active:scale-95 transition-all group disabled:opacity-50 disabled:scale-100"
           >
             <ShoppingCart className="w-6 h-6 group-hover:animate-bounce" />
             <span>Añadir</span>

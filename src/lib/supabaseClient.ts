@@ -10,7 +10,8 @@ export const getSupabase = () => {
     if (!supabaseUrl || !supabaseAnonKey) {
       throw new Error('Supabase URL or Anon Key is missing from environment variables.');
     }
-    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+    console.log('[SupabaseClient] Initializing with URL:', supabaseUrl?.substring(0, 15) + '...');
+    supabaseInstance = createClient(supabaseUrl.trim(), supabaseAnonKey.trim());
   }
   return supabaseInstance;
 };

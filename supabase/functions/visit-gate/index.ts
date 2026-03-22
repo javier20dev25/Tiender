@@ -75,6 +75,26 @@ serve(async (req, connInfo) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // 0. Resolve store_id if it's a slug
+    let resolvedStoreId = store_id;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(store_id)) {
+      console.log(`Resolving slug: ${store_id}`);
+      const { data: store, error: slugError } = await supabaseAdmin
+        .from('stores')
+        .select('id')
+        .eq('slug', store_id)
+        .single();
+      
+      if (slugError || !store) {
+        console.error('Slug resolution failed:', slugError?.message);
+        return new Response(JSON.stringify({ error: 'Tienda no encontrada' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      resolvedStoreId = store.id;
+    }
+
     // 1. Collect signals
     const userAgent = req.headers.get('user-agent') || '';
     const referer = req.headers.get('referer') || '';
@@ -88,14 +108,14 @@ serve(async (req, connInfo) => {
     const isVerified = trustScore >= VERIFICATION_THRESHOLD;
     const status = isVerified ? 'verified' : 'bot_suspected';
     let visitToken = null;
-    const expiresAt = new Date(Date.now() + 2 * 60000); // Token expires in 2 minutes
+    const expiresAt = new Date(Date.now() + 30 * 60000); // Token expires in 30 minutes
 
     // 4. If verified, generate JWT
     if (isVerified) {
       visitToken = await create(
         { alg: 'HS256', typ: 'JWT' },
         {
-          store_id: store_id,
+          store_id: resolvedStoreId,
           trust_score: trustScore,
           exp: getNumericDate(expiresAt),
         },
@@ -107,7 +127,7 @@ serve(async (req, connInfo) => {
     const { data: visit, error: insertError } = await supabaseAdmin
       .from('visits')
       .insert({
-        store_id,
+        store_id: resolvedStoreId,
         ip_hash: ipHash,
         user_agent: userAgent,
         referer: referer,

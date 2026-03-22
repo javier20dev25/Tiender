@@ -21,7 +21,7 @@ function App() {
       <Routes>
         {/* Rutas Públicas */}
         <Route path="/auth" element={<AuthPage />} />
-        <Route path="/tienda/:storeId" element={<SocialStorePage />} />
+        <Route path="/s/:storeId" element={<SocialStorePage />} />
         <Route path="/terminos" element={<TermsPage />} />
         <Route path="/privacidad" element={<PrivacyPage />} />
         <Route path="/" element={<HomePage />} />

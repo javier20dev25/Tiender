@@ -1,0 +1,67 @@
+{
+  "access_token": "eyJhbGciOiJFUzI1NiIsImtpZCI6IjExZmZmZWFlLTBjODQtNDE3OS04OWJlLTU1NzAzN2UwMzQxZiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3ppbGt3Y2t2c254dWFsYWFhcHVkLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiIxN2M5OGY3Zi03NzdjLTQwYzgtYTk4NC0zMWFjZGQwMzMxNTciLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzc0MTQ1MzY1LCJpYXQiOjE3NzQxNDE3NjUsImVtYWlsIjoiNTA0OTkwMDk5ODhAdGllbmRlci5hcHAiLCJwaG9uZSI6IjUwNDk5MDA5OTg4IiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiLCJwaG9uZSJdfSwidXNlcl9tZXRhZGF0YSI6eyJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicmVjb3ZlcnlfZW1haWwiOiJzbGV5dC1mdWxsLXRlc3RAZXhhbXBsZS5jb20iLCJyZWdpc3RyYXRpb25fc291cmNlIjoid2hhdHNhcHBfd2ViIn0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoicGFzc3dvcmQiLCJ0aW1lc3RhbXAiOjE3NzQxNDE3NjV9XSwic2Vzc2lvbl9pZCI6IjhmY2RhZjA0LTllYmQtNDRlZC1hMDk0LWYwZTNiMTRjYjkyZCIsImlzX2Fub255bW91cyI6ZmFsc2V9.N1VRD5ypTrpAhRxN46AUG_vHlFErhNztHeRGZkxhUqf8dapf3-Of-HR21GRjSZyO34fZgLWyZgKminpYyEeBMw",
+  "token_type": "bearer",
+  "expires_in": 3600,
+  "expires_at": 1774145365,
+  "refresh_token": "kj2av3uucbgx",
+  "user": {
+    "id": "17c98f7f-777c-40c8-a984-31acdd033157",
+    "aud": "authenticated",
+    "role": "authenticated",
+    "email": "50499009988@tiender.app",
+    "email_confirmed_at": "2026-03-22T01:07:26.833019Z",
+    "phone": "50499009988",
+    "phone_confirmed_at": "2026-03-22T01:07:26.841199Z",
+    "confirmed_at": "2026-03-22T01:07:26.833019Z",
+    "last_sign_in_at": "2026-03-22T01:09:25.779330246Z",
+    "app_metadata": {
+      "provider": "email",
+      "providers": [
+        "email",
+        "phone"
+      ]
+    },
+    "user_metadata": {
+      "email_verified": true,
+      "recovery_email": "sleyt-full-test@example.com",
+      "registration_source": "whatsapp_web"
+    },
+    "identities": [
+      {
+        "identity_id": "eca9571f-0635-42ce-808b-46e5b1143b78",
+        "id": "17c98f7f-777c-40c8-a984-31acdd033157",
+        "user_id": "17c98f7f-777c-40c8-a984-31acdd033157",
+        "identity_data": {
+          "email": "50499009988@tiender.app",
+          "email_verified": false,
+          "phone_verified": false,
+          "sub": "17c98f7f-777c-40c8-a984-31acdd033157"
+        },
+        "provider": "email",
+        "last_sign_in_at": "2026-03-22T01:07:26.812814Z",
+        "created_at": "2026-03-22T01:07:26.812883Z",
+        "updated_at": "2026-03-22T01:07:26.812883Z",
+        "email": "50499009988@tiender.app"
+      },
+      {
+        "identity_id": "376b514c-4576-4f8e-b2c3-93eb71db4b48",
+        "id": "17c98f7f-777c-40c8-a984-31acdd033157",
+        "user_id": "17c98f7f-777c-40c8-a984-31acdd033157",
+        "identity_data": {
+          "email_verified": false,
+          "phone": "50499009988",
+          "phone_verified": false,
+          "sub": "17c98f7f-777c-40c8-a984-31acdd033157"
+        },
+        "provider": "phone",
+        "last_sign_in_at": "2026-03-22T01:07:26.821751Z",
+        "created_at": "2026-03-22T01:07:26.82181Z",
+        "updated_at": "2026-03-22T01:07:26.82181Z"
+      }
+    ],
+    "created_at": "2026-03-22T01:07:26.78821Z",
+    "updated_at": "2026-03-22T01:09:25.810211Z",
+    "is_anonymous": false
+  },
+  "weak_password": null
+}

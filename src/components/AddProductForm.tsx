@@ -116,7 +116,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
       const fileName = `${uuidv4()}.${fileExtension}`;
       const filePath = `${storeId}/${fileName}`;
 
-      console.log('[AddProductForm] Subiendo a storage...');
+      console.log('[AddProductForm] Subiendo a storage "product-images"...');
       const { error: uploadError } = await getSupabase().storage
         .from('product-images')
         .upload(filePath, compressedFile);
@@ -132,6 +132,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
         .getPublicUrl(filePath);
       
       const imageUrl = publicData.publicUrl;
+      console.log('[AddProductForm] URL pública obtenida:', imageUrl);
       const hashtagsArray = hashtags.split(',').map(h => h.trim()).filter(h => h);
 
       const insertPayload: Record<string, unknown> = {

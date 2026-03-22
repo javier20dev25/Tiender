@@ -29,12 +29,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (import.meta.env.DEV) console.log('[AuthContext] State changed:', { user: user?.id, store: !!store, subscription: !!subscription, loading });
+    console.log('[AuthContext] State changed:', { user: user?.id, store: !!store, subscription: !!subscription, loading });
   }, [user, store, subscription, loading]);
 
   // Fetches both store and subscription data for a given user
   const refreshUserSessionData = useCallback(async (userId: string) => {
-    if (import.meta.env.DEV) console.log('[AuthContext] refreshUserSessionData start', userId);
+    console.log('[AuthContext] refreshUserSessionData start', userId);
     const { data: refreshedStore, error: storeError } = await getSupabase()
       .from('stores')
       .select('id, name, slug, logo_url, whatsapp_number, user_id, created_at, trial_ends_at, plan_type, community_link, product_limit')
@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('[AuthContext] Error fetching store:', storeError);
       throw storeError;
     }
-    if (import.meta.env.DEV) console.log('[AuthContext] Store fetched:', refreshedStore);
+    console.log('[AuthContext] Store fetched:', refreshedStore?.slug || 'no-slug');
     setStore(refreshedStore as Store | null);
 
     const { data: refreshedSub, error: subError } = await getSupabase()
@@ -52,10 +52,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .select('status, current_period_end')
       .eq('user_id', userId)
       .single();
-    if (subError) if (import.meta.env.DEV) console.warn('[AuthContext] Could not fetch subscription details.', subError);
-    if (import.meta.env.DEV) console.log('[AuthContext] Subscription fetched:', refreshedSub);
+    if (subError) console.warn('[AuthContext] Could not fetch subscription details.', subError);
+    console.log('[AuthContext] Subscription fetched:', refreshedSub?.status || 'none');
     setSubscription(refreshedSub as Subscription | null);
-    if (import.meta.env.DEV) console.log('[AuthContext] refreshUserSessionData end');
+    console.log('[AuthContext] refreshUserSessionData end');
   }, []);
 
   // Calls the sync function and then refreshes all user data
@@ -81,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const getInitialSession = async () => {
-      if (import.meta.env.DEV) console.log('[AuthContext] getInitialSession start');
+      console.log('[AuthContext] getInitialSession start');
 
       // Safety timeout: ensure loading is false after 10 seconds no matter what
       const safetyTimeout = setTimeout(() => {
@@ -91,25 +91,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         const { data: { session: currentSession } } = await getSupabase().auth.getSession();
-        if (import.meta.env.DEV) console.log('[AuthContext] Session fetched:', currentSession?.user?.id);
+        console.log('[AuthContext] getInitialSession: Session fetched', currentSession?.user?.id || 'none');
         setSession(currentSession);
         const currentUser = currentSession?.user ?? null;
         setUser(currentUser);
 
         if (currentUser) {
-          if (import.meta.env.DEV) console.log('[AuthContext] User found, refreshing data...');
+          console.log('[AuthContext] getInitialSession: User found, refreshing data...');
           try {
             await refreshUserSessionData(currentUser.id);
             syncAndRefreshSession(currentUser.id); // Sync in background
           } catch (err: unknown) {
-            console.error("[AuthContext] Error fetching initial session data:", err);
+            console.error("[AuthContext] getInitialSession: Error fetching data:", err);
           }
         }
       } catch (err) {
-        console.error('[AuthContext] Unexpected error in getInitialSession:', err);
+        console.error('[AuthContext] getInitialSession: Unexpected error:', err);
       } finally {
         clearTimeout(safetyTimeout);
-        if (import.meta.env.DEV) console.log('[AuthContext] Setting loading to false');
+        console.log('[AuthContext] Setting loading to false');
         setLoading(false);
       }
     };
@@ -127,15 +127,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (newUser) {
           try {
+            console.log('[AuthContext] Auth change (signed in): refreshing data...');
             // Always refresh on auth state change to avoid stale closure issues
               await refreshUserSessionData(newUser.id);
               syncAndRefreshSession(newUser.id);
           } catch (err: unknown) {
-            console.error("Error refreshing session data:", err);
+            console.error("[AuthContext] Error on auth change:", err);
           } finally {
             setLoading(false);
           }
         } else if (event === 'SIGNED_OUT' || !newSession) {
+          console.log('[AuthContext] Auth change (signed out)');
           setStore(null);
           setSubscription(null);
           setLoading(false);

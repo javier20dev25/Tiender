@@ -17,38 +17,26 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   if (!user) {
-    // Si no hay usuario, siempre redirigir a la página de autenticación
-    return <Navigate to="/auth" replace state={{ from: location }} />;
+    return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Si el usuario existe pero los datos de la tienda aún no se han cargado,
-  // mostrar loader en lugar de redirigir prematuramente a /upgrade.
-  // Esto previene el bug donde un usuario recién registrado es redirigido
-  // antes de que AuthContext termine de obtener los datos de la tienda.
-  if (!store) {
-    return <PageLoader />;
-  }
+  // --- LOGIC FOR ACCESS CONTROL ---
+  const isTrialActive = store?.trial_ends_at ? new Date(store.trial_ends_at) > new Date() : false;
+  const isSubActive = subscription?.status === 'active' || subscription?.status === 'trialing' || subscription?.status === 'past_due';
 
-  // Define los estados que permiten el acceso a rutas protegidas.
-  const hasActivePayPalSubscription = subscription?.status === 'active' || subscription?.status === 'trialing' || subscription?.status === 'past_due';
-
-  // Nuevo: Verificar si el trial manual aún está vigente
-  const isTrialActive = store.trial_ends_at ? new Date(store.trial_ends_at) > new Date() : false;
-
-  const hasAccess = hasActivePayPalSubscription || isTrialActive;
-
-  if (hasAccess) {
-    // Si el usuario tiene una suscripción activa o el trial vigente, permitir el acceso.
-    return children;
-  } else {
-    // Para cualquier otro caso (canceled, unpaid, o sin suscripción/trial),
-    // redirigir a la página de "upgrade".
-    if (location.pathname !== '/upgrade') {
-      return <Navigate to={`/upgrade${location.search}`} replace />;
-    }
-    // Si ya está en /upgrade, permite que la página se renderice.
+  // Si tiene acceso (trial o suscripción activa), permitimos cualquier ruta protegida.
+  if (isTrialActive || isSubActive) {
     return children;
   }
+
+  // Si NO tiene acceso (trial vencido y sin suscripción activa):
+  // 1. Si ya está en /upgrade, permitimos ver la página para que pueda pagar.
+  if (location.pathname === '/upgrade') {
+    return children;
+  }
+
+  // 2. Si intenta acceder a cualquier otra cosa, lo mandamos a /upgrade.
+  return <Navigate to={`/upgrade${location.search}`} replace />;
 };
 
 export default ProtectedRoute;

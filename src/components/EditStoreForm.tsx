@@ -32,6 +32,44 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
     }
   }, [store]);
 
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 800; // Logos can be smaller than product images
+
+          if (width > height && width > maxDim) {
+            height *= maxDim / width;
+            width = maxDim;
+          } else if (height > maxDim) {
+            width *= maxDim / height;
+            height = maxDim;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+            } else {
+              resolve(file);
+            }
+          }, 'image/jpeg', 0.8);
+        };
+      };
+    });
+  };
+
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -56,27 +94,36 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
 
     try {
       console.log('[EditStoreForm] Iniciando guardado de tienda:', { name, currentLogoUrl, hasNewLogo: !!logoFile });
+      
       if (logoFile) {
-        console.log('[EditStoreForm] Subiendo nuevo logo...');
-        const fileExtension = logoFile.name.split('.').pop();
+        setLogoPreview(null); // Clear preview to show upload state if needed
+        console.log('[EditStoreForm] Comprimiendo logo...');
+        const compressionStart = Date.now();
+        const compressedFile = await compressImage(logoFile);
+        console.log(`[EditStoreForm] Logo comprimido en ${Date.now() - compressionStart}ms. Tamaño: ${compressedFile.size} bytes`);
+
+        console.log('[EditStoreForm] Subiendo nuevo logo a "store-logos"...');
+        const uploadStart = Date.now();
+        const fileExtension = compressedFile.name.split('.').pop();
         const fileName = `${uuidv4()}.${fileExtension}`;
         const filePath = `${store.id}/${fileName}`;
 
         const { error: uploadError } = await getSupabase().storage
           .from('store-logos')
-          .upload(filePath, logoFile, { upsert: true });
+          .upload(filePath, compressedFile, { upsert: true });
 
         if (uploadError) {
           console.error('[EditStoreForm] Error al subir logo:', uploadError);
           throw uploadError;
         }
+        console.log(`[EditStoreForm] Upload de logo exitoso en ${Date.now() - uploadStart}ms`);
 
         const { data: publicData } = getSupabase().storage
           .from('store-logos')
           .getPublicUrl(filePath);
           
         newLogoUrl = publicData.publicUrl;
-        console.log('[EditStoreForm] Logo subido con éxito:', newLogoUrl);
+        console.log('[EditStoreForm] URL pública de logo obtenida:', newLogoUrl);
       }
 
       console.log('[EditStoreForm] Actualizando datos en tabla "stores"...');

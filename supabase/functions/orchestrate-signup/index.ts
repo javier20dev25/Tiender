@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
         if (tracker.request_count >= MAX_REQUESTS) {
           // Y se ha excedido el límite, registramos el evento y bloqueamos la petición.
           await logEvent(supabaseAdmin, 'RATE_LIMIT_EXCEEDED', { payload: { ip } });
-          return new Response(JSON.stringify({ error_code: 'TOO_MANY_REQUESTS', message: 'Límite de peticiones excedido. Intenta de nuevo más tarde.' }), { status: 429, headers: corsHeaders });
+          return new Response(JSON.stringify({ error_code: 'TOO_MANY_REQUESTS', message: 'Has intentado registrarte demasiadas veces. Por seguridad, espera 1 hora e intenta de nuevo.' }), { status: 429, headers: corsHeaders });
         } else {
           // Si no se ha excedido, simplemente incrementamos el contador.
           await supabaseAdmin.from('rate_limit_tracker').update({ request_count: tracker.request_count + 1 }).eq('identifier', ip);
@@ -83,8 +83,8 @@ Deno.serve(async (req) => {
     }
     // --- FIN: Lógica de Rate Limiting ---
 
-    const { phone, password, selectedPlan, recovery_email }: { phone: string; password?: string; selectedPlan?: 'standard' | 'full'; recovery_email?: string } = await req.json();
-    console.log('Iniciando orchestrate-signup con body:', { phone, password: password ? '[REDACTED]' : 'N/A', selectedPlan, recovery_email });
+    const { phone, password, selectedPlan, recovery_email, storeName: requestedStoreName }: { phone: string; password?: string; selectedPlan?: 'standard' | 'full'; recovery_email?: string; storeName?: string } = await req.json();
+    console.log('Iniciando orchestrate-signup con body:', { phone, password: password ? '[REDACTED]' : 'N/A', selectedPlan, recovery_email, storeName: requestedStoreName });
     console.log('Contraseña recibida (longitud):', password?.length);
 
 
@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
     const trialDays = selectedPlan === 'full' ? 3 : 7;
     trialEndsDate.setDate(trialEndsDate.getDate() + trialDays);
 
-    const storeName = 'Mi Tienda';
+    const storeName = requestedStoreName || 'Mi Tienda';
     const slug = storeName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + user.id.substring(0, 8);
 
     const { error: storeError } = await supabaseAdmin.from('stores').insert({
