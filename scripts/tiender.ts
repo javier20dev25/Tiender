@@ -119,7 +119,8 @@ Commands:
   try {
     switch (command) {
       case 'login': {
-        let [identifier, password] = args.slice(1);
+        let identifier = args[1];
+        const password = args[2];
         if (!identifier || !password) throw new Error('Usage: login <email|phone> <password>');
         
         // If identifier is purely numeric, assume it's a phone and convert to internal email
@@ -171,7 +172,7 @@ Commands:
         
         if (!store) throw new Error('Store not found.');
 
-        const updates: any = {};
+        const updates: Record<string, string | number | null> = {};
         if (flags.name) updates.name = flags.name;
         if (flags.logo) {
           console.log('Uploading logo...');
@@ -273,7 +274,7 @@ Commands:
         const { data: product } = await client.from('products').select('store_id').eq('id', id).single();
         if (!product) throw new Error('Product not found.');
 
-        const updates: any = {};
+        const updates: Record<string, string | number | null> = {};
         if (flags.title) updates.title = flags.title;
         if (flags.price) updates.price = parseFloat(flags.price);
         if (flags.image) {

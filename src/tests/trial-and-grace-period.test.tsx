@@ -2,7 +2,6 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from '../components/ProtectedRoute';
-import * as AuthContextModule from '../context/AuthContext';
 import '@testing-library/jest-dom';
 
 // Mock useAuth
