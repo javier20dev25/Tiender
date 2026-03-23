@@ -1,5 +1,5 @@
 // src/pages/DashboardPage.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Plus, AlertTriangle, Menu, Sparkles, BarChart3
@@ -17,6 +17,8 @@ import SubscriptionStatusBanner from '../components/SubscriptionStatusBanner';
 import TrialBanner from '../components/TrialBanner';
 import CreateStoreForm from '../components/CreateStoreForm';
 import { WeeklyAnalytics } from '../components/WeeklyAnalytics';
+import { DashboardSkeleton } from '../components/Skeleton';
+import { Perf } from '../utils/perf';
 
 // Custom Hooks & Sub-components
 import { useProducts } from '../hooks/useProducts';
@@ -31,6 +33,15 @@ const DashboardPage: React.FC = () => {
   // Custom Hooks
   const { products, loadingProducts, fetchProducts } = useProducts(store?.id);
   const { weeklyAnalyticsData, loadingWeeklyAnalytics, startDate } = useWeeklyAnalytics(store?.id);
+
+  // Perf tracking
+  useEffect(() => {
+    if (authLoading) {
+      Perf.start('Dashboard_Load');
+    } else {
+      Perf.end('Dashboard_Load');
+    }
+  }, [authLoading]);
 
   // UI State
   const [showAddProductForm, setShowAddProductForm] = useState(false);
@@ -127,16 +138,14 @@ const DashboardPage: React.FC = () => {
   };
 
   const renderContent = () => {
-    if (authLoading) return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <div className="w-10 h-10 border-4 border-brand-neon border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-zinc-500 font-medium">Cargando tu centro de mando...</p>
-      </div>
-    );
+    if (authLoading) return <DashboardSkeleton />;
 
     if (store) {
       const productLimit = store.product_limit || 10;
       const atProductLimit = products.length >= productLimit;
+
+      // Handle loading states for nested sections
+      const isInitialLoading = loadingProducts && products.length === 0;
 
       return (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full text-left space-y-8">
@@ -162,14 +171,25 @@ const DashboardPage: React.FC = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Products Section */}
-            <ProductList 
-              products={products}
-              loadingProducts={loadingProducts}
-              atProductLimit={atProductLimit}
-              onAddClick={() => setShowAddProductForm(true)}
-              onEditClick={(p) => setEditingProduct(p)}
-              onDeleteClick={handleDeleteProduct}
-            />
+            {isInitialLoading ? (
+              <div className="lg:col-span-2 space-y-4">
+                <div className="h-8 w-48 bg-zinc-800 animate-pulse rounded-lg mb-4" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="h-24 bg-zinc-800 animate-pulse rounded-2xl" />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <ProductList 
+                products={products}
+                loadingProducts={loadingProducts}
+                atProductLimit={atProductLimit}
+                onAddClick={() => setShowAddProductForm(true)}
+                onEditClick={(p) => setEditingProduct(p)}
+                onDeleteClick={handleDeleteProduct}
+              />
+            )}
 
             {/* Analytics Section */}
             <div className="space-y-6">

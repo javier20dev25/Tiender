@@ -4,6 +4,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-mo
 import { Heart, X, ShoppingCart, ShoppingBag, Trash2, ArrowRight } from 'lucide-react';
 import { getSupabase } from '../lib/supabaseClient';
 import type { Store, Product } from '../types';
+import { Perf } from '../utils/perf';
 
 // --- Types ---
 type CartItem = Product & { quantity: number };
@@ -13,11 +14,15 @@ type VerificationStatus = 'pending' | 'verified' | 'failed';
 const DiscountTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
   const [timeLeft, setTimeLeft] = useState(seconds);
   useEffect(() => {
-    setTimeLeft(seconds);
     const interval = setInterval(() => {
       setTimeLeft(prev => prev > 0 ? prev - 1 : 0);
     }, 1000);
     return () => clearInterval(interval);
+  }, []); // Only run once on mount
+
+  // Update when seconds changes with a check
+  useEffect(() => {
+    setTimeLeft(seconds);
   }, [seconds]);
 
   if (timeLeft === 0) return null;
@@ -28,6 +33,25 @@ const DiscountTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
     <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
       ⏳ {mins}:{secs}
     </span>
+  );
+};
+
+const ImageWithPlaceholder: React.FC<{ src: string; alt: string; className?: string }> = ({ src, alt, className }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  return (
+    <div className={`relative overflow-hidden ${className}`}>
+      {!isLoaded && (
+        <div className="absolute inset-0 bg-gray-100 animate-pulse flex items-center justify-center">
+          <ShoppingBag className="w-8 h-8 text-gray-200" />
+        </div>
+      )}
+      <img
+        src={src}
+        alt={alt}
+        onLoad={() => setIsLoaded(true)}
+        className={`w-full h-full object-cover transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+      />
+    </div>
   );
 };
 
@@ -44,6 +68,7 @@ const SocialStorePage: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const hasLoggedVisit = useRef(false);
 
   // Motion values for swipe effect
@@ -73,16 +98,15 @@ const SocialStorePage: React.FC = () => {
     }
   }, [storeId, visitToken, currentIndex, products]);
 
-  const fetchStoreAndProducts = useCallback(async () => {
-    if (!storeId) return;
+  const fetchStoreAndProducts = useCallback(async (currentStoreId: string) => {
     try {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const query = getSupabase().from('stores').select('*');
       
-      if (uuidRegex.test(storeId)) {
-        query.eq('id', storeId);
+      if (uuidRegex.test(currentStoreId)) {
+        query.eq('id', currentStoreId);
       } else {
-        query.eq('slug', storeId);
+        query.eq('slug', currentStoreId);
       }
 
       const { data: storeData, error: storeError } = await query.single();
@@ -93,43 +117,63 @@ const SocialStorePage: React.FC = () => {
         .rpc('get_store_products', { target_store_id: storeData.id });
       if (productsError) throw new Error('No se pudieron cargar los productos.');
       setProducts(productsData || []);
-
-      if (!hasLoggedVisit.current) {
-        logEvent('VISIT');
-        hasLoggedVisit.current = true;
-      }
-    } catch (err: any) {
-      setError(err.message || 'No se pudo cargar la tienda. Inténtalo de nuevo.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error de conexión. Revisa tu internet.';
+      console.error('Fetch error:', err);
+      setError(message);
     }
-  }, [storeId, logEvent]);
+  }, []);
 
-  useEffect(() => {
-    if (!storeId) {
+  const verifyAndFetch = useCallback(async () => {
+    if (!storeId) return;
+    Perf.start('SocialStorePage_Load');
+    setError('');
+    setIsRetrying(true);
+    
+    // Start fetching data and verifying visit in parallel
+    const dataPromise = fetchStoreAndProducts(storeId);
+    
+    try {
+      const { data, error } = await getSupabase().functions.invoke('visit-gate', {
+        body: { store_id: storeId },
+      });
+      if (error) throw error;
+      setVisitToken(data.visit_token);
+      setVerificationStatus('verified');
+    } catch (err) {
+      console.error('Verification failed:', err);
       setVerificationStatus('failed');
-      setError("No se ha especificado una tienda.");
-      return;
+      setError("Acceso denegado. La visita ha sido marcada como sospechosa.");
+    } finally {
+      await dataPromise; // Ensure we finish both
+      setIsRetrying(false);
+      Perf.end('SocialStorePage_Load');
     }
-    const verifyVisit = async () => {
-      try {
-        const { data, error } = await getSupabase().functions.invoke('visit-gate', {
-          body: { store_id: storeId },
-        });
-        if (error) throw error;
-        setVisitToken(data.visit_token);
-        setVerificationStatus('verified');
-      } catch {
-        setVerificationStatus('failed');
-        setError("Acceso denegado. La visita ha sido marcada como sospechosa.");
-      }
-    };
-    verifyVisit();
-  }, [storeId]);
+  }, [storeId, fetchStoreAndProducts]);
 
   useEffect(() => {
-    if (verificationStatus === 'verified' && visitToken) {
-      fetchStoreAndProducts();
+    verifyAndFetch();
+  }, [verifyAndFetch]);
+
+  // Log initial visit when token and products are ready
+  useEffect(() => {
+    if (verificationStatus === 'verified' && visitToken && products.length > 0 && !hasLoggedVisit.current) {
+      logEvent('VISIT');
+      hasLoggedVisit.current = true;
     }
-  }, [verificationStatus, visitToken, fetchStoreAndProducts]);
+  }, [verificationStatus, visitToken, products.length, logEvent]);
+
+  // Preload next image
+  useEffect(() => {
+    if (products.length > 0) {
+      const nextIdx = (currentIndex + 1) % products.length;
+      const nextImg = products[nextIdx]?.image_url;
+      if (nextImg) {
+        const img = new Image();
+        img.src = nextImg;
+      }
+    }
+  }, [currentIndex, products]);
 
   // --- Event Handlers ---
   const handleNextProduct = (type: 'LIKE' | 'DISLIKE') => {
@@ -137,12 +181,15 @@ const SocialStorePage: React.FC = () => {
       x.set(0);
       return;
     }
+    Perf.start('ProductSwipe');
     logEvent(type);
     setCurrentIndex(prev => (prev + 1) % products.length);
     x.set(0);
+    Perf.end('ProductSwipe');
   };
 
   const handleAddToCart = () => {
+    Perf.start('CartAdd');
     const currentProduct = products[currentIndex];
     if (!currentProduct) return;
     setCart(prev => {
@@ -153,6 +200,7 @@ const SocialStorePage: React.FC = () => {
       return [...prev, { ...currentProduct, quantity: 1 }];
     });
     logEvent('ADD_TO_CART');
+    Perf.end('CartAdd');
   };
 
   const updateQuantity = (index: number, delta: number) => {
@@ -182,23 +230,38 @@ const SocialStorePage: React.FC = () => {
     return getProductPrice(item);
   };
 
-  if (verificationStatus === 'pending') {
+  if (verificationStatus === 'pending' || (isRetrying && !store)) {
     return (
       <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50">
-        <div className="w-12 h-12 border-4 border-brand-pink border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="font-display text-gray-500 animate-pulse">Verificando acceso seguro...</p>
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-brand-pink/20 rounded-full"></div>
+          <div className="absolute top-0 left-0 w-16 h-16 border-4 border-brand-pink border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <p className="mt-6 font-display text-gray-400 font-medium animate-pulse">Optimizando tu experiencia...</p>
       </div>
     );
   }
 
-  if (verificationStatus === 'failed' || error) {
+  if (error && !store) {
     return (
       <div className="flex flex-col justify-center items-center min-h-screen p-6 text-center bg-gray-50">
-        <div className="bg-red-50 p-6 rounded-3xl border border-red-100 max-w-sm">
-          <X className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-red-900 mb-2">Acceso Denegado</h2>
-          <p className="text-red-700">{error}</p>
-        </div>
+        <motion.div 
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-white p-10 rounded-[40px] shadow-xl border border-gray-100 max-w-sm"
+        >
+          <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <X className="w-10 h-10 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-black text-gray-900 mb-3">¡Ups! Algo pasó</h2>
+          <p className="text-gray-500 mb-8 leading-relaxed">{error}</p>
+          <button 
+            onClick={verifyAndFetch}
+            className="w-full py-4 bg-brand-dark text-white rounded-2xl font-bold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            Intentar de nuevo
+          </button>
+        </motion.div>
       </div>
     );
   }
@@ -251,10 +314,10 @@ const SocialStorePage: React.FC = () => {
               className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing"
             >
               <div className="bg-white rounded-3xl shadow-2xl overflow-hidden h-full relative group">
-                <img
+                <ImageWithPlaceholder
                   src={currentProduct.image_url || 'https://placehold.co/600x600'}
                   alt={currentProduct.title}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  className="w-full h-full transition-transform duration-700 group-hover:scale-105"
                 />
 
                 {/* Visual Feedback Seals */}

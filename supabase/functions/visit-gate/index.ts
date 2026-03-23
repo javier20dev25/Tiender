@@ -98,7 +98,7 @@ serve(async (req, connInfo) => {
     // 1. Collect signals
     const userAgent = req.headers.get('user-agent') || '';
     const referer = req.headers.get('referer') || '';
-    const ip = (connInfo.remoteAddr as Deno.NetAddr).hostname;
+    const ip = (connInfo?.remoteAddr as Deno.NetAddr)?.hostname || '127.0.0.1';
     const ipHash = await sha256(ip);
 
     // 2. Calculate Trust Score

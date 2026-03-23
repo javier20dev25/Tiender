@@ -39,7 +39,7 @@ const UpgradePage: React.FC = () => {
         handlePlanSelection(planParam);
       }
     }
-  }, [searchParams, store, subscription, loading, error, isAutoProcessing, hasActivePayPalSubscription, isTrialActive, authLoading]);
+  }, [searchParams, store, subscription, loading, error, isAutoProcessing, hasActivePayPalSubscription, isTrialActive, authLoading, handlePlanSelection]);
 
   const handlePlanSelection = async (planType: PlanType) => {
     console.log('[UpgradePage] handlePlanSelection start:', planType);
@@ -80,7 +80,7 @@ const UpgradePage: React.FC = () => {
       } else {
         throw new Error('No se recibió una URL de aprobación de PayPal.');
       }
-    } catch (e: any) {
+    } catch (e) {
       console.error('[UpgradePage] Error in handlePlanSelection:', e);
       const errorMessage = e instanceof Error ? e.message : 'Ocurrió un error inesperado.';
       setError(`Error al procesar tu solicitud: ${errorMessage}`);

@@ -17,7 +17,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const SESSION_FILE = resolve(process.cwd(), '.session.json');
 
-function saveSession(session: any) {
+function saveSession(session: unknown) {
   fs.writeFileSync(SESSION_FILE, JSON.stringify(session, null, 2));
 }
 
@@ -35,7 +35,7 @@ async function getAuthenticatedClient() {
   }
   
   // Set the session in the client
-  const { data, error } = await supabase.auth.setSession({
+  const { error } = await supabase.auth.setSession({
     access_token: sessionData.access_token,
     refresh_token: sessionData.refresh_token
   });
@@ -69,7 +69,7 @@ async function uploadImage(bucket: string, storeId: string, localPath: string) {
   const fileName = `${Date.now()}_${localPath.split(/[\\/]/).pop()}`;
   const filePath = `${storeId}/${fileName}`;
 
-  const { data, error } = await supabase.storage
+  const { error } = await supabase.storage
     .from(bucket)
     .upload(filePath, fileBuffer, {
       contentType: 'image/jpeg'
@@ -211,7 +211,7 @@ Commands:
           console.log('Image uploaded:', imageUrl);
         }
 
-        const insertPayload: any = {
+        const insertPayload: Record<string, string | number | null> = {
           store_id: store.id,
           title: flags.title,
           price: parseFloat(flags.price),
@@ -302,30 +302,6 @@ Commands:
         break;
       }
 
-      case 'metrics': {
-        const client = await getAuthenticatedClient();
-        const { data: { user } } = await client.auth.getUser();
-        const { data: store } = await client.from('stores').select('id').eq('user_id', user?.id).single();
-        if (!store) throw new Error('Store not found.');
-
-        console.log('Fetching metrics...');
-        const { data, error } = await client
-          .from('product_analytics')
-          .select('event_type, created_at')
-          .eq('store_id', store.id);
-        
-        if (error) throw error;
-
-        const summary = data.reduce((acc: any, curr: any) => {
-          acc[curr.event_type] = (acc[curr.event_type] || 0) + 1;
-          return acc;
-        }, {});
-
-        console.log('Store Metrics Summary:');
-        console.table(summary);
-        break;
-      }
-
       case 'finalize': {
         const client = await getAuthenticatedClient();
         const { data: { user } } = await client.auth.getUser();
@@ -403,6 +379,60 @@ Commands:
         });
         if (error) throw error;
         console.log('Sync Result:', JSON.stringify(data, null, 2));
+        break;
+      }
+
+      case 'metrics': {
+        const client = await getAuthenticatedClient();
+        const { data: { user } } = await client.auth.getUser();
+        const { data: store, error: storeError } = await client.from('stores').select('id, name').eq('user_id', user?.id).single();
+        if (storeError || !store) throw new Error('Store not found.');
+
+        console.log(`\n--- METRICS FOR: ${store.name} ---`);
+        
+        // Visits count
+        const { count: visitsCount } = await client
+          .from('visits')
+          .select('*', { count: 'exact', head: true })
+          .eq('store_id', store.id);
+        
+        console.log(`Total Visits: ${visitsCount || 0}`);
+
+        // Aggregate analytics
+        const { data: analytics, error: anaError } = await client
+          .from('product_analytics')
+          .select('product_id, event_type')
+          .eq('store_id', store.id);
+
+        if (anaError) throw anaError;
+
+        // Fetch product names for joining
+        const { data: products } = await client.from('products').select('id, title').eq('store_id', store.id);
+        const productMap = (products || []).reduce((acc: Record<string, string>, p: { id: string; title: string }) => ({ ...acc, [p.id]: p.title }), {});
+
+        const stats = (analytics || []).reduce((acc: Record<string, any>, curr: any) => {
+          if (!curr.product_id) return acc;
+          const pid = curr.product_id;
+          if (!acc[pid]) acc[pid] = { title: productMap[pid] || pid, likes: 0, cart: 0, skips: 0 };
+          
+          if (curr.event_type === 'LIKE') acc[pid].likes++;
+          if (curr.event_type === 'ADD_TO_CART') acc[pid].cart++;
+          if (curr.event_type === 'DISLIKE') acc[pid].skips++;
+          
+          return acc;
+        }, {});
+
+        console.log('\nProduct Engagement (Aggregated):');
+        console.table(Object.values(stats));
+        break;
+      }
+
+      case 'debug-all-products': {
+        const client = await getAuthenticatedClient();
+        console.log('Fetching ALL products in DB...');
+        const { data, error } = await client.from('products').select('id, store_id, title');
+        if (error) throw error;
+        console.table(data);
         break;
       }
 
