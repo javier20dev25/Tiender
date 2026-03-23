@@ -191,9 +191,9 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
       console.log('[EditProductForm] Producto actualizado con éxito.');
       onProductUpdated();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[EditProductForm] Error fatal:', error);
-      setError(error.message || 'Error al actualizar el producto.');
+      setError((error as Error).message || 'Error al actualizar el producto.');
     } finally {
       setIsSubmitting(false);
     }

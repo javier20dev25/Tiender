@@ -167,9 +167,9 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
       console.log('[AddProductForm] Producto guardado con éxito.');
       onProductAdded();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[AddProductForm] Error fatal:', error);
-      setError(error.message || 'Error al guardar el producto.');
+      setError((error as Error).message || 'Error al guardar el producto.');
     } finally {
       setIsSubmitting(false);
     }

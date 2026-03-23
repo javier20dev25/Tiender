@@ -79,8 +79,8 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
 
       setMaskedEmail(data.masked_email);
       setStep('enter_code');
-    } catch (error: any) {
-      setErrorMessage(error.message || 'No pudimos encontrar tu cuenta o no tiene correo de recuperación.');
+    } catch (error: unknown) {
+      setErrorMessage((error as Error).message || 'No pudimos encontrar tu cuenta o no tiene correo de recuperación.');
       triggerShake();
     } finally {
       setLoading(false);

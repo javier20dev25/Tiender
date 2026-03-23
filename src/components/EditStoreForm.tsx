@@ -145,9 +145,9 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
       console.log('[EditStoreForm] Actualización exitosa:', updateData);
       onStoreUpdated();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[EditStoreForm] Error fatal:', error);
-      setError(error.message || 'Error al actualizar la tienda.');
+      setError((error as Error).message || 'Error al actualizar la tienda.');
     } finally {
       setIsSubmitting(false);
     }
