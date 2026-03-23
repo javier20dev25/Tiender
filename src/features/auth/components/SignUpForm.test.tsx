@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { SignUpForm } from './SignUpForm';
