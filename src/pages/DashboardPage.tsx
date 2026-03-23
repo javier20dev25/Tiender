@@ -130,9 +130,10 @@ const DashboardPage: React.FC = () => {
       } else {
         throw new Error('No se recibió una URL de aprobación de PayPal.');
       }
-    } catch (err: any) {
-      console.error('[DashboardPage] handleUpgrade error:', err);
-      setError(err?.message || 'Error al iniciar la mejora de plan.');
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      console.error('[DashboardPage] handleUpgrade error:', error);
+      setError(error?.message || 'Error al iniciar la mejora de plan.');
       setIsSubmitting(false);
     }
   };

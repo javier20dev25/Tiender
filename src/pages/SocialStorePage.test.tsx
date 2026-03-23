@@ -20,7 +20,7 @@ const mockProducts = [
 
 describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
 
-  let invokeMock: any;
+  let invokeMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
