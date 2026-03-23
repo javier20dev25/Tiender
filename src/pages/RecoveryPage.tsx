@@ -104,8 +104,8 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
       if (!data.success) throw new Error(data.message);
 
       setStep('reset_password');
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Código inválido o expirado.');
+    } catch (error: unknown) {
+      setErrorMessage((error as Error).message || 'Código inválido o expirado.');
       triggerShake();
     } finally {
       setLoading(false);
@@ -137,8 +137,8 @@ const RecoveryPage: React.FC<RecoveryPageProps> = ({ onSwitchToSignIn }) => {
       if (!data.success) throw new Error(data.message);
 
       navigate('/auth', { state: { passwordReset: true } });
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Error al restablecer la contraseña.');
+    } catch (error: unknown) {
+      setErrorMessage((error as Error).message || 'Error al restablecer la contraseña.');
       triggerShake();
     } finally {
       setLoading(false);
