@@ -411,7 +411,7 @@ Commands:
         const { data: products } = await client.from('products').select('id, title').eq('store_id', store.id);
         const productMap = (products || []).reduce((acc: Record<string, string>, p: { id: string; title: string }) => ({ ...acc, [p.id]: p.title }), {});
 
-        const stats = (analytics || []).reduce((acc: Record<string, any>, curr: any) => {
+        const stats = (analytics || []).reduce((acc: Record<string, { title: string; likes: number; cart: number; skips: number }>, curr: { product_id: string; event_type: string }) => {
           if (!curr.product_id) return acc;
           const pid = curr.product_id;
           if (!acc[pid]) acc[pid] = { title: productMap[pid] || pid, likes: 0, cart: 0, skips: 0 };
@@ -440,11 +440,12 @@ Commands:
       default:
         console.log(`Unknown command: ${command}. Type 'help' for usage.`);
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const error = err as { message?: string; details?: string; hint?: string };
     console.error('--- COMMAND FAILED ---');
-    console.error(err.message || err);
-    if (err.details) console.error('Details:', err.details);
-    if (err.hint) console.error('Hint:', err.hint);
+    console.error(error.message || error);
+    if (error.details) console.error('Details:', error.details);
+    if (error.hint) console.error('Hint:', error.hint);
   }
 }
 
