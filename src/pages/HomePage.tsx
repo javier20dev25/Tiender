@@ -114,6 +114,48 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
+      {/* AI Agents Section */}
+      <section className="px-6 py-24 relative overflow-hidden">
+        <div className="absolute inset-0 bg-brand-cyan/5 -skew-y-3 origin-top-left -z-10"></div>
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-12">
+          <div className="md:w-1/2">
+            <div className="px-4 py-1.5 rounded-full bg-zinc-800/50 border border-brand-cyan/20 text-[10px] font-black uppercase tracking-[0.2em] mb-6 inline-flex items-center gap-2 text-brand-cyan">
+              <div className="w-1.5 h-1.5 rounded-full bg-brand-cyan animate-pulse"></div>
+              Agent-Ready Platform
+            </div>
+            <h2 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter leading-tight mb-6">
+              Tiender for <br/><span className="bg-brand-cyan bg-clip-text text-transparent">AI Agents</span>
+            </h2>
+            <p className="text-zinc-400 font-medium leading-relaxed mb-8">
+              Delega la creación, gestión y análisis de tu tienda completamente a la Inteligencia Artificial. Nuestra renovada CLI permite a cualquier Agente crear una cuenta (o usar la tuya) para automatizar tareas, administrar productos y orquestar decisiones con permisos 100% seguros y respaldados por RLS.
+            </p>
+            <div className="flex gap-4">
+              <a href="https://github.com/javier20dev25/Tiender/blob/main/CLI_GUIDE.md" target="_blank" rel="noopener noreferrer" className="px-8 py-4 rounded-[18px] bg-brand-cyan/10 border border-brand-cyan/20 text-brand-cyan font-bold uppercase tracking-wider text-xs hover:bg-brand-cyan/20 transition-all flex items-center gap-2">
+                Ver Docs de CLI <ChevronRight className="w-4 h-4" />
+              </a>
+            </div>
+          </div>
+          <div className="md:w-1/2 w-full">
+            <div className="rounded-[24px] bg-[#0A0A0A] border border-white/10 p-6 font-mono text-sm shadow-2xl relative overflow-hidden group">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-brand-cyan to-brand-neon"></div>
+              <div className="flex gap-2 mb-6">
+                <div className="w-3 h-3 rounded-full bg-red-500/50"></div>
+                <div className="w-3 h-3 rounded-full bg-yellow-500/50"></div>
+                <div className="w-3 h-3 rounded-full bg-green-500/50"></div>
+              </div>
+              <div className="text-zinc-500 mb-2">$ npm run tiender -- help</div>
+              <div className="text-brand-cyan mb-6">▶ Tiender CLI initialized (Agent Mode)</div>
+              
+              <div className="text-zinc-500 mb-2">$ npm run tiender -- create-store --name "AI Store"</div>
+              <div className="text-white mb-6"><span className="text-brand-pink">✔</span> Store created successfully. URL: /ai-store</div>
+              
+              <div className="text-zinc-500 mb-2">$ npm run tiender -- add-product --title "Consulting"</div>
+              <div className="text-white mb-1"><span className="text-brand-pink">✔</span> Product synced correctly. Dashboard updated.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Plans Section */}
       <section id="plans" className="px-6 py-32 relative">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-brand-pink/5 blur-[150px] pointer-events-none"></div>

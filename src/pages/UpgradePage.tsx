@@ -27,19 +27,6 @@ const UpgradePage: React.FC = () => {
   // (Dead useEffect removed in Phase 9 cleanup)
 
   // Auto-trigger plan selection if 'plan' param is present AND trial expired AND no active sub
-  useEffect(() => {
-    const planParam = searchParams.get('plan') as PlanType;
-    console.log('[UpgradePage] useEffect check:', { planParam, store: !!store, authLoading, hasActivePayPalSubscription, isTrialActive, isAutoProcessing, loading, error });
-
-    // Solo auto-disparar si:
-    if (planParam && store && !authLoading && !hasActivePayPalSubscription && !isTrialActive && !loading && !error && !isAutoProcessing) {
-      if (planParam === 'standard' || planParam === 'full') {
-        console.log('[UpgradePage] Auto-triggering plan selection:', planParam);
-        setIsAutoProcessing(true);
-        handlePlanSelection(planParam);
-      }
-    }
-  }, [searchParams, store, subscription, loading, error, isAutoProcessing, hasActivePayPalSubscription, isTrialActive, authLoading, handlePlanSelection]);
 
   const handlePlanSelection = async (planType: PlanType) => {
     console.log('[UpgradePage] handlePlanSelection start:', planType);
@@ -94,6 +81,21 @@ const UpgradePage: React.FC = () => {
       setTimeout(() => setIsAutoProcessing(false), 5000);
     }
   };
+
+  useEffect(() => {
+    const planParam = searchParams.get('plan') as PlanType;
+    console.log('[UpgradePage] useEffect check:', { planParam, store: !!store, authLoading, hasActivePayPalSubscription, isTrialActive, isAutoProcessing, loading, error });
+
+    // Solo auto-disparar si:
+    if (planParam && store && !authLoading && !hasActivePayPalSubscription && !isTrialActive && !loading && !error && !isAutoProcessing) {
+      if (planParam === 'standard' || planParam === 'full') {
+        console.log('[UpgradePage] Auto-triggering plan selection:', planParam);
+        setIsAutoProcessing(true);
+        handlePlanSelection(planParam);
+      }
+    }
+  }, [searchParams, store, subscription, loading, error, isAutoProcessing, hasActivePayPalSubscription, isTrialActive, authLoading, handlePlanSelection]);
+
 
   const handleCancelSuccess = () => {
     setModalOpen(false);

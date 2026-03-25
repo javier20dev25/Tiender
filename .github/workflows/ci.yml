@@ -45,16 +45,19 @@ jobs:
         uses: supabase/setup-cli@v1
 
       - name: Set PayPal Secrets in Supabase
-        if: "${{ secrets.PAYPAL_CLIENT_ID }}"
         run: |
-          echo "Setting PayPal secrets in Supabase project..."
-          supabase secrets set \
-            PAYPAL_CLIENT_ID=${{ secrets.PAYPAL_CLIENT_ID }} \
-            PAYPAL_CLIENT_SECRET=${{ secrets.PAYPAL_CLIENT_SECRET }} \
-            PAYPAL_PLAN_ID_STANDARD=${{ secrets.PAYPAL_PLAN_ID_STANDARD }} \
-            PAYPAL_PLAN_ID_FULL=${{ secrets.PAYPAL_PLAN_ID_FULL }} \
-            PAYPAL_WEBHOOK_ID=${{ secrets.PAYPAL_WEBHOOK_ID }} \
-            PAYPAL_API_URL=${{ secrets.PAYPAL_API_URL }}
+          if [ -n "${{ secrets.PAYPAL_CLIENT_ID }}" ]; then
+            echo "Setting PayPal secrets in Supabase project..."
+            supabase secrets set \
+              PAYPAL_CLIENT_ID=${{ secrets.PAYPAL_CLIENT_ID }} \
+              PAYPAL_CLIENT_SECRET=${{ secrets.PAYPAL_CLIENT_SECRET }} \
+              PAYPAL_PLAN_ID_STANDARD=${{ secrets.PAYPAL_PLAN_ID_STANDARD }} \
+              PAYPAL_PLAN_ID_FULL=${{ secrets.PAYPAL_PLAN_ID_FULL }} \
+              PAYPAL_WEBHOOK_ID=${{ secrets.PAYPAL_WEBHOOK_ID }} \
+              PAYPAL_API_URL=${{ secrets.PAYPAL_API_URL }}
+          else
+            echo "PayPal secrets not provided, skipping."
+          fi
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_ID }}

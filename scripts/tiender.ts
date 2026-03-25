@@ -44,6 +44,37 @@ async function getAuthenticatedClient() {
   return supabase;
 }
 
+async function verifySubscriptionAccess(client: any, userId: string) {
+  const { data: store, error: storeError } = await client
+    .from('stores')
+    .select('trial_ends_at')
+    .eq('user_id', userId)
+    .single();
+    
+  // If no store exists yet, they have access to create one.
+  if (storeError || !store) return true;
+
+  const { data: subscription } = await client
+    .from('subscriptions')
+    .select('status')
+    .eq('user_id', userId)
+    .single();
+
+  const isTrialActive = store?.trial_ends_at ? new Date(store.trial_ends_at) > new Date() : false;
+  const isSubActive = subscription?.status === 'active' || subscription?.status === 'trialing' || subscription?.status === 'past_due';
+
+  if (!isTrialActive && !isSubActive) {
+    console.error('\n--- 🚫 ACCESS DENIED: FREE TRIAL EXPIRED ---');
+    console.error('It looks like your 7-day free trial has expired and there is no active subscription.');
+    console.error('If you are an AI Agent, please instruct your Human user to upgrade the store by visiting:');
+    console.error('👉 https://tiender-bsi4w13hr-javier20dev25s-projects.vercel.app/upgrade');
+    console.error('Once the payment is completed, you can resume normal CLI operations.');
+    process.exit(1);
+  }
+  
+  return true;
+}
+
 function parseFlags(args: string[]) {
   const flags: Record<string, string> = {};
   for (let i = 0; i < args.length; i++) {
@@ -87,31 +118,40 @@ async function main() {
 
   if (!command || command === 'help') {
     console.log(`
-Tiender CLI - Management Tool (Human & Agent Friendly)
+======================================================
+🤖 TIENDER CLI - AI AGENT & HUMAN PLATFORM
+======================================================
 Usage:
-  npx tsx scripts/tiender.ts <command> [args] [flags]
+  npm run tiender -- <command> [args] [flags]
 
-Commands:
-  login <email> <password>    Login and save session
-  whoami                      Check active session and store details
-  signup <phone> <email> <password> <storeName>
-                              Create a new account and store
+1. AUTHENTICATION
+  login <email> <password>     Log in and cache your session JWT.
+  whoami                       Check active session and store details.
+  signup <ph> <email> <pass> <storeName> Create a new account and store.
+  logout                       Clear local session cache.
+
+2. STORE MANAGEMENT
   update-store [--name "New Name"] [--logo "./path/to/logo.png"]
-                              Update store identity
-  finalize                    Get public store link
-  
+                               Update store identity.
+  finalize                     Get the public store link.
+
+3. PRODUCT MANAGEMENT (Subject to Active Subscription / Trial)
   add-product --title "Name" --price 10 [--image "./img.png"]
-                              Add a new product
-  list-products               List all products in the store
-  get-product <id>            Show detailed product info
+  list-products                List all products in the store.
+  get-product <id>             Show detailed product info.
   edit-product <id> [--title "..." --price 123 --image "..."]
-                              Modify product details
-  delete-product <id>         Remove a product
-  
-  metrics                     View store visits and engagement
-  sync <email> <password>     Sync PayPal subscription
-  store <userId>              Fetch raw store data
-  list-buckets               (Internal) List storage buckets
+                               Modify product details.
+  delete-product <id>          Remove a product permanently.
+
+4. ANALYTICS
+  metrics                      View store visits and engagement.
+
+---
+💡 AI AGENT INSTRUCTIONS:
+- Authentication is preserved locally in '.session.json'.
+- All mutating commands (add/delete/edit) require an active 7-day trial or paid subscription.
+- JSON output may be piped or parsed directly from stdout.
+======================================================
     `);
     return;
   }
@@ -184,6 +224,8 @@ Commands:
           throw new Error('No updates provided. Use --name or --logo');
         }
 
+        await verifySubscriptionAccess(client, user.id);
+
         const { error } = await client
           .from('stores')
           .update(updates)
@@ -211,6 +253,8 @@ Commands:
           imageUrl = await uploadImage('product-images', store.id, flags.image);
           console.log('Image uploaded:', imageUrl);
         }
+
+        await verifySubscriptionAccess(client, user.id);
 
         const insertPayload: Record<string, string | number | null> = {
           store_id: store.id,
@@ -287,6 +331,9 @@ Commands:
           throw new Error('No updates provided.');
         }
 
+        const { data: { user } } = await client.auth.getUser();
+        await verifySubscriptionAccess(client, user.id);
+
         const { error } = await client.from('products').update(updates).eq('id', id);
         if (error) throw error;
         console.log('Product updated successfully!');
@@ -297,6 +344,10 @@ Commands:
         const [id] = args.slice(1);
         if (!id) throw new Error('Usage: delete-product <productId>');
         const client = await getAuthenticatedClient();
+        const { data: { user } } = await client.auth.getUser();
+        if (!user) throw new Error('Not logged in');
+        await verifySubscriptionAccess(client, user.id);
+
         const { error } = await client.from('products').delete().eq('id', id);
         if (error) throw error;
         console.log('Product deleted.');
