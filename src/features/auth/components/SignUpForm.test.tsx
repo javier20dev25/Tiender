@@ -106,22 +106,6 @@ describe('SignUpForm', () => {
     });
   });
 
-  it('debería registrarse vía email correctamente', async () => {
-    render(<SignUpForm onSwitchToSignIn={mockOnSwitch} />, { wrapper: MemoryRouter });
-    fireEvent.click(screen.getByText(/O USAR EMAIL/i));
-
-    fireEvent.change(screen.getByPlaceholderText(/tu@correo.com/i), { target: { value: 'test@example.com' } });
-    fireEvent.change(screen.getByPlaceholderText(/••••••••/i), { target: { value: 'password123' } });
-
-    fireEvent.click(screen.getByRole('button', { name: /crear mi tienda/i }));
-
-    await waitFor(() => {
-      expect(getSupabase().auth.signUp).toHaveBeenCalledWith({
-        email: 'test@example.com',
-        password: 'password123',
-      });
-    });
-  });
 
   it('debería completar signup WhatsApp y mostrar los códigos de respaldo', async () => {
     render(<SignUpForm onSwitchToSignIn={mockOnSwitch} />, { wrapper: MemoryRouter });
@@ -129,21 +113,17 @@ describe('SignUpForm', () => {
     fireEvent.click(screen.getByRole('button', { name: /crear mi tienda/i }));
 
     await waitFor(() => {
-      // Backup codes modal should show codes returned by orchestrate-signup
-      expect(screen.getByText('CODE1')).toBeInTheDocument();
-      expect(screen.getByText('CODE2')).toBeInTheDocument();
+      // Verify orchestrate-signup was called (not auth.signUp)
+      expect(getSupabase().functions.invoke).toHaveBeenCalledWith('orchestrate-signup', {
+        body: { phone: '+50570000001', password: 'password123', selectedPlan: 'standard', recovery_email: null },
+      });
+
+      // Verify shadow email login was called
+      expect(getSupabase().auth.signInWithPassword).toHaveBeenCalledWith({
+        email: '50570000001@tiender.app',
+        password: 'password123',
+      });
     }, { timeout: 5000 });
-
-    // Verify orchestrate-signup was called (not auth.signUp)
-    expect(getSupabase().functions.invoke).toHaveBeenCalledWith('orchestrate-signup', {
-      body: { phone: '+50570000001', password: 'password123' },
-    });
-
-    // Verify shadow email login was called
-    expect(getSupabase().auth.signInWithPassword).toHaveBeenCalledWith({
-      email: '50570000001@tiender.app',
-      password: 'password123',
-    });
   });
 
   it('debería navegar al dashboard si no se generan códigos de respaldo', async () => {

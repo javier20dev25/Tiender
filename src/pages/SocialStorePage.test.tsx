@@ -56,12 +56,12 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
 
     mockedSupabase.from.mockImplementation((tableName: string) => {
       if (tableName === 'stores') {
+        const queryBuilder = {
+          eq: vi.fn().mockReturnThis(),
+          single: storesSingleMock
+        };
         return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: storesSingleMock
-            })
-          })
+          select: vi.fn().mockReturnValue(queryBuilder)
         };
       }
       return {
@@ -176,7 +176,7 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
 
     // Verify error UI - using getByRole to be specific
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Acceso Denegado/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /algo pasó/i })).toBeInTheDocument();
       expect(screen.getByText(/sospechosa/i)).toBeInTheDocument();
     }, { timeout: 4000 });
   });

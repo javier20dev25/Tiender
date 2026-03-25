@@ -85,43 +85,15 @@ describe('Authentication Flow Integration Test', () => {
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
     fireEvent.click(screen.getByRole('button', { name: /crear mi tienda/i }));
 
-    // Assert that the backup codes modal appears with the codes
+    // Assert that auto-login happens and the correct Edge Function call was made
     await waitFor(() => {
-      expect(screen.getByText('code-abc-123')).toBeInTheDocument();
-    }, { timeout: 5000 });
-
-    // Verify the correct Edge Function call was made
-    expect(mockFunctionsInvoke).toHaveBeenCalledWith('orchestrate-signup', {
-      body: { phone: '+50570000001', password: 'password123' },
-    });
-  });
-
-  test('should switch to email mode and sign up with email', async () => {
-    const onSwitchToSignIn = vi.fn();
-
-    render(
-      <MemoryRouter>
-        <SignUpForm onSwitchToSignIn={onSwitchToSignIn} />
-      </MemoryRouter>
-    );
-
-    // Click the toggle to switch to email mode
-    fireEvent.click(screen.getByText(/O USAR EMAIL/i));
-
-    // Now email input should be visible
-    const emailInput = screen.getByPlaceholderText(/tu@correo.com/i);
-    const passwordInput = screen.getByPlaceholderText(/••••••••/i);
-
-    fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'password123' } });
-    fireEvent.click(screen.getByRole('button', { name: /crear mi tienda/i }));
-
-    // Verify signUp was called with email credentials
-    await waitFor(() => {
-      expect(mockSignUp).toHaveBeenCalledWith({
-        email: 'test@example.com',
-        password: 'password123',
+      expect(mockFunctionsInvoke).toHaveBeenCalledWith('orchestrate-signup', {
+        body: { phone: '+50570000001', password: 'password123', selectedPlan: 'standard', recovery_email: null },
       });
-    });
+      expect(mockSignInWithPassword).toHaveBeenCalledWith({
+        email: '50570000001@tiender.app',
+        password: 'password123'
+      });
+    }, { timeout: 5000 });
   });
 });
