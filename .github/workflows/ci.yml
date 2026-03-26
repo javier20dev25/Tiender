@@ -44,6 +44,9 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
 
+      - name: Install dependencies
+        run: deno install
+
       - name: Run Deno tests
         run: deno test --no-lock --allow-net --allow-env --allow-read supabase/functions/
         env:
