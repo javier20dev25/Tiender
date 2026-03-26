@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { resolve } from 'path';
 import * as fs from 'fs';
@@ -44,7 +44,7 @@ async function getAuthenticatedClient() {
   return supabase;
 }
 
-async function verifySubscriptionAccess(client: any, userId: string) {
+async function verifySubscriptionAccess(client: SupabaseClient, userId: string) {
   const { data: store, error: storeError } = await client
     .from('stores')
     .select('trial_ends_at')
@@ -203,6 +203,7 @@ Usage:
         const flags = parseFlags(args.slice(1));
         const client = await getAuthenticatedClient();
         const { data: { user } } = await client.auth.getUser();
+        if (!user) throw new Error('Not logged in');
         
         const { data: store } = await client
           .from('stores')
@@ -244,6 +245,7 @@ Usage:
 
         const client = await getAuthenticatedClient();
         const { data: { user } } = await client.auth.getUser();
+        if (!user) throw new Error('Not logged in');
         const { data: store } = await client.from('stores').select('id').eq('user_id', user?.id).single();
         if (!store) throw new Error('Store not found.');
 
@@ -332,6 +334,7 @@ Usage:
         }
 
         const { data: { user } } = await client.auth.getUser();
+        if (!user) throw new Error('Not logged in');
         await verifySubscriptionAccess(client, user.id);
 
         const { error } = await client.from('products').update(updates).eq('id', id);

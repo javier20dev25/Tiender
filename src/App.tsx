@@ -12,6 +12,7 @@ const HomePage = lazy(() => import('./pages/HomePage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
+const CliDocsPage = lazy(() => import('./pages/CliDocsPage'));
 
 import PageLoader from './components/PageLoader';
 
@@ -24,6 +25,7 @@ function App() {
         <Route path="/s/:storeId" element={<SocialStorePage />} />
         <Route path="/terminos" element={<TermsPage />} />
         <Route path="/privacidad" element={<PrivacyPage />} />
+        <Route path="/cli" element={<CliDocsPage />} />
         <Route path="/" element={<HomePage />} />
 
         {/* Rutas Protegidas */}

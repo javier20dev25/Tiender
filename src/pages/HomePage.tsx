@@ -130,9 +130,9 @@ const HomePage: React.FC = () => {
               Delega la creación, gestión y análisis de tu tienda completamente a la Inteligencia Artificial. Nuestra renovada CLI permite a cualquier Agente crear una cuenta (o usar la tuya) para automatizar tareas, administrar productos y orquestar decisiones con permisos 100% seguros y respaldados por RLS.
             </p>
             <div className="flex gap-4">
-              <a href="https://github.com/javier20dev25/Tiender/blob/main/CLI_GUIDE.md" target="_blank" rel="noopener noreferrer" className="px-8 py-4 rounded-[18px] bg-brand-cyan/10 border border-brand-cyan/20 text-brand-cyan font-bold uppercase tracking-wider text-xs hover:bg-brand-cyan/20 transition-all flex items-center gap-2">
+              <Link to="/cli" className="px-8 py-4 rounded-[18px] bg-brand-cyan/10 border border-brand-cyan/20 text-brand-cyan font-bold uppercase tracking-wider text-xs hover:bg-brand-cyan/20 transition-all flex items-center gap-2">
                 Ver Docs de CLI <ChevronRight className="w-4 h-4" />
-              </a>
+              </Link>
             </div>
           </div>
           <div className="md:w-1/2 w-full">

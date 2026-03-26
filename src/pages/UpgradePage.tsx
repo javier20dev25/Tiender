@@ -94,7 +94,8 @@ const UpgradePage: React.FC = () => {
         handlePlanSelection(planParam);
       }
     }
-  }, [searchParams, store, subscription, loading, error, isAutoProcessing, hasActivePayPalSubscription, isTrialActive, authLoading, handlePlanSelection]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, store, subscription, loading, error, isAutoProcessing, hasActivePayPalSubscription, isTrialActive, authLoading]);
 
 
   const handleCancelSuccess = () => {
