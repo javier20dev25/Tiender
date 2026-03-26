@@ -17,7 +17,6 @@ interface EditStoreFormProps {
 
 const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUpdated }) => {
   const [name, setName] = useState('');
-  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
   const [communityLink, setCommunityLink] = useState('');
@@ -76,7 +75,6 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setLogoFile(file);
     const reader = new FileReader();
     reader.onloadend = () => setLogoPreview(reader.result as string);
     reader.readAsDataURL(file);
@@ -111,7 +109,6 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
       console.error('[EditStoreForm] Error subiendo logo:', err);
       setError((err as Error).message || 'Error al subir la imagen del logo.');
       setLogoPreview(null);
-      setLogoFile(null);
     } finally {
       setIsUploadingLogo(false);
     }

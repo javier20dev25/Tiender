@@ -20,7 +20,6 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [externalLink, setExternalLink] = useState('');
   const [videoLink, setVideoLink] = useState('');
@@ -40,7 +39,6 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setImageFile(file);
     const reader = new FileReader();
     reader.onloadend = () => setImagePreview(reader.result as string);
     reader.readAsDataURL(file);
@@ -80,7 +78,6 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
       console.error('[AddProductForm] Error subiendo imagen:', err);
       setError((err as Error).message || 'Error al subir la imagen del producto.');
       setImagePreview(null);
-      setImageFile(null);
     } finally {
       setIsUploadingImage(false);
     }
@@ -128,7 +125,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
     e.preventDefault();
     setError('');
 
-    if (!title || !price || !imageFile) {
+    if (!title || !price) {
       setError('Por favor completa los campos obligatorios.');
       return;
     }
