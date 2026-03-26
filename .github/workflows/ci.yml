@@ -45,7 +45,7 @@ jobs:
         uses: supabase/setup-cli@v1
 
       - name: Run Deno tests
-        run: deno test --allow-net --allow-env --allow-read supabase/functions/
+        run: deno test --no-lock --allow-net --allow-env --allow-read supabase/functions/
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
