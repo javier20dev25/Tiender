@@ -31,8 +31,9 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
   const [wholesaleThreshold, setWholesaleThreshold] = useState('');
   const [wholesalePrice, setWholesalePrice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,13 +58,51 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
     }
   }, [product]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+
+    try {
+      setIsUploadingImage(true);
+      setError('');
+      console.log('[EditProductForm] Eager upload: Comprimiendo imagen...');
+      const compressionStart = Date.now();
+      const compressedFile = await compressImage(file);
+      console.log(`[EditProductForm] Imagen comprimida en ${Date.now() - compressionStart}ms. Tamaño: ${compressedFile.size} bytes`);
+      
+      const fileExtension = compressedFile.name.split('.').pop();
+      const fileName = `${uuidv4()}.${fileExtension}`;
+      const filePath = `${product.store_id}/${fileName}`;
+
+      console.log('[EditProductForm] Eager upload: Subiendo a "product-images"...');
+      const uploadStart = Date.now();
+      const { error: uploadError } = await getSupabase().storage
+        .from('product-images')
+        .upload(filePath, compressedFile);
+
+      if (uploadError) {
+        console.error('[EditProductForm] Error de upload:', uploadError);
+        throw uploadError;
+      }
+      console.log(`[EditProductForm] Upload exitoso en ${Date.now() - uploadStart}ms`);
+
+      const { data: publicData } = getSupabase().storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+      
+      console.log('[EditProductForm] URL pública obtenida:', publicData.publicUrl);
+      setUploadedImageUrl(publicData.publicUrl);
+    } catch (err: unknown) {
+      console.error('[EditProductForm] Error subiendo imagen:', err);
+      setError((err as Error).message || 'Error al subir la nueva imagen del producto.');
+      // Revert to original preview on failure
+      setImagePreview(product.image_url);
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -111,43 +150,18 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
       return;
     }
 
+    if (isUploadingImage) {
+      setError('Espera a que la imagen termine de subirse.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      console.log('[EditProductForm] Iniciando actualización de producto:', { id: product.id, title, hasNewImage: !!imageFile });
+      console.log('[EditProductForm] Iniciando actualización de producto:', { id: product.id, title, hasNewImage: !!uploadedImageUrl, finalImage: uploadedImageUrl || product.image_url });
       const hashtagsArray = hashtags.split(',').map(h => h.trim()).filter(h => h);
 
-      let imageUrl = product.image_url;
-
-      if (imageFile) {
-        console.log('[EditProductForm] Comprimiendo nueva imagen...');
-        const compressionStart = Date.now();
-        const compressedFile = await compressImage(imageFile);
-        console.log(`[EditProductForm] Imagen comprimida en ${Date.now() - compressionStart}ms. tamaño: ${compressedFile.size} bytes`);
-
-        const fileExtension = compressedFile.name.split('.').pop();
-        const fileName = `${uuidv4()}.${fileExtension}`;
-        const filePath = `${product.store_id}/${fileName}`;
-
-        console.log('[EditProductForm] Subiendo a "product-images"...');
-        const uploadStart = Date.now();
-        const { error: uploadError } = await getSupabase().storage
-          .from('product-images')
-          .upload(filePath, compressedFile);
-
-        if (uploadError) {
-          console.error('[EditProductForm] Error de upload:', uploadError);
-          throw uploadError;
-        }
-        console.log(`[EditProductForm] Upload exitoso en ${Date.now() - uploadStart}ms`);
-
-        const { data: publicData } = getSupabase().storage
-          .from('product-images')
-          .getPublicUrl(filePath);
-        
-        imageUrl = publicData.publicUrl;
-        console.log('[EditProductForm] Nueva URL de imagen:', imageUrl);
-      }
+      const imageUrl = uploadedImageUrl || product.image_url;
 
       const updatePayload: Record<string, unknown> = {
         title,
@@ -263,10 +277,18 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
             <div>
               <label className={labelClasses}><ImageIcon className="w-3.5 h-3.5" /> Imagen</label>
               <div className="relative aspect-square rounded-3xl border border-white/5 bg-zinc-800/30 overflow-hidden group">
-                <img src={imagePreview || 'https://placehold.co/200x200'} alt="Preview" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                <img src={imagePreview || 'https://placehold.co/200x200'} alt="Preview" className={`w-full h-full object-cover transition-transform duration-500 ${isUploadingImage ? 'scale-110 opacity-50 blur-sm brightness-50' : 'group-hover:scale-110'}`} />
+                
+                {isUploadingImage && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="w-6 h-6 border-2 border-white border-t-transparent rounded-full mb-2" />
+                    <span className="text-[10px] font-black text-white uppercase tracking-widest bg-black/60 px-3 py-1 rounded-full backdrop-blur-md">Subiendo...</span>
+                  </div>
+                )}
+
+                <label className={`absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer ${isUploadingImage ? 'pointer-events-none hidden' : ''}`}>
                   <span className="px-4 py-2 bg-white text-black font-bold rounded-xl hover:scale-105 transition-transform">Cambiar</span>
-                  <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                  <input type="file" accept="image/*" onChange={handleImageChange} disabled={isUploadingImage} className="hidden" />
                 </label>
               </div>
               <p className="text-[9px] text-zinc-600 mt-2 text-center uppercase font-bold tracking-tighter">Click para cambiar imagen</p>
@@ -348,11 +370,11 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
           <button type="button" onClick={onClose} className="px-8 py-4 rounded-2xl text-zinc-400 font-bold hover:text-white transition-colors uppercase tracking-widest text-xs">Cancelar</button>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="px-10 py-4 rounded-[20px] bg-brand-cyan text-brand-dark font-black uppercase tracking-tighter italic flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30"
+            disabled={isSubmitting || isUploadingImage}
+            className="px-10 py-4 rounded-[20px] bg-brand-cyan text-brand-dark font-black uppercase tracking-tighter italic flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 disabled:scale-100 flex-shrink-0"
           >
             {isSubmitting ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full" /> : <Save className="w-5 h-5" />}
-            <span>{isSubmitting ? 'Guardando' : 'Guardar Cambios'}</span>
+            <span>{isSubmitting ? 'Guardando' : isUploadingImage ? 'Esperando...' : 'Guardar Cambios'}</span>
           </button>
         </div>
       </motion.div>

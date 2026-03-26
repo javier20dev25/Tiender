@@ -22,6 +22,8 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
   const [communityLink, setCommunityLink] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [uploadedLogoUrl, setUploadedLogoUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -70,13 +72,48 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
     });
   };
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setLogoFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setLogoPreview(reader.result as string);
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setLogoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+
+    try {
+      setIsUploadingLogo(true);
+      setError('');
+      console.log('[EditStoreForm] Eager upload: Comprimiendo logo...');
+      const compressedFile = await compressImage(file);
+
+      console.log('[EditStoreForm] Eager upload: Subiendo nuevo logo a "store-logos"...');
+      const fileExtension = compressedFile.name.split('.').pop();
+      const fileName = `${uuidv4()}.${fileExtension}`;
+      const filePath = `${store.id}/${fileName}`;
+
+      const { error: uploadError } = await getSupabase().storage
+        .from('store-logos')
+        .upload(filePath, compressedFile, { upsert: true });
+
+      if (uploadError) {
+        console.error('[EditStoreForm] Error al subir logo:', uploadError);
+        throw uploadError;
+      }
+
+      const { data: publicData } = getSupabase().storage
+        .from('store-logos')
+        .getPublicUrl(filePath);
+        
+      console.log('[EditStoreForm] URL pública de logo obtenida:', publicData.publicUrl);
+      setUploadedLogoUrl(publicData.publicUrl);
+    } catch (err: unknown) {
+      console.error('[EditStoreForm] Error subiendo logo:', err);
+      setError((err as Error).message || 'Error al subir la imagen del logo.');
+      setLogoPreview(null);
+      setLogoFile(null);
+    } finally {
+      setIsUploadingLogo(false);
     }
   };
 
@@ -90,48 +127,16 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
     }
 
     setIsSubmitting(true);
-    let newLogoUrl = currentLogoUrl;
+    // Use the eagerly uploaded URL if available, otherwise fallback to the current one
+    const finalLogoUrl = uploadedLogoUrl || currentLogoUrl;
 
     try {
-      console.log('[EditStoreForm] Iniciando guardado de tienda:', { name, currentLogoUrl, hasNewLogo: !!logoFile });
-      
-      if (logoFile) {
-        setLogoPreview(null); // Clear preview to show upload state if needed
-        console.log('[EditStoreForm] Comprimiendo logo...');
-        const compressionStart = Date.now();
-        const compressedFile = await compressImage(logoFile);
-        console.log(`[EditStoreForm] Logo comprimido en ${Date.now() - compressionStart}ms. Tamaño: ${compressedFile.size} bytes`);
-
-        console.log('[EditStoreForm] Subiendo nuevo logo a "store-logos"...');
-        const uploadStart = Date.now();
-        const fileExtension = compressedFile.name.split('.').pop();
-        const fileName = `${uuidv4()}.${fileExtension}`;
-        const filePath = `${store.id}/${fileName}`;
-
-        const { error: uploadError } = await getSupabase().storage
-          .from('store-logos')
-          .upload(filePath, compressedFile, { upsert: true });
-
-        if (uploadError) {
-          console.error('[EditStoreForm] Error al subir logo:', uploadError);
-          throw uploadError;
-        }
-        console.log(`[EditStoreForm] Upload de logo exitoso en ${Date.now() - uploadStart}ms`);
-
-        const { data: publicData } = getSupabase().storage
-          .from('store-logos')
-          .getPublicUrl(filePath);
-          
-        newLogoUrl = publicData.publicUrl;
-        console.log('[EditStoreForm] URL pública de logo obtenida:', newLogoUrl);
-      }
-
-      console.log('[EditStoreForm] Actualizando datos en tabla "stores"...');
+      console.log('[EditStoreForm] Actualizando datos en tabla "stores"...', { name, finalLogoUrl });
       const { data: updateData, error: updateError } = await getSupabase()
         .from('stores')
         .update({
           name: name.trim(),
-          logo_url: newLogoUrl,
+          logo_url: finalLogoUrl,
           community_link: communityLink.trim(),
         })
         .eq('id', store.id)
@@ -209,16 +214,24 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
             <div className="relative group">
               <div className="w-32 h-32 rounded-full border-4 border-zinc-800 bg-zinc-800/30 overflow-hidden relative group shadow-2xl ring-4 ring-black/50">
                 {(logoPreview || currentLogoUrl) ? (
-                  <img src={logoPreview || currentLogoUrl || ''} alt="Store Logo" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                  <img src={logoPreview || currentLogoUrl || ''} alt="Store Logo" className={`w-full h-full object-cover transition-transform ${isUploadingLogo ? 'scale-110 opacity-50 blur-sm brightness-50' : 'group-hover:scale-110'}`} />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-zinc-600">
                     <ImageIcon className="w-10 h-10" />
                   </div>
                 )}
-                <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center cursor-pointer">
+                
+                {isUploadingLogo && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="w-6 h-6 border-2 border-brand-neon border-t-transparent rounded-full mb-1" />
+                    <span className="text-[9px] font-black text-brand-neon uppercase tracking-widest bg-brand-dark/50 px-2 py-0.5 rounded-full backdrop-blur-md">Subiendo...</span>
+                  </div>
+                )}
+
+                <label className={`absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center cursor-pointer ${isUploadingLogo ? 'pointer-events-none' : ''}`}>
                   <Upload className="w-6 h-6 text-white mb-1" />
                   <span className="text-[9px] font-black text-white uppercase">Cambiar</span>
-                  <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+                  <input type="file" accept="image/*" onChange={handleLogoChange} disabled={isUploadingLogo} className="hidden" />
                 </label>
               </div>
               {logoPreview && (
@@ -253,11 +266,11 @@ const EditStoreForm: React.FC<EditStoreFormProps> = ({ store, onClose, onStoreUp
           <button type="button" onClick={onClose} className="px-8 py-4 rounded-2xl text-zinc-400 font-bold hover:text-white transition-colors uppercase tracking-widest text-xs">Cancelar</button>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="px-10 py-4 rounded-[20px] bg-brand-neon text-brand-dark font-black uppercase tracking-tighter italic flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30"
+            disabled={isSubmitting || isUploadingLogo}
+            className="px-10 py-4 rounded-[20px] bg-brand-neon text-brand-dark font-black uppercase tracking-tighter italic flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 disabled:scale-100"
           >
             {isSubmitting ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full" /> : <Save className="w-5 h-5" />}
-            <span>{isSubmitting ? 'Guardando' : 'Guardar Cambios'}</span>
+            <span>{isSubmitting ? 'Guardando' : isUploadingLogo ? 'Esperando...' : 'Guardar Cambios'}</span>
           </button>
         </div>
       </motion.div>

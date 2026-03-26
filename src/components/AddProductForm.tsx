@@ -32,15 +32,57 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
   const [wholesaleThreshold, setWholesaleThreshold] = useState('');
   const [wholesalePrice, setWholesalePrice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+
+    try {
+      setIsUploadingImage(true);
+      setError('');
+      console.log('[AddProductForm] Eager upload: Comprimiendo imagen...');
+      const compressionStart = Date.now();
+      const compressedFile = await compressImage(file);
+      console.log(`[AddProductForm] Imagen comprimida en ${Date.now() - compressionStart}ms. Nuevo tamaño: ${compressedFile.size} bytes`);
+      
+      const uploadStart = Date.now();
+      const fileExtension = compressedFile.name.split('.').pop();
+      const fileName = `${uuidv4()}.${fileExtension}`;
+      const filePath = `${storeId}/${fileName}`;
+
+      console.log('[AddProductForm] Eager upload: Subiendo a storage "product-images"...');
+      const { error: uploadError } = await getSupabase().storage
+        .from('product-images')
+        .upload(filePath, compressedFile);
+
+      if (uploadError) {
+        console.error('[AddProductForm] Error de upload:', uploadError);
+        throw uploadError;
+      }
+
+      console.log(`[AddProductForm] Upload exitoso en ${Date.now() - uploadStart}ms`);
+
+      const { data: publicData } = getSupabase().storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+      
+      console.log('[AddProductForm] URL pública obtenida:', publicData.publicUrl);
+      setUploadedImageUrl(publicData.publicUrl);
+    } catch (err: unknown) {
+      console.error('[AddProductForm] Error subiendo imagen:', err);
+      setError((err as Error).message || 'Error al subir la imagen del producto.');
+      setImagePreview(null);
+      setImageFile(null);
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -91,6 +133,11 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
       return;
     }
 
+    if (!uploadedImageUrl) {
+      setError('Espera a que la imagen termine de subirse.');
+      return;
+    }
+
     if (title.trim().length < 2 || title.trim().length > 100) {
       setError('El título debe tener entre 2 y 100 caracteres.');
       return;
@@ -104,35 +151,8 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
     setIsSubmitting(true);
 
     try {
-      console.log('[AddProductForm] Iniciando guardado de producto:', { title, price, hasImage: !!imageFile });
+      console.log('[AddProductForm] Preparando guardado de producto en DB...', { title, price, imageUrl: uploadedImageUrl });
       
-      const compressionStart = Date.now();
-      console.log('[AddProductForm] Comprimiendo imagen...');
-      const compressedFile = await compressImage(imageFile);
-      console.log(`[AddProductForm] Imagen comprimida en ${Date.now() - compressionStart}ms. Nuevo tamaño: ${compressedFile.size} bytes`);
-      
-      const uploadStart = Date.now();
-      const fileExtension = compressedFile.name.split('.').pop();
-      const fileName = `${uuidv4()}.${fileExtension}`;
-      const filePath = `${storeId}/${fileName}`;
-
-      console.log('[AddProductForm] Subiendo a storage "product-images"...');
-      const { error: uploadError } = await getSupabase().storage
-        .from('product-images')
-        .upload(filePath, compressedFile);
-
-      if (uploadError) {
-        console.error('[AddProductForm] Error de upload:', uploadError);
-        throw uploadError;
-      }
-      console.log(`[AddProductForm] Upload exitoso en ${Date.now() - uploadStart}ms`);
-
-      const { data: publicData } = getSupabase().storage
-        .from('product-images')
-        .getPublicUrl(filePath);
-      
-      const imageUrl = publicData.publicUrl;
-      console.log('[AddProductForm] URL pública obtenida:', imageUrl);
       const hashtagsArray = hashtags.split(',').map(h => h.trim()).filter(h => h);
 
       const insertPayload: Record<string, unknown> = {
@@ -140,7 +160,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
         title,
         description: description || null,
         price: parseFloat(price),
-        image_url: imageUrl,
+        image_url: uploadedImageUrl,
         external_link: externalLink || null,
         video_link: videoLink || null,
         hashtags: hashtagsArray.length > 0 ? hashtagsArray : null,
@@ -235,14 +255,21 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
               </div>
             </div>
 
-            {/* File Upload Zone */}
             <div>
               <label className={labelClasses}><ImageIcon className="w-3.5 h-3.5" /> Imagen Principal</label>
               <div className="relative h-[168px] rounded-3xl border-2 border-dashed border-white/10 bg-zinc-800/30 overflow-hidden group hover:border-brand-neon/30 transition-all">
                 {imagePreview ? (
                   <div className="relative w-full h-full group">
-                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <img src={imagePreview} alt="Preview" className={`w-full h-full object-cover transition-transform duration-500 ${isUploadingImage ? 'scale-110 opacity-50 blur-sm brightness-50' : 'group-hover:scale-110'}`} />
+                    
+                    {isUploadingImage && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+                        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="w-6 h-6 border-2 border-white border-t-transparent rounded-full mb-2" />
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest bg-black/60 px-3 py-1 rounded-full backdrop-blur-md">Subiendo...</span>
+                      </div>
+                    )}
+
+                    <div className={`absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center ${isUploadingImage ? 'pointer-events-none hidden' : ''}`}>
                       <label className="px-4 py-2 bg-white text-black font-bold rounded-xl cursor-pointer hover:scale-105 transition-transform">Cambiar</label>
                     </div>
                   </div>
@@ -250,10 +277,10 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
                   <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-white/5 transition-colors">
                     <Upload className="w-8 h-8 text-zinc-500 mb-2 group-hover:text-brand-neon transition-colors" />
                     <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Sube una foto</span>
-                    <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                    <input type="file" accept="image/*" onChange={handleImageChange} disabled={isUploadingImage} className="hidden" />
                   </label>
                 )}
-                <input type="file" accept="image/*" onChange={handleImageChange} className="absolute inset-0 opacity-0 cursor-pointer hidden" id="fileInput" />
+                <input type="file" accept="image/*" onChange={handleImageChange} disabled={isUploadingImage} className="absolute inset-0 opacity-0 cursor-pointer hidden" id="fileInput" />
               </div>
             </div>
           </div>
@@ -354,11 +381,11 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
           <button type="button" onClick={onClose} className="px-8 py-4 rounded-2xl text-zinc-400 font-bold hover:text-white transition-colors uppercase tracking-widest text-xs">Cancelar</button>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="px-10 py-4 rounded-[20px] bg-brand-neon text-brand-dark font-black uppercase tracking-tighter italic flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 flex-shrink-0"
+            disabled={isSubmitting || isUploadingImage}
+            className="px-10 py-4 rounded-[20px] bg-brand-neon text-brand-dark font-black uppercase tracking-tighter italic flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 disabled:scale-100 flex-shrink-0"
           >
             {isSubmitting ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-4 h-4 border-2 border-brand-dark border-t-transparent rounded-full" /> : <Plus className="w-5 h-5" />}
-            <span>{isSubmitting ? 'Guardando' : 'Publicar Producto'}</span>
+            <span>{isSubmitting ? 'Guardando' : isUploadingImage ? 'Esperando...' : 'Publicar Producto'}</span>
           </button>
         </div>
       </motion.div>

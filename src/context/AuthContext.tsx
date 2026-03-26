@@ -51,7 +51,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .from('subscriptions')
       .select('status, current_period_end')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
+    // SubError is only logged if it's not a PGRST116 (which maybeSingle ignores), so real errors are still caught
     if (subError) console.warn('[AuthContext] Could not fetch subscription details.', subError);
     console.log('[AuthContext] Subscription fetched:', refreshedSub?.status || 'none');
     setSubscription(refreshedSub as Subscription | null);
@@ -118,30 +119,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data: authListener } = getSupabase().auth.onAuthStateChange(
       async (event, newSession) => {
-        if (import.meta.env.DEV) console.log('[AuthContext] onAuthStateChange', event);
+        if (import.meta.env.DEV) console.log(`[AuthContext] onAuthStateChange event: ${event}`);
 
         const newUser = newSession?.user ?? null;
 
+        // Update basic auth state
         setSession(newSession);
         setUser(newUser);
 
         if (newUser) {
           try {
-            console.log('[AuthContext] Auth change (signed in): refreshing data...');
-            // Always refresh on auth state change to avoid stale closure issues
-              await refreshUserSessionData(newUser.id);
-              syncAndRefreshSession(newUser.id);
+            console.log('[AuthContext] Auth change (signed in or refreshed): updating data...');
+            await refreshUserSessionData(newUser.id);
+            syncAndRefreshSession(newUser.id);
           } catch (err: unknown) {
             console.error("[AuthContext] Error on auth change:", err);
-          } finally {
-            setLoading(false);
           }
-        } else if (event === 'SIGNED_OUT' || !newSession) {
-          console.log('[AuthContext] Auth change (signed out)');
+        } else if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !newSession)) {
+          console.log('[AuthContext] Session cleared');
           setStore(null);
           setSubscription(null);
-          setLoading(false);
         }
+        
+        // Ensure loading is false after we've had a chance to process the event
+        setLoading(false);
       }
     );
 
