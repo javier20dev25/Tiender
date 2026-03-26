@@ -44,73 +44,9 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
 
-      - name: Set PayPal Secrets in Supabase
-        run: |
-          if [ -n "${{ secrets.PAYPAL_CLIENT_ID }}" ]; then
-            echo "Setting PayPal secrets in Supabase project..."
-            supabase secrets set \
-              PAYPAL_CLIENT_ID=${{ secrets.PAYPAL_CLIENT_ID }} \
-              PAYPAL_CLIENT_SECRET=${{ secrets.PAYPAL_CLIENT_SECRET }} \
-              PAYPAL_PLAN_ID_STANDARD=${{ secrets.PAYPAL_PLAN_ID_STANDARD }} \
-              PAYPAL_PLAN_ID_FULL=${{ secrets.PAYPAL_PLAN_ID_FULL }} \
-              PAYPAL_WEBHOOK_ID=${{ secrets.PAYPAL_WEBHOOK_ID }} \
-              PAYPAL_API_URL=${{ secrets.PAYPAL_API_URL }}
-          else
-            echo "PayPal secrets not provided, skipping."
-          fi
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_ID }}
-
-      - name: Verify Supabase Secrets for PayPal Integration
-        run: |
-          echo "Verifying required Supabase secrets for PayPal integration..."
-          # Ensure SUPABASE_ACCESS_TOKEN and SUPABASE_URL are available as GitHub secrets
-          if [ -z "${{ secrets.SUPABASE_ACCESS_TOKEN }}" ]; then
-            echo "Error: SUPABASE_ACCESS_TOKEN secret is missing. Cannot verify Supabase secrets."
-            exit 1
-          fi
-          if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
-            echo "Error: SUPABASE_URL secret is missing. Cannot connect to Supabase project."
-            exit 1
-          fi
-
-          # Extract Supabase project ID from SUPABASE_URL
-          PROJECT_ID=$(echo "${{ secrets.SUPABASE_URL }}" | grep -oP 'https://\K[^.]+')
-          if [ -z "$PROJECT_ID" ]; then
-            echo "Error: Could not extract Supabase project ID from SUPABASE_URL."
-            exit 1
-          fi
-
-          # Set Supabase CLI environment variables
-          export SUPABASE_ACCESS_TOKEN="${{ secrets.SUPABASE_ACCESS_TOKEN }}"
-          export SUPABASE_PROJECT_REF="$PROJECT_ID"
-
-          echo "Checking for required PayPal secrets in Supabase project: $PROJECT_ID"
-          
-          # Check for required PayPal secrets
-          REQUIRED_SECRETS=("PAYPAL_CLIENT_ID" "PAYPAL_CLIENT_SECRET" "PAYPAL_PLAN_ID_STANDARD" "PAYPAL_PLAN_ID_FULL" "PAYPAL_WEBHOOK_ID" "PAYPAL_API_URL")
-          MISSING_SECRETS=""
-
-          for secret in "${REQUIRED_SECRETS[@]}"; do
-            # Use 'supabase secrets list' to get secrets and grep to check for each one.
-            # The output of 'supabase secrets list' is typically one secret name per line.
-            if ! supabase secrets list --project-ref "$PROJECT_ID" | grep -q "^$secret$"; then
-              MISSING_SECRETS+="$secret "
-            fi
-          done
-
-          if [ -n "$MISSING_SECRETS" ]; then
-            echo "❌ Error: Missing required Supabase secrets for PayPal integration: $MISSING_SECRETS"
-            exit 1
-          else
-            echo "✅ All required PayPal secrets are present in Supabase project '$PROJECT_ID'."
-          fi
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }} # Supabase CLI needs this to know which project to connect to
-
       - name: Run Deno tests
         run: deno test --allow-net --allow-env --allow-read supabase/functions/
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PAYPAL_API_URL: https://api-m.sandbox.paypal.com
