@@ -181,9 +181,10 @@ describe('Flujo de Suscripción E2E en Dashboard', () => {
     const upgradeButton = screen.getByRole('button', { name: /mejorar plan/i });
     fireEvent.click(upgradeButton);
 
-    // Verify error message appears in the UI (DashboardPage uses setError, not window.alert)
+    // DashboardPage renders error.message directly via setError().
+    // The mock error is 'Error de PayPal: Invalid plan'.
     await waitFor(() => {
-      expect(screen.getByText(/Error al iniciar la mejora de plan/i)).toBeInTheDocument();
+      expect(screen.getByText(/Error de PayPal/i)).toBeInTheDocument();
     });
 
     // No redirect should happen

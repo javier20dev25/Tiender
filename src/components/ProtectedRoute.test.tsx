@@ -59,7 +59,7 @@ describe('ProtectedRoute', () => {
       subscription: null,
     });
 
-    render(
+    const { container } = render(
       <MemoryRouter initialEntries={['/dashboard']}>
         <Routes>
           <Route path="/dashboard" element={<ProtectedRoute><div>Dashboard</div></ProtectedRoute>} />
@@ -68,7 +68,9 @@ describe('ProtectedRoute', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+    // PageLoader renders a spinner div (no text) with animate-spin class
+    const spinner = container.querySelector('.animate-spin');
+    expect(spinner).toBeInTheDocument();
   });
 
   it('should redirect to /upgrade for users without active subscription', () => {

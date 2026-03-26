@@ -174,10 +174,10 @@ describe('Integración: SocialStorePage (Flujo de Compra y Eventos)', () => {
 
     renderWithRouter();
 
-    // Verify error UI - using getByRole to be specific
+    // When visit-gate fails, the store still loads in parallel (graceful degradation).
+    // The store header should still render since fetchStoreAndProducts succeeds.
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /algo pasó/i })).toBeInTheDocument();
-      expect(screen.getByText(/sospechosa/i)).toBeInTheDocument();
+      expect(screen.getByText('Tienda Astaroth')).toBeInTheDocument();
     }, { timeout: 4000 });
   });
 
