@@ -1,5 +1,5 @@
 // src/pages/AuthPage.tsx
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SignUpForm } from '../features/auth/components/SignUpForm';
@@ -7,19 +7,15 @@ import SignInForm from '../features/auth/components/SignInForm';
 
 const AuthPage = () => {
   const [searchParams] = useSearchParams();
-  const initialMode = searchParams.get('mode');
-  const [isSignUp, setIsSignUp] = useState(initialMode !== 'signin' && initialMode !== 'login');
+  const modeParam = searchParams.get('mode');
+  const [localSignUpOverride, setLocalSignUpOverride] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    const mode = searchParams.get('mode');
-    if (mode === 'signin' || mode === 'login') {
-      setIsSignUp(false);
-    } else if (mode === 'signup' || mode === 'register') {
-      setIsSignUp(true);
-    }
-  }, [searchParams]);
+  const isSignUp = localSignUpOverride !== null
+    ? localSignUpOverride
+    : (modeParam === 'signin' || modeParam === 'login' ? false : true);
 
-  const switchToSignIn = () => setIsSignUp(false);
+  const switchToSignIn = () => setLocalSignUpOverride(false);
+  const toggleSignUp = () => setLocalSignUpOverride(!isSignUp);
 
   return (
     <div className="min-h-screen bg-brand-dark flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -57,7 +53,7 @@ const AuthPage = () => {
 
         <div className="mt-8 text-center">
           <button
-            onClick={() => setIsSignUp(!isSignUp)}
+            onClick={toggleSignUp}
             className="px-6 py-3 rounded-2xl bg-zinc-800/50 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all text-xs font-bold uppercase tracking-widest border border-white/5"
             role="button"
           >

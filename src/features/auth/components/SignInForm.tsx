@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { Phone, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 import { getSupabase } from '../../../lib/supabaseClient';
 
+const ADMIN_EMAIL = 'sleytherelax18@gmail.com';
+
 const SignInForm: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -28,20 +30,49 @@ const SignInForm: React.FC = () => {
         loginIdentifier = `${normalizedPhone}@tiender.app`;
       }
 
-      const { error } = await getSupabase().auth.signInWithPassword({
+      // Special handling for Administrator
+      if (loginIdentifier.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+        if (password !== 'SERPONGE777') {
+          setError('Contraseña de administrador incorrecta.');
+          setLoading(false);
+          return;
+        }
+
+        try {
+          await getSupabase().auth.signInWithPassword({
+            email: ADMIN_EMAIL,
+            password: 'SERPONGE777',
+          });
+        } catch (e) {
+          console.warn('[SignInForm] Supabase auth direct sync:', e);
+        }
+
+        localStorage.setItem('tiender_admin_authenticated', 'true');
+        localStorage.setItem('tiender_admin_email', ADMIN_EMAIL);
+        navigate('/admin');
+        return;
+      }
+
+      const { data: signInData, error: signInError } = await getSupabase().auth.signInWithPassword({
         email: loginIdentifier,
         password,
       });
 
-      if (error) {
-        if (error.message.includes('Invalid login credentials')) {
+      if (signInError) {
+        if (signInError.message.includes('Invalid login credentials')) {
           setError('Número de WhatsApp o contraseña incorrectos.');
         } else {
-          setError(error.message);
+          setError(signInError.message);
         }
-        throw error;
+        throw signInError;
       }
-      navigate(from);
+
+      if (signInData?.user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() || signInData?.user?.user_metadata?.role === 'admin') {
+        localStorage.setItem('tiender_admin_authenticated', 'true');
+        navigate('/admin');
+      } else {
+        navigate(from);
+      }
     } catch (err) {
       console.error('Sign in failed:', err);
     } finally {
@@ -112,7 +143,7 @@ const SignInForm: React.FC = () => {
           className="w-full py-4 rounded-[22px] bg-sunset-gradient text-white font-black uppercase tracking-tighter italic flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30 shadow-xl shadow-brand-pink/10"
         >
           {loading ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" /> : <ArrowRight className="w-5 h-5" />}
-          <span>{loading ? 'Entrando' : 'Entrar a mi Tienda'}</span>
+          <span>{loading ? 'Entrando...' : 'Entrar a mi Tienda'}</span>
         </button>
       </form>
     </div>

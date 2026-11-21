@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 // Lazy-loaded pages for code splitting
 const AuthPage = lazy(() => import('./pages/AuthPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const SocialStorePage = lazy(() => import('./pages/SocialStorePage'));
 const RecoveryPage = lazy(() => import('./pages/RecoveryPage'));
@@ -20,14 +21,20 @@ function App() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
-        {/* Rutas Pǧblicas */}
+        {/* Dominio por defecto: Entrada directa al Inicio de Sesión */}
+        <Route path="/" element={<AuthPage />} />
         <Route path="/auth" element={<AuthPage />} />
+
+        {/* Panel de Administrador Master */}
+        <Route path="/admin" element={<AdminPage />} />
+
+        {/* Rutas de Tiendas Sociales y Públicas */}
         <Route path="/s/:storeId" element={<SocialStorePage />} />
         <Route path="/tienda/:storeId" element={<SocialStorePage />} />
         <Route path="/terminos" element={<TermsPage />} />
         <Route path="/privacidad" element={<PrivacyPage />} />
         <Route path="/cli" element={<CliDocsPage />} />
-        <Route path="/" element={<HomePage />} />
+        <Route path="/landing" element={<HomePage />} />
 
         {/* Rutas Protegidas */}
         <Route path="/recovery" element={<ProtectedRoute><RecoveryPage /></ProtectedRoute>} />

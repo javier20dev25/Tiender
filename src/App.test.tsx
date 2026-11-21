@@ -5,10 +5,10 @@ import App from './App';
 import { render } from './test-utils'; // Importar el render custom
 
 describe('App Routing', () => {
-  it('should render HomePage for the / route', async () => {
+  it('should render AuthPage for the / route as default entry', async () => {
     render(<App />, { route: '/' });
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Tu Tienda Social es Real/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Únete a la Revolución|Bienvenido de vuelta/i })).toBeInTheDocument();
     }, { timeout: 5000 });
   });
 

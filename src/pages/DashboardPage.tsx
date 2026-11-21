@@ -16,6 +16,7 @@ import ReportModal from '../components/ReportModal';
 import SubscriptionStatusBanner from '../components/SubscriptionStatusBanner';
 import TrialBanner from '../components/TrialBanner';
 import CreateStoreForm from '../components/CreateStoreForm';
+import { PasswordChangeModal } from '../components/PasswordChangeModal';
 import { WeeklyAnalytics } from '../components/WeeklyAnalytics';
 import { DashboardSkeleton } from '../components/Skeleton';
 import { Perf } from '../utils/perf';
@@ -28,7 +29,14 @@ import { StatsGrid } from '../components/dashboard/StatsGrid';
 import { ProductList } from '../components/dashboard/ProductList';
 
 const DashboardPage: React.FC = () => {
-  const { store, subscription, loading: authLoading } = useAuth();
+  const { user, store, subscription, loading: authLoading } = useAuth();
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (user?.user_metadata?.must_change_password) {
+      setIsPasswordModalOpen(true);
+    }
+  }, [user]);
   
   // Custom Hooks
   const { products, loadingProducts, fetchProducts } = useProducts(store?.id);
@@ -259,6 +267,7 @@ const DashboardPage: React.FC = () => {
       <CancellationModal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)} onSuccess={() => { setIsCancelModalOpen(false); alert('Suscripción cancelada.'); }} />
       {report && <ReportModal report={report} onClose={() => setReport(null)} />}
       {showCreateStoreForm && <CreateStoreForm onClose={() => setShowCreateStoreForm(false)} />}
+      <PasswordChangeModal isOpen={isPasswordModalOpen} onSuccess={() => setIsPasswordModalOpen(false)} />
     </div>
   );
 };
