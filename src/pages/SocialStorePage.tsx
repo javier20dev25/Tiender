@@ -31,7 +31,7 @@ const DiscountTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
 
   return (
     <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
-      â³ {mins}:{secs}
+      ⏱ {mins}:{secs}
     </span>
   );
 };
@@ -118,7 +118,7 @@ const SocialStorePage: React.FC = () => {
       if (productsError) throw new Error('No se pudieron cargar los productos.');
       setProducts(productsData || []);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error de conexiÃ³n. Revisa tu internet.';
+      const message = err instanceof Error ? err.message : 'Error de conexión. Revisa tu internet.';
       console.error('Fetch error:', err);
       setError(message);
     }
@@ -253,7 +253,7 @@ const SocialStorePage: React.FC = () => {
           <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
             <X className="w-10 h-10 text-red-500" />
           </div>
-          <h2 className="text-2xl font-black text-gray-900 mb-3">Â¡Ups! Algo pasÃ³</h2>
+          <h2 className="text-2xl font-black text-gray-900 mb-3">¡Ups! Algo pasó</h2>
           <p className="text-gray-500 mb-8 leading-relaxed">{error}</p>
           <button 
             onClick={verifyAndFetch}
@@ -508,7 +508,7 @@ const SocialStorePage: React.FC = () => {
                 <div className="flex justify-between items-end">
                   <div>
                      <span className="block text-sm text-gray-400 font-bold mb-1">TOTAL</span>
-                     <span className="text-xl font-bold tracking-tight text-gray-900">{cart.reduce((sum, item) => sum + item.quantity, 0)} artÃ­culos</span>
+                     <span className="text-xl font-bold tracking-tight text-gray-900">{cart.reduce((sum, item) => sum + item.quantity, 0)} artículos</span>
                   </div>
                   <span className="text-4xl font-black text-brand-pink tracking-tight">${cart.reduce((sum, item) => sum + (getCartItemPrice(item) * item.quantity), 0).toFixed(2)}</span>
                 </div>
@@ -522,7 +522,7 @@ const SocialStorePage: React.FC = () => {
                   setTimeout(() => {
                     const items = cart.map(i => `${i.title} (x${i.quantity})`).join(', ');
                     const total = cart.reduce((sum, item) => sum + (getCartItemPrice(item) * item.quantity), 0).toFixed(2);
-                    const message = encodeURIComponent(`Â¡Hola! Me gustarÃ­a comprar: ${items}. Total: $${total}`);
+                    const message = encodeURIComponent(`¡Hola! Me gustaría comprar: ${items}. Total: $${total}`);
                     window.open(`https://wa.me/${store.whatsapp_number}?text=${message}`, '_blank');
                     setIsCartOpen(false);
                     setIsSubmitting(false);

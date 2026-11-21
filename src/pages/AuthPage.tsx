@@ -1,11 +1,23 @@
 // src/pages/AuthPage.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SignUpForm } from '../features/auth/components/SignUpForm';
 import SignInForm from '../features/auth/components/SignInForm';
 
 const AuthPage = () => {
-  const [isSignUp, setIsSignUp] = useState(true);
+  const [searchParams] = useSearchParams();
+  const initialMode = searchParams.get('mode');
+  const [isSignUp, setIsSignUp] = useState(initialMode !== 'signin' && initialMode !== 'login');
+
+  useEffect(() => {
+    const mode = searchParams.get('mode');
+    if (mode === 'signin' || mode === 'login') {
+      setIsSignUp(false);
+    } else if (mode === 'signup' || mode === 'register') {
+      setIsSignUp(true);
+    }
+  }, [searchParams]);
 
   const switchToSignIn = () => setIsSignUp(false);
 

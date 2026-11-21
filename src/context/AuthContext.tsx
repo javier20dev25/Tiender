@@ -62,21 +62,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Calls the sync function and then refreshes all user data
   const syncAndRefreshSession = useCallback(async (userId: string) => {
     try {
-      if (import.meta.env.DEV) console.log('Iniciando sincronizaciÃ³n de suscripciÃ³n en segundo plano...');
+      if (import.meta.env.DEV) console.log('Iniciando sincronización de suscripción en segundo plano...');
       const { data, error } = await getSupabase().functions.invoke('sync-paypal-subscription');
 
       if (error) {
-        throw new Error(`Error en la funciÃ³n de sync: ${error.message}`);
+        throw new Error(`Error en la función de sync: ${error.message}`);
       }
 
       if (data?.status === 'reconciled' || data?.status === 'no_subscription_found') {
-        if (import.meta.env.DEV) console.log(`SincronizaciÃ³n completada (${data.status}). Refrescando datos de sesiÃ³n...`);
+        if (import.meta.env.DEV) console.log(`Sincronización completada (${data.status}). Refrescando datos de sesión...`);
         await refreshUserSessionData(userId);
       } else {
-        if (import.meta.env.DEV) console.log(`SuscripciÃ³n ya estaba sincronizada con PayPal (${data?.status}).`);
+        if (import.meta.env.DEV) console.log(`Suscripción ya estaba sincronizada con PayPal (${data?.status}).`);
       }
     } catch (e: unknown) {
-      console.error('Error durante la sincronizaciÃ³n de la suscripciÃ³n en segundo plano:', e);
+      console.error('Error durante la sincronización de la suscripción en segundo plano:', e);
     }
   }, [refreshUserSessionData]);
 
