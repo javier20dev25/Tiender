@@ -80,9 +80,12 @@ const HomePage: React.FC = () => {
               Empezar Prueba Gratis
               <ChevronRight className="w-5 h-5" />
             </button>
-            <button className="px-12 py-5 rounded-[22px] bg-zinc-800/50 border border-white/10 text-white font-bold uppercase tracking-widest text-xs hover:bg-zinc-700/50 transition-all backdrop-blur-md">
-              Ver Demo
-            </button>
+            <Link
+              to="/auth"
+              className="px-12 py-5 rounded-[22px] bg-zinc-800/50 border border-white/10 text-white font-bold uppercase tracking-widest text-xs hover:bg-zinc-700/50 transition-all backdrop-blur-md flex items-center justify-center"
+            >
+              Iniciar sesión
+            </Link>
           </motion.div>
         </div>
       </section>
