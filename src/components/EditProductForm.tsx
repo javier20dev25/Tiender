@@ -1,14 +1,13 @@
-// src/components/EditProductForm.tsx
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   X, Package, DollarSign, Image as ImageIcon, Link as LinkIcon,
   Hash, Sparkles, Save, Youtube, Zap,
-  Layers, AlertCircle, Edit3
+  Layers, AlertCircle, Edit3, Truck, Trash2, Plus
 } from 'lucide-react';
 import { getSupabase } from '../lib/supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
-import type { Product } from '../types';
+import type { Product, ShippingOption } from '../types';
 
 interface EditProductFormProps {
   product: Product;
@@ -17,6 +16,10 @@ interface EditProductFormProps {
   onProductUpdated: () => void;
 }
 
+const defaultShipping = (): { method_type: string; method_name: string; cost: string }[] => ([
+  { method_type: 'Por coordinar', method_name: 'Envío', cost: '0' },
+]);
+
 const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, onClose, onProductUpdated }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -24,6 +27,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
   const [externalLink, setExternalLink] = useState('');
   const [videoLink, setVideoLink] = useState('');
   const [hashtags, setHashtags] = useState('');
+  const [shippingOptions, setShippingOptions] = useState(defaultShipping());
   const [isDiscountActive, setIsDiscountActive] = useState(false);
   const [discountTimerSeconds, setDiscountTimerSeconds] = useState('');
   const [discountPercentage, setDiscountPercentage] = useState('');
@@ -46,6 +50,17 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
       setHashtags(product.hashtags ? product.hashtags.join(', ') : '');
       setImagePreview(product.image_url);
 
+      const loaded = (product as Product & { shipping_options?: ShippingOption[] | null }).shipping_options;
+      if (Array.isArray(loaded) && loaded.length > 0) {
+        setShippingOptions(loaded.map((o) => ({
+          method_type: o.method_type || 'Por coordinar',
+          method_name: o.method_name || 'Envío',
+          cost: String(o.cost ?? 0),
+        })));
+      } else {
+        setShippingOptions(defaultShipping());
+      }
+
       const hasDiscount = !!product.discount_percentage && !!product.discount_timer_seconds;
       setIsDiscountActive(hasDiscount);
       setDiscountTimerSeconds(hasDiscount ? String(product.discount_timer_seconds) : '');
@@ -58,6 +73,18 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
     }
   }, [product]);
 
+  const updateShippingOption = (index: number, field: 'method_type' | 'method_name' | 'cost', value: string) => {
+    setShippingOptions((prev) => prev.map((opt, i) => (i === index ? { ...opt, [field]: value } : opt)));
+  };
+
+  const addShippingOption = () => {
+    setShippingOptions((prev) => [...prev, { method_type: 'Domicilio', method_name: 'Envío', cost: '0' }]);
+  };
+
+  const removeShippingOption = (index: number) => {
+    setShippingOptions((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
+  };
+
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -69,38 +96,26 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
     try {
       setIsUploadingImage(true);
       setError('');
-      console.log('[EditProductForm] Eager upload: Comprimiendo imagen...');
-      const compressionStart = Date.now();
       const compressedFile = await compressImage(file);
-      console.log(`[EditProductForm] Imagen comprimida en ${Date.now() - compressionStart}ms. Tamaño: ${compressedFile.size} bytes`);
-      
       const fileExtension = compressedFile.name.split('.').pop();
       const fileName = `${uuidv4()}.${fileExtension}`;
       const filePath = `${product.store_id}/${fileName}`;
 
-      console.log('[EditProductForm] Eager upload: Subiendo a "product-images"...');
-      const uploadStart = Date.now();
       const { error: uploadError } = await getSupabase().storage
         .from('product-images')
         .upload(filePath, compressedFile);
 
-      if (uploadError) {
-        console.error('[EditProductForm] Error de upload:', uploadError);
-        throw uploadError;
-      }
-      console.log(`[EditProductForm] Upload exitoso en ${Date.now() - uploadStart}ms`);
+      if (uploadError) throw uploadError;
 
       const { data: publicData } = getSupabase().storage
         .from('product-images')
         .getPublicUrl(filePath);
-      
-      console.log('[EditProductForm] URL pública obtenida:', publicData.publicUrl);
+
       setUploadedImageUrl(publicData.publicUrl);
     } catch (err: unknown) {
-      console.error('[EditProductForm] Error subiendo imagen:', err);
       setError((err as Error).message || 'Error al subir la nueva imagen del producto.');
-      // Revert to original preview on failure
       setImagePreview(product.image_url);
+      setUploadedImageUrl(null);
     } finally {
       setIsUploadingImage(false);
     }
@@ -146,7 +161,13 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
     setError('');
 
     if (!title || !price) {
-      setError('El nombre y el precio son obligatorios.');
+      setError('Completa nombre, precio y foto del producto.');
+      return;
+    }
+
+    const finalImageUrl = uploadedImageUrl || product.image_url;
+    if (!finalImageUrl) {
+      setError('La foto del producto es obligatoria.');
       return;
     }
 
@@ -155,22 +176,33 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
       return;
     }
 
+    const normalizedShipping = shippingOptions
+      .map((o) => ({
+        method_type: (o.method_type || 'Por coordinar').trim(),
+        method_name: (o.method_name || '').trim(),
+        cost: Number(o.cost),
+      }))
+      .filter((o) => o.method_name && Number.isFinite(o.cost) && o.cost >= 0);
+
+    if (normalizedShipping.length === 0) {
+      setError('Agrega al menos un método/tipo de envío con su costo.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      console.log('[EditProductForm] Iniciando actualización de producto:', { id: product.id, title, hasNewImage: !!uploadedImageUrl, finalImage: uploadedImageUrl || product.image_url });
       const hashtagsArray = hashtags.split(',').map(h => h.trim()).filter(h => h);
-
-      const imageUrl = uploadedImageUrl || product.image_url;
 
       const updatePayload: Record<string, unknown> = {
         title,
         description: description || null,
         price: parseFloat(price),
-        image_url: imageUrl,
+        image_url: finalImageUrl,
         external_link: externalLink || null,
         video_link: videoLink || null,
         hashtags: hashtagsArray.length > 0 ? hashtagsArray : null,
+        shipping_options: normalizedShipping,
       };
 
       if (plan_type === 'full') {
@@ -191,23 +223,17 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
         }
       }
 
-      console.log('[EditProductForm] Aplicando cambios en base de datos...');
       const { error: updateError } = await getSupabase()
         .from('products')
         .update(updatePayload)
         .eq('id', product.id);
 
-      if (updateError) {
-        console.error('[EditProductForm] Error de base de datos:', updateError);
-        throw updateError;
-      }
+      if (updateError) throw updateError;
 
-      console.log('[EditProductForm] Producto actualizado con éxito.');
       onProductUpdated();
       onClose();
-    } catch (error: unknown) {
-      console.error('[EditProductForm] Error fatal:', error);
-      setError((error as Error).message || 'Error al actualizar el producto.');
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Error al actualizar el producto.');
     } finally {
       setIsSubmitting(false);
     }
@@ -231,7 +257,6 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
         exit={{ scale: 0.95, opacity: 0, y: 20 }}
         className="relative w-full max-w-2xl bg-zinc-900 border border-white/5 rounded-[40px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
       >
-        {/* Header */}
         <div className="flex items-center justify-between p-8 border-b border-white/5">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-brand-cyan/10 flex items-center justify-center text-brand-cyan">
@@ -239,7 +264,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
             </div>
             <div>
               <h2 className="text-xl font-black text-white uppercase italic tracking-tighter">Editar Producto</h2>
-              <p className="text-zinc-500 text-xs font-medium">Modifica los detalles de tu stock</p>
+              <p className="text-zinc-500 text-xs font-medium">Modifica los detalles de tu producto</p>
             </div>
           </div>
           <button onClick={onClose} className="p-3 rounded-2xl bg-zinc-800 text-zinc-400 hover:text-white transition-all">
@@ -247,7 +272,6 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
           </button>
         </div>
 
-        {/* Content */}
         <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto custom-scrollbar p-8 space-y-8">
           {error && (
             <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-500 text-sm font-bold">
@@ -256,36 +280,32 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
             </div>
           )}
 
-          {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-2 space-y-6">
               <div>
-                <label className={labelClasses}><Package className="w-3.5 h-3.5" /> Nombre / Título</label>
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej: Camiseta Oversized" className={inputClasses} required />
+                <label className={labelClasses}><Package className="w-3.5 h-3.5" /> Nombre del producto</label>
+                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej: Vestido floral" className={inputClasses} required />
+              </div>
+              <div>
+                <label className={labelClasses}><DollarSign className="w-3.5 h-3.5" /> Precio</label>
+                <input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" className={inputClasses} required />
               </div>
               <div>
                 <label className={labelClasses}><Hash className="w-3.5 h-3.5" /> Descripción (Opcional)</label>
                 <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalles de tu producto..." className={`${inputClasses} h-24 resize-none`} />
               </div>
-              <div>
-                <label className={labelClasses}><DollarSign className="w-3.5 h-3.5" /> Precio Venta</label>
-                <input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" className={inputClasses} required />
-              </div>
             </div>
 
-            {/* Thumbnail Preview (Editable) */}
             <div>
-              <label className={labelClasses}><ImageIcon className="w-3.5 h-3.5" /> Imagen</label>
+              <label className={labelClasses}><ImageIcon className="w-3.5 h-3.5" /> Foto (Obligatoria)</label>
               <div className="relative aspect-square rounded-3xl border border-white/5 bg-zinc-800/30 overflow-hidden group">
                 <img src={imagePreview || 'https://placehold.co/200x200'} alt="Preview" className={`w-full h-full object-cover transition-transform duration-500 ${isUploadingImage ? 'scale-110 opacity-50 blur-sm brightness-50' : 'group-hover:scale-110'}`} />
-                
                 {isUploadingImage && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
                     <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="w-6 h-6 border-2 border-white border-t-transparent rounded-full mb-2" />
                     <span className="text-[10px] font-black text-white uppercase tracking-widest bg-black/60 px-3 py-1 rounded-full backdrop-blur-md">Subiendo...</span>
                   </div>
                 )}
-
                 <label className={`absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer ${isUploadingImage ? 'pointer-events-none hidden' : ''}`}>
                   <span className="px-4 py-2 bg-white text-black font-bold rounded-xl hover:scale-105 transition-transform">Cambiar</span>
                   <input type="file" accept="image/*" onChange={handleImageChange} disabled={isUploadingImage} className="hidden" />
@@ -295,25 +315,91 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
             </div>
           </div>
 
-          {/* Links & Tags */}
+          <div className="space-y-4 p-6 rounded-3xl bg-zinc-800/30 border border-white/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-black text-white tracking-widest uppercase flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-brand-cyan" />
+                  Envío
+                </h3>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-tighter mt-1">Método/tipo y costo (obligatorio)</p>
+              </div>
+              <button type="button" onClick={addShippingOption} className="px-3 py-2 rounded-xl bg-brand-cyan/10 text-brand-cyan text-[10px] font-black uppercase hover:bg-brand-cyan hover:text-brand-dark transition-all flex items-center gap-1">
+                <Plus className="w-3.5 h-3.5" /> Agregar
+              </button>
+            </div>
+            <div className="space-y-3">
+              {shippingOptions.map((opt, index) => (
+                <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                  <div className="md:col-span-3">
+                    <label className="text-[9px] font-bold text-zinc-500 mb-1 block uppercase">Tipo</label>
+                    <select
+                      value={opt.method_type}
+                      onChange={(e) => updateShippingOption(index, 'method_type', e.target.value)}
+                      className="w-full bg-black/30 border border-white/5 rounded-xl px-3 py-3 text-sm text-white focus:ring-1 focus:ring-brand-cyan"
+                    >
+                      <option value="Domicilio">Domicilio</option>
+                      <option value="Recogida">Recogida</option>
+                      <option value="Punto de encuentro">Punto de encuentro</option>
+                      <option value="Por coordinar">Por coordinar</option>
+                      <option value="Otro">Otro</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-6">
+                    <label className="text-[9px] font-bold text-zinc-500 mb-1 block uppercase">Método / Descripción</label>
+                    <input
+                      type="text"
+                      value={opt.method_name}
+                      onChange={(e) => updateShippingOption(index, 'method_name', e.target.value)}
+                      placeholder="Ej: Delivery en ciudad, Retiro en tienda"
+                      className="w-full bg-black/30 border border-white/5 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-500 focus:ring-1 focus:ring-brand-cyan"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-[9px] font-bold text-zinc-500 mb-1 block uppercase">Costo</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={opt.cost}
+                      onChange={(e) => updateShippingOption(index, 'cost', e.target.value)}
+                      className="w-full bg-black/30 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:ring-1 focus:ring-brand-cyan"
+                    />
+                  </div>
+                  <div className="md:col-span-1 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => removeShippingOption(index)}
+                      disabled={shippingOptions.length <= 1}
+                      className="p-3 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all disabled:opacity-30 disabled:hover:bg-red-500/10 disabled:hover:text-red-500"
+                      aria-label="Eliminar envío"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className={labelClasses}><LinkIcon className="w-3.5 h-3.5" /> Enlace de Checkout</label>
-                <input type="url" value={externalLink} onChange={(e) => setExternalLink(e.target.value)} placeholder="https://..." className={inputClasses} />
+                <label className={labelClasses}><LinkIcon className="w-3.5 h-3.5" /> Link de producto / marketplace (Opcional)</label>
+                <input type="url" value={externalLink} onChange={(e) => setExternalLink(e.target.value)} placeholder="https://shein.com/... o https://amazon.com/..." className={inputClasses} />
+                <p className="text-[9px] text-zinc-600 mt-1 ml-1 font-bold uppercase tracking-tighter">Shein, AliExpress, Amazon u otra tienda</p>
               </div>
               <div>
-                <label className={labelClasses}><Youtube className="w-3.5 h-3.5" /> Link Viral (Video)</label>
+                <label className={labelClasses}><Youtube className="w-3.5 h-3.5" /> Link de video (Opcional)</label>
                 <input type="url" value={videoLink} onChange={(e) => setVideoLink(e.target.value)} placeholder="https://tiktok.com/..." className={inputClasses} />
               </div>
             </div>
             <div>
-              <label className={labelClasses}><Hash className="w-3.5 h-3.5" /> Tags (Optimización)</label>
+              <label className={labelClasses}><Hash className="w-3.5 h-3.5" /> Tags (Opcional)</label>
               <input type="text" value={hashtags} onChange={(e) => setHashtags(e.target.value)} placeholder="verano, limitado" className={inputClasses} />
             </div>
           </div>
 
-          {/* Premium Features */}
           {plan_type === 'full' && (
             <div className="pt-8 border-t border-white/5 space-y-8">
               <div className="flex items-center justify-between">
@@ -365,7 +451,6 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
           )}
         </form>
 
-        {/* Footer */}
         <div className="p-8 bg-zinc-950 border-t border-white/5 flex items-center justify-end gap-4 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
           <button type="button" onClick={onClose} className="px-8 py-4 rounded-2xl text-zinc-400 font-bold hover:text-white transition-colors uppercase tracking-widest text-xs">Cancelar</button>
           <button

@@ -3,6 +3,12 @@
 /**
  * Representa un producto en la tienda.
  */
+export interface ShippingOption {
+  method_type: string;
+  method_name: string;
+  cost: number;
+}
+
 export interface Product {
   id: string;
   title: string; // Coincide con la columna de la DB
@@ -27,6 +33,8 @@ export interface Product {
   // Ventas al por Mayor
   wholesale_threshold?: number | null;
   wholesale_price?: number | null;
+
+  shipping_options?: ShippingOption[] | null;
 }
 
 /**
@@ -44,6 +52,7 @@ export interface Store {
   plan_type: string;
   community_link: string | null;
   product_limit?: number;
+  billing_exempt?: boolean;
 }
 
 export interface HeatmapData {

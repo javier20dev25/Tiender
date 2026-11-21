@@ -23,9 +23,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   // --- LOGIC FOR ACCESS CONTROL ---
   const isTrialActive = store?.trial_ends_at ? new Date(store.trial_ends_at) > new Date() : false;
   const isSubActive = subscription?.status === 'active' || subscription?.status === 'trialing' || subscription?.status === 'past_due';
+  const isBillingExempt = !!store?.billing_exempt;
 
-  // Si tiene acceso (trial o suscripción activa), permitimos cualquier ruta protegida.
-  if (isTrialActive || isSubActive) {
+  // Si tiene acceso (trial, suscripci��n activa o exento de cobro), permitimos cualquier ruta protegida.
+  if (isTrialActive || isSubActive || isBillingExempt) {
     return children;
   }
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
-import { Heart, X, ShoppingCart, ShoppingBag, Trash2, ArrowRight } from 'lucide-react';
+import { Heart, X, ShoppingCart, ShoppingBag, Trash2, ArrowRight, Truck } from 'lucide-react';
 import { getSupabase } from '../lib/supabaseClient';
 import type { Store, Product } from '../types';
 import { Perf } from '../utils/perf';
@@ -31,7 +31,7 @@ const DiscountTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
 
   return (
     <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
-      ⏳ {mins}:{secs}
+      â³ {mins}:{secs}
     </span>
   );
 };
@@ -118,7 +118,7 @@ const SocialStorePage: React.FC = () => {
       if (productsError) throw new Error('No se pudieron cargar los productos.');
       setProducts(productsData || []);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error de conexión. Revisa tu internet.';
+      const message = err instanceof Error ? err.message : 'Error de conexiÃ³n. Revisa tu internet.';
       console.error('Fetch error:', err);
       setError(message);
     }
@@ -253,7 +253,7 @@ const SocialStorePage: React.FC = () => {
           <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
             <X className="w-10 h-10 text-red-500" />
           </div>
-          <h2 className="text-2xl font-black text-gray-900 mb-3">¡Ups! Algo pasó</h2>
+          <h2 className="text-2xl font-black text-gray-900 mb-3">Â¡Ups! Algo pasÃ³</h2>
           <p className="text-gray-500 mb-8 leading-relaxed">{error}</p>
           <button 
             onClick={verifyAndFetch}
@@ -331,10 +331,9 @@ const SocialStorePage: React.FC = () => {
                 {/* Content Overlay */}
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-6 pt-20">
                   <div className="flex flex-col gap-2 mb-2">
-                    {/* Badges row */}
                     {(currentProduct.is_hot || currentProduct.discount_percentage || currentProduct.discount_timer_seconds) && (
                       <div className="flex flex-wrap gap-2">
-                        {currentProduct.is_hot && <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">🔥 Hot</span>}
+                        {currentProduct.is_hot && <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">Hot</span>}
                         {currentProduct.discount_percentage && <span className="bg-brand-pink text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">{currentProduct.discount_percentage}% OFF</span>}
                         {currentProduct.discount_timer_seconds && <DiscountTimer seconds={currentProduct.discount_timer_seconds} />}
                       </div>
@@ -356,17 +355,34 @@ const SocialStorePage: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  {/* Links Row */}
+
+                  {Array.isArray(currentProduct.shipping_options) && currentProduct.shipping_options.length > 0 && (
+                    <div className="mt-3 bg-white/10 backdrop-blur-md border border-white/10 rounded-xl p-3">
+                      <div className="flex items-center gap-2 text-white text-xs font-bold mb-1.5">
+                        <Truck className="w-3.5 h-3.5" />
+                        <span>Envío</span>
+                      </div>
+                      <div className="space-y-1">
+                        {currentProduct.shipping_options.slice(0, 3).map((opt, i) => (
+                          <div key={`${opt.method_type}-${opt.method_name}-${i}`} className="text-[11px] text-white/85 flex justify-between gap-2">
+                            <span className="truncate">{opt.method_type}: {opt.method_name}</span>
+                            <span className="font-bold whitespace-nowrap">${Number(opt.cost || 0).toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {(currentProduct.external_link || currentProduct.video_link) && (
                     <div className="flex gap-2 mt-4">
                       {currentProduct.external_link && (
                         <a href={currentProduct.external_link.startsWith('http') ? currentProduct.external_link : `https://${currentProduct.external_link}`} target="_blank" rel="noreferrer" className="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white px-4 py-2.5 rounded-xl text-center text-sm font-bold transition-colors">
-                          Ver en Tienda
+                          Ver producto
                         </a>
                       )}
                       {currentProduct.video_link && (
                         <a href={currentProduct.video_link.startsWith('http') ? currentProduct.video_link : `https://${currentProduct.video_link}`} target="_blank" rel="noreferrer" className="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white px-4 py-2.5 rounded-xl text-center text-sm font-bold transition-colors">
-                          Video Demo
+                          Ver video
                         </a>
                       )}
                     </div>
@@ -492,7 +508,7 @@ const SocialStorePage: React.FC = () => {
                 <div className="flex justify-between items-end">
                   <div>
                      <span className="block text-sm text-gray-400 font-bold mb-1">TOTAL</span>
-                     <span className="text-xl font-bold tracking-tight text-gray-900">{cart.reduce((sum, item) => sum + item.quantity, 0)} artículos</span>
+                     <span className="text-xl font-bold tracking-tight text-gray-900">{cart.reduce((sum, item) => sum + item.quantity, 0)} artÃ­culos</span>
                   </div>
                   <span className="text-4xl font-black text-brand-pink tracking-tight">${cart.reduce((sum, item) => sum + (getCartItemPrice(item) * item.quantity), 0).toFixed(2)}</span>
                 </div>
@@ -506,7 +522,7 @@ const SocialStorePage: React.FC = () => {
                   setTimeout(() => {
                     const items = cart.map(i => `${i.title} (x${i.quantity})`).join(', ');
                     const total = cart.reduce((sum, item) => sum + (getCartItemPrice(item) * item.quantity), 0).toFixed(2);
-                    const message = encodeURIComponent(`¡Hola! Me gustaría comprar: ${items}. Total: $${total}`);
+                    const message = encodeURIComponent(`Â¡Hola! Me gustarÃ­a comprar: ${items}. Total: $${total}`);
                     window.open(`https://wa.me/${store.whatsapp_number}?text=${message}`, '_blank');
                     setIsCartOpen(false);
                     setIsSubmitting(false);
@@ -527,7 +543,10 @@ const SocialStorePage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <footer className="text-center mt-12 mb-8">
+      <footer className="text-center mt-12 mb-8 px-6">
+        <a href="/auth" className="inline-flex items-center justify-center mb-4 px-5 py-3 rounded-2xl bg-brand-dark text-white font-bold text-sm shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all">
+          Solicita tu tienda en Tiender
+        </a>
         <p className="text-sm font-medium text-gray-400 flex items-center justify-center gap-2">
           Desarrollado con <Heart className="w-3 h-3 text-brand-pink fill-brand-pink" /> por
           <a href="/" className="text-gray-600 hover:text-brand-pink transition-colors underline decoration-brand-pink/20 underline-offset-4">Tiender</a>
@@ -538,3 +557,5 @@ const SocialStorePage: React.FC = () => {
 };
 
 export default SocialStorePage;
+
+

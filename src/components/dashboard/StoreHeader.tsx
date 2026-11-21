@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Share2, Copy, ExternalLink, Edit3, PackageOpen, Sparkles } from 'lucide-react';
 import { getSupabase } from '../../lib/supabaseClient';
@@ -16,7 +16,7 @@ export const StoreHeader: React.FC<StoreHeaderProps> = ({ store, onEditClick, on
   const [isSharing, setIsSharing] = useState(false);
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/tienda/${store.id}`);
+    navigator.clipboard.writeText(`${window.location.origin}/s/${store.id}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -25,7 +25,7 @@ export const StoreHeader: React.FC<StoreHeaderProps> = ({ store, onEditClick, on
     setIsSharing(true);
     try {
       await getSupabase().functions.invoke('generate-share-image', { body: { storeId: store.id } });
-      const shareUrl = `${window.location.origin}/tienda/${store.id}`;
+      const shareUrl = `${window.location.origin}/s/${store.id}`;
       if (navigator.share) {
         await navigator.share({ title: `Visita ${store.name}`, text: `Mira mis productos en Tiender`, url: shareUrl });
       } else {
@@ -83,7 +83,7 @@ export const StoreHeader: React.FC<StoreHeaderProps> = ({ store, onEditClick, on
         </Link>
         <button onClick={handleCopyLink} className="px-5 py-2.5 bg-zinc-800 text-white font-bold rounded-2xl hover:bg-zinc-700 transition-all flex items-center gap-2 border border-white/5">
           <Copy className="w-4 h-4" />
-          <span>{copied ? '¡Copiado!' : 'Enlace'}</span>
+          <span>{copied ? 'Â¡Copiado!' : 'Enlace'}</span>
         </button>
         <button onClick={handleShare} disabled={isSharing} className="px-5 py-2.5 bg-brand-cyan text-brand-dark font-bold rounded-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
           <Share2 className="w-4 h-4" />
@@ -93,3 +93,4 @@ export const StoreHeader: React.FC<StoreHeaderProps> = ({ store, onEditClick, on
     </div>
   );
 };
+

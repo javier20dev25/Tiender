@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+﻿import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { getSupabase } from '../lib/supabaseClient';
 import type { Store, Subscription } from '../types';
@@ -37,7 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('[AuthContext] refreshUserSessionData start', userId);
     const { data: refreshedStore, error: storeError } = await getSupabase()
       .from('stores')
-      .select('id, name, slug, logo_url, whatsapp_number, user_id, created_at, trial_ends_at, plan_type, community_link, product_limit')
+      .select('id, name, slug, logo_url, whatsapp_number, user_id, created_at, trial_ends_at, plan_type, community_link, product_limit, billing_exempt')
       .eq('user_id', userId)
       .single();
     if (storeError) {
@@ -62,21 +62,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Calls the sync function and then refreshes all user data
   const syncAndRefreshSession = useCallback(async (userId: string) => {
     try {
-      if (import.meta.env.DEV) console.log('Iniciando sincronización de suscripción en segundo plano...');
+      if (import.meta.env.DEV) console.log('Iniciando sincronizaciÃ³n de suscripciÃ³n en segundo plano...');
       const { data, error } = await getSupabase().functions.invoke('sync-paypal-subscription');
 
       if (error) {
-        throw new Error(`Error en la función de sync: ${error.message}`);
+        throw new Error(`Error en la funciÃ³n de sync: ${error.message}`);
       }
 
       if (data?.status === 'reconciled' || data?.status === 'no_subscription_found') {
-        if (import.meta.env.DEV) console.log(`Sincronización completada (${data.status}). Refrescando datos de sesión...`);
+        if (import.meta.env.DEV) console.log(`SincronizaciÃ³n completada (${data.status}). Refrescando datos de sesiÃ³n...`);
         await refreshUserSessionData(userId);
       } else {
-        if (import.meta.env.DEV) console.log(`Suscripción ya estaba sincronizada con PayPal (${data?.status}).`);
+        if (import.meta.env.DEV) console.log(`SuscripciÃ³n ya estaba sincronizada con PayPal (${data?.status}).`);
       }
     } catch (e: unknown) {
-      console.error('Error durante la sincronización de la suscripción en segundo plano:', e);
+      console.error('Error durante la sincronizaciÃ³n de la suscripciÃ³n en segundo plano:', e);
     }
   }, [refreshUserSessionData]);
 
@@ -169,3 +169,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);
+

@@ -20,6 +20,7 @@ const UpgradePage: React.FC = () => {
   // Determinar si el usuario tiene una suscripción de PayPal activa (no solo trial)
   const hasActivePayPalSubscription = subscription?.status === 'active' || subscription?.status === 'trialing';
   const isTrialActive = store?.trial_ends_at ? new Date(store.trial_ends_at) > new Date() : false;
+  const isBillingExempt = !!store?.billing_exempt;
 
   // Si el usuario tiene una suscripción activa, permitir gestión
   // Si no tiene suscripción Y el trial ya venció, se queda en /upgrade para elegir plan con PayPal
@@ -84,10 +85,10 @@ const UpgradePage: React.FC = () => {
 
   useEffect(() => {
     const planParam = searchParams.get('plan') as PlanType;
-    console.log('[UpgradePage] useEffect check:', { planParam, store: !!store, authLoading, hasActivePayPalSubscription, isTrialActive, isAutoProcessing, loading, error });
+    console.log('[UpgradePage] useEffect check:', { planParam, store: !!store, authLoading, hasActivePayPalSubscription, isTrialActive, isBillingExempt, isAutoProcessing, loading, error });
 
     // Solo auto-disparar si:
-    if (planParam && store && !authLoading && !hasActivePayPalSubscription && !isTrialActive && !loading && !error && !isAutoProcessing) {
+    if (planParam && store && !authLoading && !hasActivePayPalSubscription && !isTrialActive && !isBillingExempt && !loading && !error && !isAutoProcessing) {
       if (planParam === 'standard' || planParam === 'full') {
         console.log('[UpgradePage] Auto-triggering plan selection:', planParam);
         setIsAutoProcessing(true);
@@ -95,7 +96,7 @@ const UpgradePage: React.FC = () => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, store, subscription, loading, error, isAutoProcessing, hasActivePayPalSubscription, isTrialActive, authLoading]);
+  }, [searchParams, store, subscription, loading, error, isAutoProcessing, hasActivePayPalSubscription, isTrialActive, isBillingExempt, authLoading]);
 
 
   const handleCancelSuccess = () => {
@@ -126,8 +127,8 @@ const UpgradePage: React.FC = () => {
     );
   }
 
-  // --- Vista de Gestión SOLO para usuarios con suscripción PayPal activa ---
-  if (store && hasActivePayPalSubscription) {
+  // --- Vista de gestión para suscripción PayPal activa o acceso exento ---
+  if (store && (hasActivePayPalSubscription || isBillingExempt)) {
     return (
       <>
         <div className="bg-brand-dark min-h-screen p-4 sm:p-8">
@@ -140,20 +141,34 @@ const UpgradePage: React.FC = () => {
               </p>
             </header>
             <div className="mt-8">
-              <h2 className="text-lg font-bold text-white uppercase tracking-widest flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                Cancelar tu suscripción
-              </h2>
-              <p className="text-sm text-zinc-400 font-medium leading-relaxed">
-                Puedes cancelar tu suscripción en cualquier momento. Tu acceso a las funciones premium continuará
-                hasta el final de tu ciclo de facturación actual.
-              </p>
-              <button
-                onClick={() => setModalOpen(true)}
-                className="mt-8 w-full rounded-2xl bg-red-500/10 border border-red-500/20 px-5 py-4 text-sm font-black uppercase tracking-tighter italic text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-95"
-              >
-                Solicitar Cancelación de Suscripción
-              </button>
+              {isBillingExempt && !hasActivePayPalSubscription ? (
+                <>
+                  <h2 className="text-lg font-bold text-white uppercase tracking-widest flex items-center gap-2 mb-2">
+                    <span className="w-2 h-2 rounded-full bg-brand-neon"></span>
+                    Acceso colaborador
+                  </h2>
+                  <p className="text-sm text-zinc-400 font-medium leading-relaxed">
+                    Esta cuenta tiene acceso sin renovaci��n mensual. No necesitas gestionar pagos desde esta secci��n.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-lg font-bold text-white uppercase tracking-widest flex items-center gap-2 mb-2">
+                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                    Cancelar tu suscripci��n
+                  </h2>
+                  <p className="text-sm text-zinc-400 font-medium leading-relaxed">
+                    Puedes cancelar tu suscripci��n en cualquier momento. Tu acceso a las funciones premium continuarǭ
+                    hasta el final de tu ciclo de facturaci��n actual.
+                  </p>
+                  <button
+                    onClick={() => setModalOpen(true)}
+                    className="mt-8 w-full rounded-2xl bg-red-500/10 border border-red-500/20 px-5 py-4 text-sm font-black uppercase tracking-tighter italic text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-95"
+                  >
+                    Solicitar Cancelaci��n de Suscripci��n
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
