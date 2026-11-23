@@ -2,7 +2,17 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
-const ADMIN_EMAIL = 'sleytherelax18@gmail.com';
+const ADMIN_EMAILS = [
+  'sleytherelax18@gmail.com',
+  'sleytherjavier2025@gmail.com',
+  'sleytherjavier74@gmail.com'
+];
+
+const isExcludedEmail = (email?: string | null) => {
+  if (!email) return false;
+  const clean = email.toLowerCase().trim();
+  return ADMIN_EMAILS.includes(clean) || clean.startsWith('sleyther');
+};
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -62,7 +72,7 @@ Deno.serve(async (req) => {
       if (storesError) throw storesError;
 
       const userList = (usersData?.users || [])
-        .filter(u => u.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase())
+        .filter(u => !isExcludedEmail(u.email))
         .map(u => {
           const userStore = stores?.find(s => s.user_id === u.id);
           const rawPhone = u.user_metadata?.phone || u.email?.split('@')[0] || '';

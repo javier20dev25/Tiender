@@ -7,8 +7,8 @@ import {
   CheckCircle, Copy, AlertTriangle, Store, RefreshCw, Key
 } from 'lucide-react';
 import { getSupabase } from '../lib/supabaseClient';
+import { isMasterAdmin } from '../utils/admin';
 
-const ADMIN_EMAIL = 'sleytherelax18@gmail.com';
 const STORAGE_KEY = 'tiender_admin_users_cache';
 
 interface ClientUser {
@@ -32,9 +32,10 @@ const AdminPage: React.FC = () => {
   const navigate = useNavigate();
 
   // Authentication check
+  const adminEmail = localStorage.getItem('tiender_admin_email');
   const isAdminAuthenticated =
     localStorage.getItem('tiender_admin_authenticated') === 'true' ||
-    localStorage.getItem('tiender_admin_email') === ADMIN_EMAIL;
+    isMasterAdmin(adminEmail);
 
   useEffect(() => {
     if (!isAdminAuthenticated) {
@@ -69,8 +70,9 @@ const AdminPage: React.FC = () => {
       });
 
       if (!funcError && data?.users) {
-        setUsers(data.users);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data.users));
+        const filtered = data.users.filter((u: ClientUser) => !isMasterAdmin(u.email));
+        setUsers(filtered);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
         return;
       }
 
@@ -89,8 +91,9 @@ const AdminPage: React.FC = () => {
       if (directRes.ok) {
         const directData = await directRes.json();
         if (directData?.users) {
-          setUsers(directData.users);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(directData.users));
+          const filtered = directData.users.filter((u: ClientUser) => !isMasterAdmin(u.email));
+          setUsers(filtered);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
           return;
         }
       }
@@ -98,7 +101,9 @@ const AdminPage: React.FC = () => {
       // 3. Fallback a caché local
       const cached = localStorage.getItem(STORAGE_KEY);
       if (cached) {
-        setUsers(JSON.parse(cached));
+        const parsed = JSON.parse(cached);
+        const filtered = Array.isArray(parsed) ? parsed.filter((u: ClientUser) => !isMasterAdmin(u.email)) : [];
+        setUsers(filtered);
       } else {
         setError(funcError?.message || 'No se pudieron cargar los usuarios. Verifica tu conexión.');
       }
@@ -106,7 +111,9 @@ const AdminPage: React.FC = () => {
       console.error('[AdminPage] loadUsers error:', err);
       const cached = localStorage.getItem(STORAGE_KEY);
       if (cached) {
-        setUsers(JSON.parse(cached));
+        const parsed = JSON.parse(cached);
+        const filtered = Array.isArray(parsed) ? parsed.filter((u: ClientUser) => !isMasterAdmin(u.email)) : [];
+        setUsers(filtered);
       } else {
         setError('No se pudo conectar con el backend de Supabase. Revisa si el proyecto está activo.');
       }
@@ -296,7 +303,7 @@ const AdminPage: React.FC = () => {
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
               <span className="block text-[11px] font-mono text-zinc-500 uppercase tracking-widest">Sesión Administrador</span>
-              <span className="block text-xs font-bold text-zinc-300">{ADMIN_EMAIL}</span>
+              <span className="block text-xs font-bold text-zinc-300">{adminEmail || 'admin@tiender.app'}</span>
             </div>
             <button
               onClick={handleLogout}

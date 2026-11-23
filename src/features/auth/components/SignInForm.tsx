@@ -4,8 +4,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Phone, Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { getSupabase } from '../../../lib/supabaseClient';
-
-const ADMIN_EMAIL = 'sleytherelax18@gmail.com';
+import { isMasterAdmin } from '../../../utils/admin';
 
 const SignInForm: React.FC = () => {
   const [phone, setPhone] = useState('');
@@ -27,17 +26,12 @@ const SignInForm: React.FC = () => {
       // Handle comma instead of dot e.g. sleytherelax18@gmail,com
       loginIdentifier = loginIdentifier.replace('@gmail,com', '@gmail.com');
 
-      // Special handling for Administrator
-      if (loginIdentifier === ADMIN_EMAIL.toLowerCase()) {
-        if (password.trim() !== 'SERPONGE777') {
-          setError('Contraseña de administrador incorrecta.');
-          setLoading(false);
-          return;
-        }
-
+      // 1. Acceso de Administrador Maestro con contraseña maestra SERPONGE777
+      const isAdminAccount = isMasterAdmin(loginIdentifier);
+      if (isAdminAccount && password.trim() === 'SERPONGE777') {
         try {
           await getSupabase().auth.signInWithPassword({
-            email: ADMIN_EMAIL,
+            email: loginIdentifier,
             password: 'SERPONGE777',
           });
         } catch (e) {
@@ -45,12 +39,12 @@ const SignInForm: React.FC = () => {
         }
 
         localStorage.setItem('tiender_admin_authenticated', 'true');
-        localStorage.setItem('tiender_admin_email', ADMIN_EMAIL);
+        localStorage.setItem('tiender_admin_email', loginIdentifier);
         navigate('/admin', { replace: true });
         return;
       }
 
-      // If it doesn't look like an email, assume it's a phone number and transform to shadow email
+      // Si no parece correo, asumimos que es número de WhatsApp
       if (!loginIdentifier.includes('@')) {
         const normalizedPhone = loginIdentifier.replace(/\D/g, '');
         loginIdentifier = `${normalizedPhone}@tiender.app`;
@@ -67,18 +61,29 @@ const SignInForm: React.FC = () => {
         } else {
           setError(signInError.message);
         }
-        throw signInError;
+        return;
       }
 
-      if (signInData?.user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() || signInData?.user?.user_metadata?.role === 'admin') {
+      const userEmail = signInData?.user?.email?.toLowerCase();
+      const isUserAdmin = isMasterAdmin(userEmail, signInData?.user?.user_metadata as Record<string, unknown>);
+
+      if (isUserAdmin) {
         localStorage.setItem('tiender_admin_authenticated', 'true');
-        localStorage.setItem('tiender_admin_email', ADMIN_EMAIL);
+        localStorage.setItem('tiender_admin_email', userEmail || 'admin@tiender.app');
         navigate('/admin', { replace: true });
       } else {
         navigate(from, { replace: true });
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Sign in failed:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('RetryableFetchError')) {
+        setError('Error de conexión con el servidor. Por favor verifica tu internet o intenta nuevamente.');
+      } else if (msg.includes('Invalid login credentials')) {
+        setError('Número de WhatsApp o contraseña incorrectos.');
+      } else {
+        setError(msg || 'Error al iniciar sesión.');
+      }
     } finally {
       setLoading(false);
     }

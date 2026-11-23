@@ -1,16 +1,16 @@
+// src/components/ProtectedRoute.tsx
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { isMasterAdmin } from '../utils/admin';
 import PageLoader from './PageLoader';
 
 interface ProtectedRouteProps {
   children: React.ReactElement;
 }
 
-const ADMIN_EMAIL = 'sleytherelax18@gmail.com';
-
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user, subscription, store, loading } = useAuth();
+  const { user, store, subscription, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -18,17 +18,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   // 1. Verificación para Administrador Maestro
-  const isAdmin =
-    user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() ||
-    user?.user_metadata?.role === 'admin' ||
-    localStorage.getItem('tiender_admin_authenticated') === 'true';
+  const isAdmin = isMasterAdmin(user?.email, user?.user_metadata as Record<string, unknown>);
 
   if (isAdmin) {
     // Si el admin está en /admin, acceso total
     if (location.pathname === '/admin') {
       return children;
     }
-    // Si intenta ir a cualquier otra ruta protegida (/dashboard, /upgrade), redirigir a /admin
+    // Si intenta ir a /dashboard o /upgrade, redirigir a /admin
     return <Navigate to="/admin" replace />;
   }
 
@@ -42,24 +39,24 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // --- LOGIC FOR ACCESS CONTROL FOR VENDORS ---
-  const isTrialActive = store?.trial_ends_at ? new Date(store.trial_ends_at) > new Date() : false;
-  const isSubActive = subscription?.status === 'active' || subscription?.status === 'trialing' || subscription?.status === 'past_due';
-  const isBillingExempt = !!store?.billing_exempt;
-
-  // Si tiene acceso (trial, suscripción activa o exento de cobro), permitimos cualquier ruta protegida.
-  if (isTrialActive || isSubActive || isBillingExempt) {
+  // 4. Si la tienda está exenta o es plan full (como los creados por admin)
+  if (store?.billing_exempt || store?.plan_type === 'full') {
     return children;
   }
 
-  // Si NO tiene acceso (trial vencido y sin suscripción activa):
-  // 1. Si ya está en /upgrade, permitimos ver la página para que pueda pagar.
-  if (location.pathname === '/upgrade') {
-    return children;
+  // 5. Verificación de suscripción para vendedores normales
+  const hasValidSubscription =
+    subscription?.status === 'active' ||
+    subscription?.status === 'trialing' ||
+    subscription?.status === 'past_due';
+
+  if (!hasValidSubscription) {
+    if (location.pathname !== '/upgrade') {
+      return <Navigate to="/upgrade" replace />;
+    }
   }
 
-  // 2. Si intenta acceder a cualquier otra cosa, lo mandamos a /upgrade.
-  return <Navigate to={`/upgrade${location.search}`} replace />;
+  return children;
 };
 
 export default ProtectedRoute;
