@@ -21,21 +21,21 @@ vi.mock('../features/auth/components/SignInForm', () => ({
 
 
 describe('AuthPage', () => {
-  it('should render SignUpForm by default', () => {
+  it('should render SignInForm by default', () => {
     render(<AuthPage />, { wrapper: MemoryRouter });
-    expect(screen.getByRole('heading', { name: /Únete a la Revolución/i })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: /Bienvenido de vuelta/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Bienvenido de vuelta/i })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Únete a la Revolución/i })).not.toBeInTheDocument();
   });
 
-  it('should toggle to SignInForm when the switch link is clicked', async () => {
+  it('should toggle to SignUpForm when the switch link is clicked', async () => {
     render(<AuthPage />, { wrapper: MemoryRouter });
 
-    const switchLink = screen.getByRole('button', { name: /ya tienes una cuenta/i });
+    const switchLink = screen.getByRole('button', { name: /no tienes una cuenta/i });
     fireEvent.click(switchLink);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Bienvenido de vuelta/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Únete a la Revolución/i })).toBeInTheDocument();
     });
-    expect(screen.queryByRole('heading', { name: /Únete a la Revolución/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Bienvenido de vuelta/i })).not.toBeInTheDocument();
   });
 });
