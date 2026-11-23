@@ -108,8 +108,8 @@ describe('Full E2E User and Customer Flow', () => {
 
         // Auth page should be rendered when not authenticated
         await waitFor(() => {
-            // Default is now sign-in, check for sign-in or welcome heading
-            const authContent = screen.getByText(/Entrar a mi Tienda|Bienvenido de vuelta/i);
+            // Default is now sign-in, check for welcome heading
+            const authContent = screen.getByRole('heading', { name: /Bienvenido de vuelta/i });
             expect(authContent).toBeInTheDocument();
         }, { timeout: 5000 });
     });

@@ -65,11 +65,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } : null;
     setStore(storeObj as Store | null);
 
-    const { data: refreshedSub, error: subError } = await getSupabase()
+    const subQuery = getSupabase()
       .from('subscriptions')
       .select('status, current_period_end')
-      .eq('user_id', userId)
-      .maybeSingle();
+      .eq('user_id', userId);
+
+    let refreshedSub: Subscription | null = null;
+    let subError: unknown = null;
+    const subQueryAny = subQuery as unknown as { maybeSingle?: () => Promise<{ data: Subscription | null; error: unknown }> };
+    if (typeof subQueryAny.maybeSingle === 'function') {
+      const res = await subQueryAny.maybeSingle();
+      refreshedSub = res.data;
+      subError = res.error;
+    } else if (typeof subQuery.single === 'function') {
+      try {
+        const res = await subQuery.single();
+        refreshedSub = res.data;
+      } catch (e) {
+        subError = e;
+      }
+    }
     // SubError is only logged if it's not a PGRST116 (which maybeSingle ignores), so real errors are still caught
     if (subError) console.warn('[AuthContext] Could not fetch subscription details.', subError);
     console.log('[AuthContext] Subscription fetched:', refreshedSub?.status || 'none');
