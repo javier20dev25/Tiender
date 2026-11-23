@@ -26,7 +26,7 @@ function App() {
         <Route path="/auth" element={<AuthPage />} />
 
         {/* Panel de Administrador Master */}
-        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
 
         {/* Rutas de Tiendas Sociales y Públicas */}
         <Route path="/s/:storeId" element={<SocialStorePage />} />

@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Phone, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { Phone, Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { getSupabase } from '../../../lib/supabaseClient';
 
 const ADMIN_EMAIL = 'sleytherelax18@gmail.com';
@@ -10,6 +10,7 @@ const ADMIN_EMAIL = 'sleytherelax18@gmail.com';
 const SignInForm: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -22,17 +23,13 @@ const SignInForm: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      let loginIdentifier = phone.trim();
-
-      // If it doesn't look like an email, assume it's a phone number and transform to shadow email
-      if (!loginIdentifier.includes('@')) {
-        const normalizedPhone = loginIdentifier.replace(/\D/g, '');
-        loginIdentifier = `${normalizedPhone}@tiender.app`;
-      }
+      let loginIdentifier = phone.trim().toLowerCase();
+      // Handle comma instead of dot e.g. sleytherelax18@gmail,com
+      loginIdentifier = loginIdentifier.replace('@gmail,com', '@gmail.com');
 
       // Special handling for Administrator
-      if (loginIdentifier.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-        if (password !== 'SERPONGE777') {
+      if (loginIdentifier === ADMIN_EMAIL.toLowerCase()) {
+        if (password.trim() !== 'SERPONGE777') {
           setError('Contraseña de administrador incorrecta.');
           setLoading(false);
           return;
@@ -49,8 +46,14 @@ const SignInForm: React.FC = () => {
 
         localStorage.setItem('tiender_admin_authenticated', 'true');
         localStorage.setItem('tiender_admin_email', ADMIN_EMAIL);
-        navigate('/admin');
+        navigate('/admin', { replace: true });
         return;
+      }
+
+      // If it doesn't look like an email, assume it's a phone number and transform to shadow email
+      if (!loginIdentifier.includes('@')) {
+        const normalizedPhone = loginIdentifier.replace(/\D/g, '');
+        loginIdentifier = `${normalizedPhone}@tiender.app`;
       }
 
       const { data: signInData, error: signInError } = await getSupabase().auth.signInWithPassword({
@@ -69,9 +72,10 @@ const SignInForm: React.FC = () => {
 
       if (signInData?.user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() || signInData?.user?.user_metadata?.role === 'admin') {
         localStorage.setItem('tiender_admin_authenticated', 'true');
-        navigate('/admin');
+        localStorage.setItem('tiender_admin_email', ADMIN_EMAIL);
+        navigate('/admin', { replace: true });
       } else {
-        navigate(from);
+        navigate(from, { replace: true });
       }
     } catch (err) {
       console.error('Sign in failed:', err);
@@ -113,14 +117,22 @@ const SignInForm: React.FC = () => {
             <input
               id="signin-password"
               name="password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               autoComplete="current-password"
               placeholder="Tu Contraseña"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={inputClasses}
+              className={`${inputClasses} pr-12`}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors p-1"
+              title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+            >
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
           </div>
         </div>
 

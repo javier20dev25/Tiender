@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Phone, Lock, Rocket, AlertCircle, Info, Hash, Mail } from 'lucide-react';
+import { Phone, Lock, Rocket, AlertCircle, Info, Hash, Mail, Eye, EyeOff } from 'lucide-react';
 import { getSupabase } from '../../../lib/supabaseClient';
 
 interface SignUpFormProps {
@@ -11,6 +11,7 @@ interface SignUpFormProps {
 
 export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [whatsapp, setWhatsapp] = useState('');
   const [countryCode, setCountryCode] = useState('+505');
   const [recoveryEmail, setRecoveryEmail] = useState('');
@@ -193,14 +194,22 @@ export const SignUpForm: React.FC<SignUpFormProps> = ({ onSwitchToSignIn }) => {
             <input
               id="signup-password"
               name="password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
               placeholder="••••••••"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={inputClasses}
+              className={`${inputClasses} pr-12`}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-[40px] text-zinc-500 hover:text-white transition-colors p-1"
+              title={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+            >
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
           </div>
 
           <div className="relative group">

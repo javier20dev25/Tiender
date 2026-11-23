@@ -1,7 +1,7 @@
 // src/components/PasswordChangeModal.tsx
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Lock, AlertCircle, CheckCircle } from 'lucide-react';
+import { ShieldCheck, Lock, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { getSupabase } from '../lib/supabaseClient';
 
 interface PasswordChangeModalProps {
@@ -12,6 +12,8 @@ interface PasswordChangeModalProps {
 export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen, onSuccess }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -91,13 +93,21 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
                 <input
-                  type="password"
+                  type={showNewPassword ? 'text' : 'password'}
                   placeholder="Mínimo 6 caracteres"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
-                  className="w-full bg-zinc-800/60 border border-white/5 rounded-2xl pl-11 pr-4 py-3.5 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-neon/50 text-sm"
+                  className="w-full bg-zinc-800/60 border border-white/5 rounded-2xl pl-11 pr-11 py-3.5 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-neon/50 text-sm"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors p-1"
+                  title={showNewPassword ? "Ocultar" : "Mostrar"}
+                >
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
@@ -108,13 +118,21 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
                 <input
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   placeholder="Repite tu nueva contraseña"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  className="w-full bg-zinc-800/60 border border-white/5 rounded-2xl pl-11 pr-4 py-3.5 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-neon/50 text-sm"
+                  className="w-full bg-zinc-800/60 border border-white/5 rounded-2xl pl-11 pr-11 py-3.5 text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-brand-neon/50 text-sm"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors p-1"
+                  title={showConfirmPassword ? "Ocultar" : "Mostrar"}
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 

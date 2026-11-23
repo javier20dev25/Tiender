@@ -1,18 +1,40 @@
 // src/pages/AuthPage.tsx
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 import { SignUpForm } from '../features/auth/components/SignUpForm';
 import SignInForm from '../features/auth/components/SignInForm';
 
+const ADMIN_EMAIL = 'sleytherelax18@gmail.com';
+
 const AuthPage = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const modeParam = searchParams.get('mode');
   const [localSignUpOverride, setLocalSignUpOverride] = useState<boolean | null>(null);
 
+  // Auto-redirect if already logged in
+  useEffect(() => {
+    const isAdminAuthed =
+      localStorage.getItem('tiender_admin_authenticated') === 'true' ||
+      localStorage.getItem('tiender_admin_email') === ADMIN_EMAIL;
+
+    if (isAdminAuthed || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() || user?.user_metadata?.role === 'admin') {
+      navigate('/admin', { replace: true });
+      return;
+    }
+
+    if (user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
+
+  // Por defecto, muestra INICIO DE SESIÓN a menos que explícitamente se pida signup
   const isSignUp = localSignUpOverride !== null
     ? localSignUpOverride
-    : (modeParam === 'signin' || modeParam === 'login' ? false : true);
+    : (modeParam === 'signup' || modeParam === 'register');
 
   const switchToSignIn = () => setLocalSignUpOverride(false);
   const toggleSignUp = () => setLocalSignUpOverride(!isSignUp);
