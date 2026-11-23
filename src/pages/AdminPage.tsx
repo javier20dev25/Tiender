@@ -63,6 +63,7 @@ const AdminPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      // 1. Intentar vía functions.invoke
       const { data, error: funcError } = await getSupabase().functions.invoke('admin-manage-users', {
         body: { action: 'list' }
       });
@@ -70,14 +71,39 @@ const AdminPage: React.FC = () => {
       if (!funcError && data?.users) {
         setUsers(data.users);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data.users));
-      } else {
-        // Fallback to cache if available
-        const cached = localStorage.getItem(STORAGE_KEY);
-        if (cached) {
-          setUsers(JSON.parse(cached));
+        return;
+      }
+
+      // 2. Fallback de fetch directo por si hay temas con el cliente JS
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-manage-users`;
+      const directRes = await fetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': anonKey,
+        },
+        body: JSON.stringify({ action: 'list' }),
+      });
+
+      if (directRes.ok) {
+        const directData = await directRes.json();
+        if (directData?.users) {
+          setUsers(directData.users);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(directData.users));
+          return;
         }
       }
-    } catch {
+
+      // 3. Fallback a caché local
+      const cached = localStorage.getItem(STORAGE_KEY);
+      if (cached) {
+        setUsers(JSON.parse(cached));
+      } else {
+        setError(funcError?.message || 'No se pudieron cargar los usuarios. Verifica tu conexión.');
+      }
+    } catch (err: unknown) {
+      console.error('[AdminPage] loadUsers error:', err);
       const cached = localStorage.getItem(STORAGE_KEY);
       if (cached) {
         setUsers(JSON.parse(cached));
@@ -120,6 +146,8 @@ const AdminPage: React.FC = () => {
     const cleanSlug = cleanStore.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 7);
 
     try {
+      let resData: { success?: boolean; error?: string; user?: { id?: string; store?: { slug?: string } } } | null = null;
+
       const { data, error: createError } = await getSupabase().functions.invoke('admin-manage-users', {
         body: {
           action: 'create',
@@ -131,15 +159,45 @@ const AdminPage: React.FC = () => {
         }
       });
 
-      if (createError || data?.error) {
-        throw new Error(createError?.message || data?.error);
+      if (!createError && data?.success) {
+        resData = data;
+      } else {
+        // Fallback fetch directo
+        const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-manage-users`;
+        const directRes = await fetch(fnUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+          },
+          body: JSON.stringify({
+            action: 'create',
+            payload: {
+              phone: cleanPhone,
+              storeName: cleanStore,
+              password: defaultPassword.trim()
+            }
+          }),
+        });
+
+        if (directRes.ok) {
+          resData = await directRes.json();
+        } else {
+          const errBody = await directRes.json().catch(() => ({}));
+          throw new Error(errBody?.error || createError?.message || 'Error en servidor');
+        }
+      }
+
+      if (resData?.error) {
+        throw new Error(resData.error);
       }
 
       setCreatedSuccess({
         phone: cleanPhone,
         password: defaultPassword.trim(),
         storeName: cleanStore,
-        slug: data?.user?.store?.slug || cleanSlug
+        slug: resData?.user?.store?.slug || cleanSlug
       });
 
       // Reset form
