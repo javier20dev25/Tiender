@@ -8,14 +8,14 @@ describe('App Routing', () => {
   it('should render AuthPage for the / route as default entry', async () => {
     render(<App />, { route: '/' });
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Únete a la Revolución|Bienvenido de vuelta/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Bienvenido de vuelta/i })).toBeInTheDocument();
     }, { timeout: 5000 });
   });
 
   it('should render AuthPage for the /auth route', async () => {
     render(<App />, { route: '/auth' });
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Únete a la Revolución/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Bienvenido de vuelta/i })).toBeInTheDocument();
     }, { timeout: 5000 });
   });
 
