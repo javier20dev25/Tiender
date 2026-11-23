@@ -37,7 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('[AuthContext] refreshUserSessionData start', userId);
     const { data: refreshedStore, error: storeError } = await getSupabase()
       .from('stores')
-      .select('id, name, slug, logo_url, whatsapp_number, user_id, created_at, trial_ends_at, plan_type, community_link, product_limit, billing_exempt')
+      .select('id, name, slug, logo_url, whatsapp_number, user_id, created_at, trial_ends_at, plan_type, community_link, product_limit')
       .eq('user_id', userId)
       .single();
     if (storeError) {
@@ -45,7 +45,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw storeError;
     }
     console.log('[AuthContext] Store fetched:', refreshedStore?.slug || 'no-slug');
-    setStore(refreshedStore as Store | null);
+    const storeObj = refreshedStore ? {
+      ...refreshedStore,
+      billing_exempt: refreshedStore.plan_type === 'full' || (refreshedStore.trial_ends_at ? new Date(refreshedStore.trial_ends_at).getFullYear() >= 2030 : false)
+    } : null;
+    setStore(storeObj as Store | null);
 
     const { data: refreshedSub, error: subError } = await getSupabase()
       .from('subscriptions')

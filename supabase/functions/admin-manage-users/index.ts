@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
               name: userStore.name,
               slug: userStore.slug,
               plan_type: userStore.plan_type,
-              billing_exempt: userStore.billing_exempt,
+              billing_exempt: userStore.plan_type === 'full' || (userStore.trial_ends_at ? new Date(userStore.trial_ends_at).getFullYear() >= 2030 : false),
               whatsapp_number: userStore.whatsapp_number,
               created_at: userStore.created_at
             } : null
@@ -103,12 +103,10 @@ Deno.serve(async (req) => {
       const normalizedPhone = String(phone).replace(/\D/g, '');
       const fakeEmail = `${normalizedPhone}@tiender.app`;
 
-      // 1. Crear el usuario en auth.users
-      const { data: { user }, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      // 1. Crear el usuario en auth.users (usando shadow email)
+      const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email: fakeEmail,
-        password,
-        phone: normalizedPhone,
-        phone_confirm: true,
+        password: String(password).trim(),
         email_confirm: true,
         user_metadata: {
           phone: normalizedPhone,
@@ -118,24 +116,32 @@ Deno.serve(async (req) => {
       });
 
       if (createError) {
-        return new Response(JSON.stringify({ error: `Error creando usuario: ${createError.message}` }), {
+        return new Response(JSON.stringify({ error: `Error creando auth user: ${createError.message}` }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
+      const user = createData?.user;
       if (!user) {
-        throw new Error('No se pudo crear el usuario.');
+        return new Response(JSON.stringify({ error: 'No se pudo generar el usuario en Auth.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
 
-      // 2. Crear identidad de WhatsApp si no existe
-      await supabaseAdmin.from('whatsapp_identities').upsert({
-        whatsapp_number: normalizedPhone,
-        status: 'TRIAL_ACTIVE',
-        associated_auth_user_id: user.id
-      }, { onConflict: 'whatsapp_number' });
+      // 2. Crear identidad de WhatsApp si la tabla existe (opcional / no bloqueante)
+      try {
+        await supabaseAdmin.from('whatsapp_identities').upsert({
+          whatsapp_number: normalizedPhone,
+          status: 'TRIAL_ACTIVE',
+          associated_auth_user_id: user.id
+        }, { onConflict: 'whatsapp_number' });
+      } catch (wErr) {
+        console.warn('Advertencia creando whatsapp_identities:', wErr);
+      }
 
-      // 3. Crear la tienda con billing_exempt: true y plan full
+      // 3. Crear la tienda con plan full y trial extendido a 5 años
       const cleanStoreName = String(storeName).trim();
       const slug = cleanStoreName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + user.id.substring(0, 6);
 
@@ -148,14 +154,16 @@ Deno.serve(async (req) => {
         slug,
         whatsapp_number: normalizedPhone,
         plan_type: 'full',
-        billing_exempt: true,
         trial_ends_at: trialEnds.toISOString(),
       }).select().single();
 
       if (storeError) {
         // Rollback user if store creation fails
         await supabaseAdmin.auth.admin.deleteUser(user.id);
-        throw storeError;
+        return new Response(JSON.stringify({ error: `Error creando tienda en base de datos: ${storeError.message || JSON.stringify(storeError)}` }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
 
       return new Response(JSON.stringify({
@@ -204,7 +212,7 @@ Deno.serve(async (req) => {
     });
 
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : 'Error inesperado en backend admin.';
+    const errorMsg = err instanceof Error ? err.message : (typeof err === 'object' && err !== null ? JSON.stringify(err) : String(err));
     return new Response(JSON.stringify({ error: errorMsg }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
