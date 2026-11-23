@@ -108,8 +108,8 @@ describe('Full E2E User and Customer Flow', () => {
 
         // Auth page should be rendered when not authenticated
         await waitFor(() => {
-            // SignUpForm should be visible since AuthPage defaults to sign-up
-            const authContent = screen.getByText(/Crear Mi Tienda/i);
+            // Default is now sign-in, check for sign-in or welcome heading
+            const authContent = screen.getByText(/Entrar a mi Tienda|Bienvenido de vuelta/i);
             expect(authContent).toBeInTheDocument();
         }, { timeout: 5000 });
     });

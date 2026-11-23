@@ -35,12 +35,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Fetches both store and subscription data for a given user
   const refreshUserSessionData = useCallback(async (userId: string) => {
     console.log('[AuthContext] refreshUserSessionData start', userId);
-    const { data: refreshedStore, error: storeError } = await getSupabase()
+    const storeQuery = getSupabase()
       .from('stores')
       .select('id, name, slug, logo_url, whatsapp_number, user_id, created_at, trial_ends_at, plan_type, community_link, product_limit')
-      .eq('user_id', userId)
-      .maybeSingle();
-    if (storeError) {
+      .eq('user_id', userId);
+
+    let refreshedStore = null;
+    let storeError: { code?: string; message?: string } | null = null;
+
+    const queryAny = storeQuery as unknown as { maybeSingle?: () => Promise<{ data: Store | null; error: { code?: string; message?: string } | null }> };
+    if (typeof queryAny.maybeSingle === 'function') {
+      const res = await queryAny.maybeSingle();
+      refreshedStore = res.data;
+      storeError = res.error;
+    } else {
+      const res = await storeQuery.single();
+      refreshedStore = res.data;
+      storeError = res.error;
+    }
+
+    if (storeError && storeError.code !== 'PGRST116') {
       console.error('[AuthContext] Error fetching store:', storeError);
       throw storeError;
     }
