@@ -1,6 +1,6 @@
 // src/features/auth/components/SignInForm.tsx
 import { useState } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Phone, Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { getSupabase } from '../../../lib/supabaseClient';
@@ -13,9 +13,18 @@ const SignInForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const location = useLocation();
-  const state = location.state as { from?: { pathname: string } } | null;
-  const from = state?.from || { pathname: '/dashboard' };
+
+  const safeRedirect = (path: string) => {
+    try {
+      if (typeof window !== 'undefined' && window.location && window.location.origin) {
+        window.location.href = path;
+        return;
+      }
+    } catch {
+      // fallback for test environments
+    }
+    navigate(path, { replace: true });
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -40,7 +49,7 @@ const SignInForm: React.FC = () => {
 
         localStorage.setItem('tiender_admin_authenticated', 'true');
         localStorage.setItem('tiender_admin_email', loginIdentifier);
-        navigate('/admin', { replace: true });
+        safeRedirect('/admin');
         return;
       }
 
@@ -50,10 +59,17 @@ const SignInForm: React.FC = () => {
         loginIdentifier = `${normalizedPhone}@tiender.app`;
       }
 
-      const { data: signInData, error: signInError } = await getSupabase().auth.signInWithPassword({
+      // Timeout safety promise to avoid hanging forever
+      const timeoutPromise = new Promise<{ data: null; error: Error }>((_, reject) =>
+        setTimeout(() => reject(new Error('Tiempo de espera agotado al conectar con el servidor. Por favor intenta de nuevo.')), 12000)
+      );
+
+      const signInPromise = getSupabase().auth.signInWithPassword({
         email: loginIdentifier,
         password,
       });
+
+      const { data: signInData, error: signInError } = await Promise.race([signInPromise, timeoutPromise]);
 
       if (signInError) {
         if (signInError.message.includes('Invalid login credentials')) {
@@ -70,14 +86,14 @@ const SignInForm: React.FC = () => {
       if (isUserAdmin) {
         localStorage.setItem('tiender_admin_authenticated', 'true');
         localStorage.setItem('tiender_admin_email', userEmail || 'admin@tiender.app');
-        navigate('/admin', { replace: true });
+        safeRedirect('/admin');
       } else {
-        navigate(from, { replace: true });
+        safeRedirect('/dashboard');
       }
     } catch (err: unknown) {
       console.error('Sign in failed:', err);
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('RetryableFetchError')) {
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('RetryableFetchError') || msg.includes('Tiempo de espera')) {
         setError('Error de conexión con el servidor. Por favor verifica tu internet o intenta nuevamente.');
       } else if (msg.includes('Invalid login credentials')) {
         setError('Número de WhatsApp o contraseña incorrectos.');

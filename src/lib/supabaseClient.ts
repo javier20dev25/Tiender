@@ -17,6 +17,7 @@ export const getSupabase = () => {
         autoRefreshToken: true,
         detectSessionInUrl: true,
         storageKey: 'antigravity-auth-token', // Custom key to avoid collisions
+        lock: async (_name, _acquireTimeout, fn) => fn(),
       }
     });
   }

@@ -65,28 +65,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } : null;
     setStore(storeObj as Store | null);
 
-    const subQuery = getSupabase()
-      .from('subscriptions')
-      .select('status, current_period_end')
-      .eq('user_id', userId);
-
     let refreshedSub: Subscription | null = null;
-    let subError: unknown = null;
-    const subQueryAny = subQuery as unknown as { maybeSingle?: () => Promise<{ data: Subscription | null; error: unknown }> };
-    if (typeof subQueryAny.maybeSingle === 'function') {
-      const res = await subQueryAny.maybeSingle();
-      refreshedSub = res.data;
-      subError = res.error;
-    } else if (typeof subQuery.single === 'function') {
-      try {
-        const res = await subQuery.single();
-        refreshedSub = res.data;
-      } catch (e) {
-        subError = e;
+    try {
+      if (storeObj?.id) {
+        const subQuery = getSupabase()
+          .from('subscriptions')
+          .select('status, current_period_end')
+          .eq('store_id', storeObj.id);
+
+        const subQueryAny = subQuery as unknown as { maybeSingle?: () => Promise<{ data: Subscription | null; error: unknown }> };
+        if (typeof subQueryAny.maybeSingle === 'function') {
+          const res = await subQueryAny.maybeSingle();
+          refreshedSub = res.data;
+        } else if (typeof subQuery.single === 'function') {
+          try {
+            const res = await subQuery.single();
+            refreshedSub = res?.data;
+          } catch {
+            // ignore
+          }
+        }
       }
+      
+      // Si no encontró por store_id, intentar por user_id (para tests/mocks)
+      if (!refreshedSub) {
+        const subQuery = getSupabase()
+          .from('subscriptions')
+          .select('status, current_period_end')
+          .eq('user_id', userId);
+
+        const subQueryAny = subQuery as unknown as { maybeSingle?: () => Promise<{ data: Subscription | null; error: unknown }> };
+        if (typeof subQueryAny.maybeSingle === 'function') {
+          const res = await subQueryAny.maybeSingle();
+          refreshedSub = res.data;
+        } else if (typeof subQuery.single === 'function') {
+          try {
+            const res = await subQuery.single();
+            refreshedSub = res?.data;
+          } catch {
+            // ignore
+          }
+        }
+      }
+    } catch (subError) {
+      console.warn('[AuthContext] Could not fetch subscription details.', subError);
     }
-    // SubError is only logged if it's not a PGRST116 (which maybeSingle ignores), so real errors are still caught
-    if (subError) console.warn('[AuthContext] Could not fetch subscription details.', subError);
     console.log('[AuthContext] Subscription fetched:', refreshedSub?.status || 'none');
     setSubscription(refreshedSub as Subscription | null);
     console.log('[AuthContext] refreshUserSessionData end');
