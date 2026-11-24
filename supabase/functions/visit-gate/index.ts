@@ -144,13 +144,16 @@ serve(async (req, connInfo) => {
       throw new Error('No se pudo registrar la visita.');
     }
 
-    // 6. Return the token if verified, otherwise reject
+    // 6. Fetch store data using service_role (bypasses RLS so public store pages always load)
+    const { data: storeData } = await supabaseAdmin.from('stores').select('*').eq('id', resolvedStoreId).single();
+
+    // 7. Return the token if verified, otherwise reject (but still include store data)
     if (isVerified) {
-      return new Response(JSON.stringify({ visit_token: visitToken, status: visit.status }), {
+      return new Response(JSON.stringify({ visit_token: visitToken, status: visit.status, store: storeData }), {
         status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } else {
-      return new Response(JSON.stringify({ error: 'Tráfico sospechoso detectado', status: visit.status }), {
+      return new Response(JSON.stringify({ error: 'Tráfico sospechoso detectado', status: visit.status, store: storeData }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

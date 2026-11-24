@@ -131,7 +131,8 @@ const SocialStorePage: React.FC = () => {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error de conexión. Revisa tu internet.';
       console.error('Fetch error:', err);
-      setError(message);
+      // Only set error if we don't already have store data (which may come from visit-gate fallback)
+      setError(prev => prev || message);
     }
   }, []);
 
@@ -141,19 +142,35 @@ const SocialStorePage: React.FC = () => {
     setError('');
     setIsRetrying(true);
     
-    // Start fetching data and verifying visit in parallel
+    // Run visit-gate and direct data fetch in parallel
     const dataPromise = fetchStoreAndProducts(storeId);
     
     try {
-      const { data, error } = await getSupabase().functions.invoke('visit-gate', {
+      const { data, error: fnError } = await getSupabase().functions.invoke('visit-gate', {
         body: { store_id: storeId },
       });
-      if (error) throw error;
-      if (data?.visit_token) {
-        setVisitToken(data.visit_token);
+
+      let gateData = data as { visit_token?: string; store?: Store } | null;
+
+      // On HTTP 403 (FunctionsHttpError), read store payload from error.context if available
+      if (fnError && !gateData) {
+        const errCtx = (fnError as { context?: { json?: () => Promise<unknown> } }).context;
+        if (errCtx && typeof errCtx.json === 'function') {
+          gateData = (await errCtx.json().catch(() => null)) as { visit_token?: string; store?: Store } | null;
+        }
+      }
+
+      if (gateData?.visit_token) {
+        setVisitToken(gateData.visit_token);
         setVerificationStatus('verified');
       } else {
         setVerificationStatus('failed');
+      }
+
+      // visit-gate returns store data via service_role (bypasses RLS) — use as fallback
+      if (gateData?.store) {
+        setStore(prev => prev || gateData!.store!);
+        setError(''); // Clear any error from direct fetch since we have store data now
       }
     } catch (err) {
       console.warn('Verification failed (non-blocking):', err);
@@ -168,6 +185,22 @@ const SocialStorePage: React.FC = () => {
   useEffect(() => {
     verifyAndFetch();
   }, [verifyAndFetch]);
+
+  // If store loaded from visit-gate fallback but products didn't load (direct query failed due to RLS), retry products
+  useEffect(() => {
+    if (store && products.length === 0 && !isRetrying) {
+      (async () => {
+        try {
+          const { data, error } = await getSupabase()
+            .rpc('get_store_products', { target_store_id: store.id });
+          if (!error && data) setProducts(data);
+        } catch {
+          /* silent */
+        }
+      })();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store?.id, isRetrying]);
 
   // Log initial visit when token and products are ready
   useEffect(() => {
