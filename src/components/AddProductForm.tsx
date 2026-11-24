@@ -88,10 +88,10 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
   const compressImage = (file: File): Promise<File> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.readAsDataURL(file);
+      reader.onerror = () => resolve(file);
       reader.onload = (event) => {
         const img = new Image();
-        img.src = event.target?.result as string;
+        img.onerror = () => resolve(file);
         img.onload = () => {
           const canvas = document.createElement('canvas');
           let width = img.width;
@@ -119,7 +119,9 @@ const AddProductForm: React.FC<AddProductFormProps> = ({ storeId, plan_type, onC
             }
           }, 'image/jpeg', 0.8);
         };
+        img.src = event.target?.result as string;
       };
+      reader.readAsDataURL(file);
     });
   };
 

@@ -109,8 +109,19 @@ const SocialStorePage: React.FC = () => {
         query.eq('slug', currentStoreId);
       }
 
-      const { data: storeData, error: storeError } = await query.single();
-      if (storeError || !storeData) throw new Error('No se pudo cargar la tienda.');
+      // Use maybeSingle to avoid PGRST116 error when single() finds 0 rows
+      const qAny = query as unknown as { maybeSingle?: () => Promise<{ data: Store | null; error: unknown }> };
+      let storeData: Store | null = null;
+      if (typeof qAny.maybeSingle === 'function') {
+        const res = await qAny.maybeSingle();
+        if (res.error) throw new Error('No se pudo cargar la tienda.');
+        storeData = res.data;
+      } else {
+        const { data, error: storeError } = await query.single();
+        if (storeError) throw new Error('No se pudo cargar la tienda.');
+        storeData = data;
+      }
+      if (!storeData) throw new Error('La tienda no existe o no está disponible.');
       setStore(storeData);
 
       const { data: productsData, error: productsError } = await getSupabase()

@@ -8,6 +8,7 @@ const ADMIN_EMAILS = [
   'sleytherjavier2025@gmail.com',
   'sleytherjavier74@gmail.com'
 ];
+const ADMIN_EMAIL = ADMIN_EMAILS[0];
 
 const isExcludedEmail = (email?: string | null) => {
   if (!email) return false;
@@ -340,6 +341,44 @@ Deno.serve(async (req) => {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // ACTION: add-rls-policy (makes stores/products publicly readable)
+    if (action === 'add-rls-policy') {
+      const dbUrl = Deno.env.get('SUPABASE_DB_URL');
+      if (!dbUrl) {
+        return new Response(JSON.stringify({ error: 'Falta variable SUPABASE_DB_URL.' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { default: postgres } = await import('npm:postgres@3.4.4');
+      const sql = postgres(dbUrl, { prepare: false });
+      try {
+        await sql.unsafe(`
+          DO $$
+          BEGIN
+            DROP POLICY IF EXISTS "Public stores are viewable by everyone" ON public.stores;
+            CREATE POLICY "Public stores are viewable by everyone" ON public.stores FOR SELECT USING (true);
+            DROP POLICY IF EXISTS "Public products are viewable by everyone" ON public.products;
+            CREATE POLICY "Public products are viewable by everyone" ON public.products FOR SELECT USING (true);
+            GRANT EXECUTE ON FUNCTION public.get_store_products(UUID) TO anon;
+            GRANT EXECUTE ON FUNCTION public.get_store_products(UUID) TO authenticated;
+          END $$;
+        `);
+        return new Response(JSON.stringify({ success: true, message: 'RLS policies creadas correctamente.' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (sqlErr: unknown) {
+        return new Response(JSON.stringify({ error: (sqlErr as Error)?.message || 'Error en SQL' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } finally {
+        await sql.end();
+      }
     }
 
     return new Response(JSON.stringify({ error: 'Acción no reconocida.' }), {

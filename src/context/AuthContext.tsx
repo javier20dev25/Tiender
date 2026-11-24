@@ -226,7 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     getInitialSession();
 
     const { data: authListener } = getSupabase().auth.onAuthStateChange(
-      async (event, newSession) => {
+      (event, newSession) => {
         if (import.meta.env.DEV) console.log(`[AuthContext] onAuthStateChange event: ${event}`);
 
         const newUser = newSession?.user ?? null;
@@ -234,15 +234,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(newUser);
 
         if (newUser) {
-          try {
-            console.log('[AuthContext] Auth change (signed in or refreshed): updating data...');
-            await refreshUserSessionData(newUser.id);
-            syncAndRefreshSession(newUser.id);
-          } catch (err: unknown) {
-            console.error("[AuthContext] Error on auth change:", err);
-          } finally {
-            setLoading(false);
-          }
+          // Keep loading true while we fetch store/subscription data to avoid flash of "no store"
+          setLoading(true);
+          // Defer Supabase queries outside onAuthStateChange to avoid navigator.locks deadlock
+          setTimeout(async () => {
+            try {
+              console.log('[AuthContext] Auth change (signed in or refreshed): updating data...');
+              await refreshUserSessionData(newUser.id);
+              syncAndRefreshSession(newUser.id);
+            } catch (err: unknown) {
+              console.error("[AuthContext] Error on auth change:", err);
+            } finally {
+              setLoading(false);
+            }
+          }, 0);
         } else {
           if (event === 'SIGNED_OUT' || (event === 'INITIAL_SESSION' && !newSession)) {
             console.log('[AuthContext] Session cleared');

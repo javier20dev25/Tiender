@@ -33,43 +33,15 @@ const DashboardPage: React.FC = () => {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   useEffect(() => {
-    if (user?.user_metadata?.must_change_password) {
+    // Only show password modal once per session, and only if still flagged
+    const sessionKey = `pwd_modal_shown_${user?.id}`;
+    if (user?.user_metadata?.must_change_password && !sessionStorage.getItem(sessionKey)) {
+      sessionStorage.setItem(sessionKey, '1');
       setIsPasswordModalOpen(true);
     }
   }, [user]);
 
-  // Fallback para sincronización instantánea de tienda si ya existe en la base de datos
-  useEffect(() => {
-    if (user && !store && !authLoading) {
-      const checkExistingStore = async () => {
-        try {
-          const q = getSupabase().from('stores').select('*').eq('user_id', user.id);
-          const qAny = q as unknown as {
-            maybeSingle?: () => Promise<{ data: Store | null; error: unknown }>;
-            single?: () => Promise<{ data: Store | null; error: unknown }>;
-          };
-          let foundStore: Store | null = null;
-          if (typeof qAny.maybeSingle === 'function') {
-            const res = await qAny.maybeSingle();
-            foundStore = res.data;
-          } else if (typeof qAny.single === 'function') {
-            const res = await qAny.single();
-            foundStore = res.data;
-          }
-          if (foundStore && typeof localStorage !== 'undefined') {
-            localStorage.setItem(`tiender_store_${user.id}`, JSON.stringify({
-              ...foundStore,
-              billing_exempt: true
-            }));
-            window.location.reload();
-          }
-        } catch {
-          // ignore
-        }
-      };
-      checkExistingStore();
-    }
-  }, [user, store, authLoading]);
+  // (store sync is handled exclusively by AuthContext)
   
   // Custom Hooks
   const { products, loadingProducts, fetchProducts } = useProducts(store?.id);

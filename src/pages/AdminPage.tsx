@@ -69,7 +69,7 @@ const AdminPage: React.FC = () => {
     try {
       // 1. Fetch directo con AbortController (más rápido, sin bloqueos de Auth en cliente)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s for list (less critical)
 
       const directRes = await fetch(fnUrl, {
         method: 'POST',
@@ -228,7 +228,7 @@ const AdminPage: React.FC = () => {
     const cleanSlug = cleanStore.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 7);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s to allow Supabase cold start
 
     try {
       const fnUrl = `${SUPABASE_URL}/functions/v1/admin-manage-users`;
