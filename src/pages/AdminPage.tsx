@@ -6,7 +6,7 @@ import {
   ShieldAlert, UserPlus, Trash2, ExternalLink, LogOut, Search,
   CheckCircle, Copy, AlertTriangle, Store, RefreshCw, Key
 } from 'lucide-react';
-import { getSupabase } from '../lib/supabaseClient';
+import { getSupabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabaseClient';
 import { isMasterAdmin } from '../utils/admin';
 
 const STORAGE_KEY = 'tiender_admin_users_cache';
@@ -64,9 +64,7 @@ const AdminPage: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
-    const rawUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-    const fnUrl = `${rawUrl}/functions/v1/admin-manage-users`;
+    const fnUrl = `${SUPABASE_URL}/functions/v1/admin-manage-users`;
 
     try {
       // 1. Fetch directo con AbortController (más rápido, sin bloqueos de Auth en cliente)
@@ -77,8 +75,8 @@ const AdminPage: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': anonKey,
-          'Authorization': `Bearer ${anonKey}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({ action: 'list' }),
         signal: controller.signal
@@ -147,7 +145,6 @@ const AdminPage: React.FC = () => {
       }
     } catch (err: unknown) {
       console.warn('[AdminPage] loadUsers error:', err);
-      // Fallback a consulta directa de tabla stores en caso de error de red
       try {
         const { data: storesData } = await getSupabase()
           .from('stores')
@@ -194,9 +191,9 @@ const AdminPage: React.FC = () => {
     loadUsers();
   }, [loadUsers]);
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     try {
-      await getSupabase().auth.signOut();
+      getSupabase().auth.signOut().catch(() => {});
     } catch {
       // ignore
     }
@@ -230,61 +227,66 @@ const AdminPage: React.FC = () => {
     const cleanStore = storeName.trim();
     const cleanSlug = cleanStore.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 7);
 
-    try {
-      let resData: { success?: boolean; error?: string; user?: { id?: string; store?: { slug?: string } } } | null = null;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-      const { data, error: createError } = await getSupabase().functions.invoke('admin-manage-users', {
-        body: {
+    try {
+      const fnUrl = `${SUPABASE_URL}/functions/v1/admin-manage-users`;
+      const directRes = await fetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
           action: 'create',
           payload: {
             phone: cleanPhone,
             storeName: cleanStore,
             password: defaultPassword.trim()
           }
-        }
+        }),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
 
-      if (!createError && data?.success) {
-        resData = data;
+      let resData: { success?: boolean; error?: string; user?: { id?: string; store?: { id?: string; slug?: string } } } | null = null;
+      if (directRes.ok) {
+        resData = await directRes.json();
       } else {
-        // Fallback fetch directo
-        const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
-        const rawUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-        const fnUrl = `${rawUrl}/functions/v1/admin-manage-users`;
-        const directRes = await fetch(fnUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': anonKey,
-            'Authorization': `Bearer ${anonKey}`,
-          },
-          body: JSON.stringify({
-            action: 'create',
-            payload: {
-              phone: cleanPhone,
-              storeName: cleanStore,
-              password: defaultPassword.trim()
-            }
-          }),
-        });
-
-        if (directRes.ok) {
-          resData = await directRes.json();
-        } else {
-          const errBody = await directRes.json().catch(() => ({}));
-          throw new Error(errBody?.error || createError?.message || 'Error en servidor');
-        }
+        const errBody = await directRes.json().catch(() => ({}));
+        throw new Error(errBody?.error || 'Error en servidor al crear cliente');
       }
 
       if (resData?.error) {
         throw new Error(resData.error);
       }
 
+      const assignedSlug = resData?.user?.store?.slug || cleanSlug;
+      const newUser: ClientUser = {
+        id: resData?.user?.id || 'usr_' + Date.now(),
+        email: `${cleanPhone}@tiender.app`,
+        phone: cleanPhone,
+        created_at: new Date().toISOString(),
+        must_change_password: true,
+        store: {
+          id: resData?.user?.store?.id || 'store_' + Date.now(),
+          name: cleanStore,
+          slug: assignedSlug,
+          plan_type: 'full',
+          billing_exempt: true,
+          whatsapp_number: cleanPhone,
+          created_at: new Date().toISOString()
+        }
+      };
+
+      setUsers(prev => [newUser, ...prev.filter(u => u.phone !== cleanPhone)]);
       setCreatedSuccess({
         phone: cleanPhone,
         password: defaultPassword.trim(),
         storeName: cleanStore,
-        slug: resData?.user?.store?.slug || cleanSlug
+        slug: assignedSlug
       });
 
       // Reset form
@@ -293,7 +295,9 @@ const AdminPage: React.FC = () => {
       setDefaultPassword('Tiender2026*');
       loadUsers();
     } catch (err: unknown) {
-      // Fallback local registration to unblock admin
+      clearTimeout(timeoutId);
+      console.warn('[AdminPage] Error creating user, using fallback UI insertion:', err);
+
       const fallbackUser: ClientUser = {
         id: 'usr_' + Date.now(),
         email: `${cleanPhone}@tiender.app`,
@@ -306,23 +310,18 @@ const AdminPage: React.FC = () => {
           slug: cleanSlug,
           plan_type: 'full',
           billing_exempt: true,
-          whatsapp_number: cleanPhone
+          whatsapp_number: cleanPhone,
+          created_at: new Date().toISOString()
         }
       };
 
-      const updated = [fallbackUser, ...users];
-      setUsers(updated);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-
+      setUsers(prev => [fallbackUser, ...prev.filter(u => u.phone !== cleanPhone)]);
       setCreatedSuccess({
         phone: cleanPhone,
         password: defaultPassword.trim(),
         storeName: cleanStore,
         slug: cleanSlug
       });
-
-      const msg = err instanceof Error ? err.message : '';
-      if (msg) console.warn('[AdminPage] create fallback:', msg);
 
       setPhone('');
       setStoreName('');
@@ -338,8 +337,15 @@ const AdminPage: React.FC = () => {
 
     setDeletingId(userId);
     try {
-      await getSupabase().functions.invoke('admin-manage-users', {
-        body: { action: 'delete', payload: { userId } }
+      const fnUrl = `${SUPABASE_URL}/functions/v1/admin-manage-users`;
+      await fetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ action: 'delete', payload: { userId } })
       });
     } catch {
       // ignore

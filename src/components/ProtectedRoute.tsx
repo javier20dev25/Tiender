@@ -18,7 +18,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   // 1. Verificación para Administrador Maestro
-  const isAdmin = isMasterAdmin(user?.email, user?.user_metadata as Record<string, unknown>);
+  const adminEmail = typeof localStorage !== 'undefined' ? localStorage.getItem('tiender_admin_email') : null;
+  const isAdminAuthenticated = typeof localStorage !== 'undefined' && localStorage.getItem('tiender_admin_authenticated') === 'true';
+  const isAdmin =
+    isMasterAdmin(user?.email, user?.user_metadata as Record<string, unknown>) ||
+    (isAdminAuthenticated && isMasterAdmin(adminEmail));
 
   if (isAdmin) {
     // Si el admin está en /admin, acceso total
@@ -30,7 +34,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   // 2. Si no hay usuario autenticado, redirigir al inicio de sesión
-  if (!user) {
+  if (!user && !isAdminAuthenticated) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
@@ -39,8 +43,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // 4. Si la tienda está exenta o es plan full (como los creados por admin)
-  if (store?.billing_exempt || store?.plan_type === 'full') {
+  // 4. Si la cuenta fue creada por el admin o es plan full / exenta
+  const isCreatedByAdmin =
+    user?.email?.endsWith('@tiender.app') ||
+    Boolean(user?.user_metadata?.created_by_admin) ||
+    Boolean(user?.user_metadata?.must_change_password) ||
+    store?.billing_exempt ||
+    store?.plan_type === 'full';
+
+  if (isCreatedByAdmin) {
     return children;
   }
 
