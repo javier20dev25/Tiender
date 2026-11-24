@@ -1,8 +1,8 @@
 ﻿import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
-// Use the APP_URL secret, with a fallback for local dev
-const APP_URL = Deno.env.get('APP_URL') || 'http://localhost:5173';
+// Use the APP_URL secret, with a fallback to production URL
+const APP_URL = Deno.env.get('APP_URL') || 'https://tiender.vercel.app';
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
@@ -64,8 +64,8 @@ Deno.serve(async (req) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         <!-- Open Graph Meta Tags -->
-        <meta property="og:title" content="Â¡Mira nuestro Top 5 en ${storeName}!" />
-        <meta property="og:description" content="Descubre los productos mÃ¡s populares y haz tu pedido." />
+        <meta property="og:title" content="¡Mira nuestro Top 5 en ${storeName}!" />
+        <meta property="og:description" content="Descubre los productos más populares y haz tu pedido." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="${pageUrl}" />
         ${imageUrl ? `<meta property="og:image" content="${imageUrl}" />` : ''}
@@ -75,8 +75,8 @@ Deno.serve(async (req) => {
 
         <!-- Twitter Card Tags -->
         <meta name="twitter:card" content="summary_large_image">
-        <meta name="twitter:title" content="Â¡Mira nuestro Top 5 en ${storeName}!">
-        <meta name="twitter:description" content="Descubre los productos mÃ¡s populares y haz tu pedido.">
+        <meta name="twitter:title" content="¡Mira nuestro Top 5 en ${storeName}!">
+        <meta name="twitter:description" content="Descubre los productos más populares y haz tu pedido.">
         ${imageUrl ? `<meta name="twitter:image" content="${imageUrl}">` : ''}
 
         <!-- Redirect user to the actual store page -->
@@ -87,8 +87,8 @@ Deno.serve(async (req) => {
       </head>
       <body>
         <p>
-          Si no eres redirigido automÃ¡ticamente, 
-          <a href="${storeUrl}">haz clic aquÃ­ para visitar la tienda de ${storeName}</a>.
+          Si no eres redirigido automáticamente, 
+          <a href="${storeUrl}">haz clic aquí para visitar la tienda de ${storeName}</a>.
         </p>
       </body>
       </html>

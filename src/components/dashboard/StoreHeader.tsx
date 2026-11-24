@@ -83,7 +83,7 @@ export const StoreHeader: React.FC<StoreHeaderProps> = ({ store, onEditClick, on
         </Link>
         <button onClick={handleCopyLink} className="px-5 py-2.5 bg-zinc-800 text-white font-bold rounded-2xl hover:bg-zinc-700 transition-all flex items-center gap-2 border border-white/5">
           <Copy className="w-4 h-4" />
-          <span>{copied ? 'Â¡Copiado!' : 'Enlace'}</span>
+          <span>{copied ? '¡Copiado!' : 'Enlace'}</span>
         </button>
         <button onClick={handleShare} disabled={isSharing} className="px-5 py-2.5 bg-brand-cyan text-brand-dark font-bold rounded-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
           <Share2 className="w-4 h-4" />
