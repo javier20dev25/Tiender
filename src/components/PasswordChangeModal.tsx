@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldCheck, Lock, AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
-import { getSupabase } from '../lib/supabaseClient';
+import { getSupabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabaseClient';
 
 interface PasswordChangeModalProps {
   isOpen: boolean;
@@ -35,19 +35,131 @@ export const PasswordChangeModal: React.FC<PasswordChangeModalProps> = ({ isOpen
     }
 
     setLoading(true);
-    try {
-      const { error: updateError } = await getSupabase().auth.updateUser({
-        password: newPassword,
-        data: { must_change_password: false }
-      });
 
-      if (updateError) throw updateError;
+    try {
+      const supabase = getSupabase();
+      let accessToken = '';
+      let userId = '';
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        accessToken = session?.access_token || '';
+        userId = session?.user?.id || '';
+      } catch {
+        // Fallback a localStorage
+      }
+
+      if (!accessToken && typeof localStorage !== 'undefined') {
+        try {
+          const raw = localStorage.getItem('antigravity-auth-token');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            accessToken = parsed?.access_token || parsed?.currentSession?.access_token || '';
+            userId = parsed?.user?.id || parsed?.currentSession?.user?.id || '';
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      let updated = false;
+
+      // Método 1: Direct REST PUT a /auth/v1/user (rápido, sin bloqueo de locks del navegador)
+      if (accessToken) {
+        try {
+          const controller = new AbortController();
+          const tId = setTimeout(() => controller.abort(), 7000);
+          const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${accessToken}`
+            },
+            body: JSON.stringify({
+              password: newPassword,
+              data: { must_change_password: false }
+            }),
+            signal: controller.signal
+          });
+          clearTimeout(tId);
+          if (res.ok) {
+            updated = true;
+          }
+        } catch (fetchErr) {
+          console.warn('[PasswordChangeModal] Direct fetch attempt error:', fetchErr);
+        }
+      }
+
+      // Método 2: Edge Function admin-manage-users
+      if (!updated && userId) {
+        try {
+          const controller = new AbortController();
+          const tId = setTimeout(() => controller.abort(), 7000);
+          const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-manage-users`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({
+              action: 'update-password',
+              payload: { userId, password: newPassword }
+            }),
+            signal: controller.signal
+          });
+          clearTimeout(tId);
+          if (res.ok) {
+            updated = true;
+          }
+        } catch (fnErr) {
+          console.warn('[PasswordChangeModal] Function attempt error:', fnErr);
+        }
+      }
+
+      // Método 3: Standard supabase.auth.updateUser con timeout de seguridad
+      if (!updated) {
+        const timeoutPromise = new Promise<{ error: Error }>((_, reject) =>
+          setTimeout(() => reject(new Error('Tiempo de espera agotado al conectar con el servidor.')), 8000)
+        );
+        const updatePromise = supabase.auth.updateUser({
+          password: newPassword,
+          data: { must_change_password: false }
+        });
+        const res = await Promise.race([updatePromise, timeoutPromise]);
+        if ('error' in res && res.error) {
+          throw res.error;
+        }
+        updated = true;
+      }
+
+      // Actualizar metadata en caché local para que la UI no vuelva a abrir el modal
+      if (typeof localStorage !== 'undefined') {
+        try {
+          const raw = localStorage.getItem('antigravity-auth-token');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed?.user?.user_metadata) {
+              parsed.user.user_metadata.must_change_password = false;
+            }
+            if (parsed?.currentSession?.user?.user_metadata) {
+              parsed.currentSession.user.user_metadata.must_change_password = false;
+            }
+            localStorage.setItem('antigravity-auth-token', JSON.stringify(parsed));
+          }
+        } catch {
+          // ignore
+        }
+      }
 
       setSuccess(true);
       setTimeout(() => {
         onSuccess();
-      }, 1500);
+        window.location.reload();
+      }, 1200);
     } catch (err: unknown) {
+      console.error('[PasswordChangeModal] Error updating password:', err);
       const msg = err instanceof Error ? err.message : 'Error al actualizar la contraseña.';
       setError(msg);
     } finally {

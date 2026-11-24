@@ -191,6 +191,34 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ACTION: update-password
+    if (action === 'update-password') {
+      const { userId, password } = payload || {};
+      if (!userId || !password) {
+        return new Response(JSON.stringify({ error: 'userId y password requeridos.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password: String(password).trim(),
+        user_metadata: { must_change_password: false }
+      });
+
+      if (updateError) {
+        return new Response(JSON.stringify({ error: updateError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, message: 'Contraseña actualizada.' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ACTION: delete
     if (action === 'delete') {
       const { userId } = payload || {};
