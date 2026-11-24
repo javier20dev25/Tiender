@@ -206,9 +206,9 @@ describe('DashboardPage - Product CRUD', () => {
     await waitFor(() => expect(screen.getByPlaceholderText('Ej: Urban Style Shop')).toBeInTheDocument());
 
     const input = screen.getByPlaceholderText('Ej: Urban Style Shop');
-    const submitBtn = screen.getByRole('button', { name: /Creación Deshabilitada/i });
+    const submitBtn = screen.getByRole('button', { name: /Crear mi Tienda/i });
 
-    expect(input).toBeDisabled();
+    expect(input).toBeInTheDocument();
     expect(submitBtn).toBeDisabled();
   });
 });

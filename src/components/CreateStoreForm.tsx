@@ -1,19 +1,64 @@
 // src/components/CreateStoreForm.tsx
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Rocket, AlertCircle } from 'lucide-react';
+import { Rocket, AlertCircle, Loader2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { getSupabase } from '../lib/supabaseClient';
 
 interface CreateStoreFormProps {
     onClose: () => void;
 }
 
 const CreateStoreForm: React.FC<CreateStoreFormProps> = ({ onClose }) => {
+    const { user } = useAuth();
     const [name, setName] = useState('');
     const [error, setError] = useState('');
+    const [isCreating, setIsCreating] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('La creación manual de tiendas está deshabilitada. Tu tienda se crea automáticamente al registrarte con WhatsApp. Si tienes problemas, contacta a soporte.');
+        if (!name.trim()) return;
+
+        setIsCreating(true);
+        setError('');
+
+        try {
+            const cleanName = name.trim();
+            const slug = cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 7);
+            const userPhone = user?.user_metadata?.phone || (user?.email ? user.email.split('@')[0] : '');
+
+            const trialEnds = new Date();
+            trialEnds.setFullYear(trialEnds.getFullYear() + 5);
+
+            const { data: newStore, error: insertError } = await getSupabase()
+                .from('stores')
+                .insert({
+                    user_id: user?.id,
+                    name: cleanName,
+                    slug: slug,
+                    whatsapp_number: userPhone,
+                    plan_type: 'full',
+                    trial_ends_at: trialEnds.toISOString(),
+                })
+                .select()
+                .single();
+
+            if (insertError) throw insertError;
+
+            if (newStore && user?.id) {
+                localStorage.setItem(`tiender_store_${user.id}`, JSON.stringify({
+                    ...newStore,
+                    billing_exempt: true
+                }));
+            }
+
+            window.location.reload();
+        } catch (err: unknown) {
+            console.error('[CreateStoreForm] error:', err);
+            const msg = err instanceof Error ? err.message : 'Error al crear la tienda.';
+            setError(msg);
+            setIsCreating(false);
+        }
     };
 
     return (
@@ -44,27 +89,33 @@ const CreateStoreForm: React.FC<CreateStoreFormProps> = ({ onClose }) => {
                             placeholder="Ej: Urban Style Shop"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl px-6 py-5 text-white placeholder-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-pink/50 transition-all font-bold disabled:opacity-50"
+                            className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl px-6 py-5 text-white placeholder-zinc-700 focus:outline-none focus:ring-2 focus:ring-brand-pink/50 transition-all font-bold"
                             required
-                            disabled
+                            disabled={isCreating}
                         />
                     </div>
 
                     {error && (
                         <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-500 text-xs font-bold">
                             <AlertCircle className="w-4 h-4" />
-                            {error}
+                            <span>{error}</span>
                         </div>
                     )}
 
                     <div className="grid grid-cols-1 gap-4 pt-4">
                         <button
                             type="submit"
-                            disabled
-                            className="w-full py-5 rounded-[22px] bg-zinc-800 text-zinc-500 font-black uppercase tracking-tighter italic flex items-center justify-center gap-2 cursor-not-allowed shadow-xl"
+                            disabled={isCreating || !name.trim()}
+                            className="w-full py-5 rounded-[22px] bg-sunset-gradient text-white font-black uppercase tracking-tighter italic flex items-center justify-center gap-2 shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-40"
                         >
-                            <Rocket className="w-5 h-5" />
-                            <span>Creación Deshabilitada</span>
+                            {isCreating ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <>
+                                    <Rocket className="w-5 h-5" />
+                                    <span>Crear mi Tienda</span>
+                                </>
+                            )}
                         </button>
                         <button
                             type="button"

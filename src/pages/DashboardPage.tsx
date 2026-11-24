@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getSupabase } from '../lib/supabaseClient';
-import type { Product } from '../types';
+import type { Product, Store } from '../types';
 import AddProductForm from '../components/AddProductForm';
 import EditProductForm from '../components/EditProductForm';
 import EditStoreForm from '../components/EditStoreForm';
@@ -37,6 +37,39 @@ const DashboardPage: React.FC = () => {
       setIsPasswordModalOpen(true);
     }
   }, [user]);
+
+  // Fallback para sincronización instantánea de tienda si ya existe en la base de datos
+  useEffect(() => {
+    if (user && !store && !authLoading) {
+      const checkExistingStore = async () => {
+        try {
+          const q = getSupabase().from('stores').select('*').eq('user_id', user.id);
+          const qAny = q as unknown as {
+            maybeSingle?: () => Promise<{ data: Store | null; error: unknown }>;
+            single?: () => Promise<{ data: Store | null; error: unknown }>;
+          };
+          let foundStore: Store | null = null;
+          if (typeof qAny.maybeSingle === 'function') {
+            const res = await qAny.maybeSingle();
+            foundStore = res.data;
+          } else if (typeof qAny.single === 'function') {
+            const res = await qAny.single();
+            foundStore = res.data;
+          }
+          if (foundStore && typeof localStorage !== 'undefined') {
+            localStorage.setItem(`tiender_store_${user.id}`, JSON.stringify({
+              ...foundStore,
+              billing_exempt: true
+            }));
+            window.location.reload();
+          }
+        } catch {
+          // ignore
+        }
+      };
+      checkExistingStore();
+    }
+  }, [user, store, authLoading]);
   
   // Custom Hooks
   const { products, loadingProducts, fetchProducts } = useProducts(store?.id);
