@@ -12,7 +12,7 @@ export function useProducts(storeId: string | undefined) {
     try {
       const { data: productsData, error: productsError } = await getSupabase()
         .from('products')
-        .select('id, title, price, description, image_url, store_id, created_at, external_link, video_link, is_hot, discount_percentage, discount_timer_seconds, wholesale_price, wholesale_threshold, shipping_options')
+        .select('id, title, price, description, image_url, store_id, created_at, external_link, video_link, discount_percentage, discount_timer_seconds, wholesale_price, wholesale_threshold, shipping_options, hashtags')
         .eq('store_id', id)
         .order('created_at', { ascending: false });
 
@@ -29,6 +29,8 @@ export function useProducts(storeId: string | undefined) {
   useEffect(() => {
     if (storeId) {
       fetchProducts(storeId);
+    } else {
+      setLoadingProducts(false);
     }
   }, [storeId, fetchProducts]);
 

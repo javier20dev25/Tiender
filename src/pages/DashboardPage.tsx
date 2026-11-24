@@ -186,9 +186,6 @@ const DashboardPage: React.FC = () => {
       const productLimit = store.product_limit || 10;
       const atProductLimit = products.length >= productLimit;
 
-      // Handle loading states for nested sections
-      const isInitialLoading = loadingProducts && products.length === 0;
-
       return (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full text-left space-y-8">
           <TrialBanner />
@@ -213,25 +210,14 @@ const DashboardPage: React.FC = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Products Section */}
-            {isInitialLoading ? (
-              <div className="lg:col-span-2 space-y-4">
-                <div className="h-8 w-48 bg-zinc-800 animate-pulse rounded-lg mb-4" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="h-24 bg-zinc-800 animate-pulse rounded-2xl" />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <ProductList 
-                products={products}
-                loadingProducts={loadingProducts}
-                atProductLimit={atProductLimit}
-                onAddClick={() => setShowAddProductForm(true)}
-                onEditClick={(p) => setEditingProduct(p)}
-                onDeleteClick={handleDeleteProduct}
-              />
-            )}
+            <ProductList 
+              products={products}
+              loadingProducts={loadingProducts}
+              atProductLimit={atProductLimit}
+              onAddClick={() => setShowAddProductForm(true)}
+              onEditClick={(p) => setEditingProduct(p)}
+              onDeleteClick={handleDeleteProduct}
+            />
 
             {/* Analytics Section */}
             <div className="space-y-6">

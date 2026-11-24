@@ -47,12 +47,12 @@ BEGIN
     RETURN QUERY
     WITH product_reactions AS (
         SELECT
-            product_id,
-            COUNT(*) FILTER (WHERE event_type = 'LIKE') as like_count
-        FROM public.product_analytics
-        WHERE store_id = target_store_id
-          AND created_at > (NOW() - INTERVAL '7 days')
-        GROUP BY product_id
+            pa.product_id,
+            COUNT(*) FILTER (WHERE pa.event_type = 'LIKE') as like_count
+        FROM public.product_analytics pa
+        WHERE pa.store_id = target_store_id
+          AND pa.created_at > (NOW() - INTERVAL '7 days')
+        GROUP BY pa.product_id
     )
     SELECT
         p.id,

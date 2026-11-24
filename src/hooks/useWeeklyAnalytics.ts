@@ -32,6 +32,8 @@ export function useWeeklyAnalytics(storeId: string | undefined) {
   useEffect(() => {
     if (storeId) {
       fetchWeeklyAnalytics(storeId, startDate, endDate);
+    } else {
+      setLoadingWeeklyAnalytics(false);
     }
   }, [storeId, startDate, endDate, fetchWeeklyAnalytics]);
 

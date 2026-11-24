@@ -1,5 +1,6 @@
 // supabase/functions/admin-manage-users/index.ts
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import postgres from 'npm:postgres@3.4.4';
 import { corsHeaders } from '../_shared/cors.ts';
 
 const ADMIN_EMAILS = [
@@ -57,6 +58,103 @@ Deno.serve(async (req) => {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // ACTION: run-migration (Applies schema updates and fixes RPCs)
+    if (action === 'run-migration') {
+      const dbUrl = Deno.env.get('SUPABASE_DB_URL');
+      if (!dbUrl) {
+        return new Response(JSON.stringify({ error: 'Falta variable SUPABASE_DB_URL.' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const sql = postgres(dbUrl, { prepare: false });
+      try {
+        await sql.unsafe(`
+          ALTER TABLE public.products
+          ADD COLUMN IF NOT EXISTS shipping_options JSONB NOT NULL DEFAULT '[{"method_type":"Por coordinar","method_name":"Envío","cost":0}]'::jsonb;
+
+          ALTER TABLE public.stores
+          ADD COLUMN IF NOT EXISTS billing_exempt BOOLEAN NOT NULL DEFAULT false;
+
+          DROP FUNCTION IF EXISTS public.get_store_products(UUID);
+
+          CREATE OR REPLACE FUNCTION public.get_store_products(
+              target_store_id UUID
+          )
+          RETURNS TABLE (
+              id UUID,
+              title TEXT,
+              price NUMERIC,
+              image_url TEXT,
+              external_link TEXT,
+              video_link TEXT,
+              store_id UUID,
+              created_at TIMESTAMPTZ,
+              description TEXT,
+              hashtags TEXT[],
+              is_hot BOOLEAN,
+              discount_timer_seconds INTEGER,
+              discount_percentage INTEGER,
+              wholesale_threshold INTEGER,
+              wholesale_price NUMERIC,
+              shipping_options JSONB
+          )
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          SET search_path = public
+          AS $$
+          BEGIN
+              RETURN QUERY
+              WITH product_reactions AS (
+                  SELECT
+                      pa.product_id,
+                      COUNT(*) FILTER (WHERE pa.event_type = 'LIKE') as like_count
+                  FROM public.product_analytics pa
+                  WHERE pa.store_id = target_store_id
+                    AND pa.created_at > (NOW() - INTERVAL '7 days')
+                  GROUP BY pa.product_id
+              )
+              SELECT
+                  p.id,
+                  p.title,
+                  p.price::NUMERIC,
+                  p.image_url,
+                  p.external_link,
+                  p.video_link,
+                  p.store_id,
+                  p.created_at,
+                  p.description,
+                  p.hashtags,
+                  COALESCE(pr.like_count >= 5, false) as is_hot,
+                  p.discount_timer_seconds,
+                  p.discount_percentage,
+                  p.wholesale_threshold,
+                  p.wholesale_price::NUMERIC,
+                  COALESCE(p.shipping_options, '[{"method_type":"Por coordinar","method_name":"Envío","cost":0}]'::jsonb) as shipping_options
+              FROM public.products p
+              LEFT JOIN product_reactions pr ON p.id = pr.product_id
+              WHERE p.store_id = target_store_id
+              ORDER BY p.created_at DESC;
+          END;
+          $$;
+        `);
+
+        return new Response(JSON.stringify({ success: true, message: 'Migración y función RPC ejecutadas con éxito.' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (sqlErr: unknown) {
+        console.error('[run-migration] SQL Error:', sqlErr);
+        return new Response(JSON.stringify({ error: (sqlErr as Error)?.message || 'Error ejecutando SQL' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } finally {
+        await sql.end();
+      }
     }
 
     // ACTION: list

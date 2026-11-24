@@ -138,12 +138,15 @@ const SocialStorePage: React.FC = () => {
         body: { store_id: storeId },
       });
       if (error) throw error;
-      setVisitToken(data.visit_token);
-      setVerificationStatus('verified');
+      if (data?.visit_token) {
+        setVisitToken(data.visit_token);
+        setVerificationStatus('verified');
+      } else {
+        setVerificationStatus('failed');
+      }
     } catch (err) {
-      console.error('Verification failed:', err);
+      console.warn('Verification failed (non-blocking):', err);
       setVerificationStatus('failed');
-      setError("Acceso denegado. La visita ha sido marcada como sospechosa.");
     } finally {
       await dataPromise; // Ensure we finish both
       setIsRetrying(false);

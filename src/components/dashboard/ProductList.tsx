@@ -46,9 +46,17 @@ export const ProductList: React.FC<ProductListProps> = ({ products, loadingProdu
             </div>
           ))
         ) : (
-          <div className="text-center py-20 bg-zinc-900/50 rounded-3xl border border-zinc-800 border-dashed">
-            <div className="p-4 bg-zinc-800/50 rounded-full w-fit mx-auto mb-4"><Plus className="w-8 h-8 text-zinc-600" /></div>
-            <p className="text-zinc-500 font-medium">No tienes productos aún.</p>
+          <div className="text-center py-16 px-6 bg-zinc-900/50 rounded-3xl border border-zinc-800 border-dashed">
+            <div className="p-4 bg-zinc-800/50 rounded-full w-fit mx-auto mb-4"><Plus className="w-8 h-8 text-brand-neon" /></div>
+            <p className="text-zinc-400 font-medium mb-6">No tienes productos aún.</p>
+            <button
+              onClick={onAddClick}
+              disabled={atProductLimit}
+              className="px-6 py-3 rounded-2xl bg-brand-neon text-brand-dark font-bold hover:scale-105 active:scale-95 transition-all inline-flex items-center gap-2 disabled:opacity-30"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Crear primer producto</span>
+            </button>
           </div>
         )}
       </div>
