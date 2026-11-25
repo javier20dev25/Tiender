@@ -16,8 +16,15 @@ export const StoreHeader: React.FC<StoreHeaderProps> = ({ store, onEditClick, on
   const [copied, setCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
+  const getCanonicalShareUrl = (storeId: string) => {
+    const origin = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? window.location.origin
+      : 'https://tiender.vercel.app';
+    return `${origin}/s/${storeId}`;
+  };
+
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/s/${store.id}`);
+    navigator.clipboard.writeText(getCanonicalShareUrl(store.id));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -30,7 +37,7 @@ export const StoreHeader: React.FC<StoreHeaderProps> = ({ store, onEditClick, on
     setIsSharing(true);
     try {
       await getSupabase().functions.invoke('generate-share-image', { body: { storeId: store.id } });
-      const shareUrl = `${window.location.origin}/s/${store.id}`;
+      const shareUrl = getCanonicalShareUrl(store.id);
       if (navigator.share) {
         await navigator.share({ title: `Visita ${store.name}`, text: `Mira mis productos en Tiender`, url: shareUrl });
       } else {

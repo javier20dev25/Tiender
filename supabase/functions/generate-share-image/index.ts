@@ -57,7 +57,15 @@ Deno.serve(async (req) => {
     const { name: storeName, logo_url: logoUrl } = storeData;
     const topProducts: TopProduct[] = analyticsData.top_products;
 
-    // 3. Design the shareable image using Satori
+    // 3. Design the shareable image using Satori (Stories aspect ratio 600x1067)
+    const rankColors = [
+      { bg: 'rgba(245, 158, 11, 0.2)', text: '#FBBF24', border: 'rgba(245, 158, 11, 0.5)' }, // 1st - Gold
+      { bg: 'rgba(6, 182, 212, 0.2)', text: '#22D3EE', border: 'rgba(6, 182, 212, 0.5)' },  // 2nd - Cyan
+      { bg: 'rgba(236, 72, 153, 0.2)', text: '#F472B6', border: 'rgba(236, 72, 153, 0.5)' }, // 3rd - Pink
+      { bg: 'rgba(163, 230, 53, 0.2)', text: '#A3E635', border: 'rgba(163, 230, 53, 0.5)' }, // 4th - Neon
+      { bg: 'rgba(148, 163, 184, 0.15)', text: '#CBD5E1', border: 'rgba(148, 163, 184, 0.3)' } // 5th - Slate
+    ];
+
     const template = {
       type: 'div',
       props: {
@@ -66,49 +74,91 @@ Deno.serve(async (req) => {
           flexDirection: 'column',
           width: '100%',
           height: '100%',
-          backgroundColor: '#1F2937', // bg-gray-800
+          backgroundColor: '#09090D',
           color: 'white',
-          padding: '40px',
-          alignItems: 'center',
+          padding: '48px 36px',
           fontFamily: '"Inter"',
+          boxSizing: 'border-box',
+          position: 'relative',
         },
         children: [
-          logoUrl ? {
-            type: 'img',
-            props: {
-              src: logoUrl,
-              style: {
-                width: '100px',
-                height: '100px',
-                borderRadius: '50%',
-                border: '4px solid white',
-                marginBottom: '20px',
-              },
-            },
-          } : null,
+          // Header Section
           {
-            type: 'h1',
+            type: 'div',
             props: {
               style: {
-                fontSize: '48px',
-                fontWeight: 'bold',
-                marginBottom: '10px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                width: '100%',
+                marginBottom: '32px',
               },
-              children: storeName,
+              children: [
+                // Badge Pill
+                {
+                  type: 'div',
+                  props: {
+                    style: {
+                      display: 'flex',
+                      alignItems: 'center',
+                      backgroundColor: 'rgba(163, 230, 53, 0.15)',
+                      border: '1px solid rgba(163, 230, 53, 0.4)',
+                      borderRadius: '999px',
+                      padding: '6px 18px',
+                      marginBottom: '16px',
+                    },
+                    children: [
+                      {
+                        type: 'span',
+                        props: {
+                          style: {
+                            display: 'flex',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: '#A3E635',
+                            letterSpacing: '2px',
+                            textTransform: 'uppercase',
+                          },
+                          children: '🔥 TOP PRODUCTOS DE LA SEMANA',
+                        },
+                      },
+                    ],
+                  },
+                },
+                // Store Name
+                {
+                  type: 'h1',
+                  props: {
+                    style: {
+                      display: 'flex',
+                      fontSize: '42px',
+                      fontWeight: '800',
+                      margin: '0 0 8px 0',
+                      textAlign: 'center',
+                      color: '#FFFFFF',
+                      letterSpacing: '-1px',
+                    },
+                    children: String(storeName || 'Tienda'),
+                  },
+                },
+                // Subtitle
+                {
+                  type: 'p',
+                  props: {
+                    style: {
+                      display: 'flex',
+                      fontSize: '16px',
+                      color: '#94A3B8',
+                      margin: '0',
+                    },
+                    children: 'Los favoritos de nuestra comunidad',
+                  },
+                },
+              ],
             },
           },
-          {
-            type: 'h2',
-            props: {
-              style: {
-                fontSize: '32px',
-                fontWeight: '600',
-                marginBottom: '40px',
-                color: '#9CA3AF', // text-gray-400
-              },
-              children: 'Nuestro Top 5 Productos',
-            },
-          },
+
+          // Products List (Top 5)
           {
             type: 'div',
             props: {
@@ -116,106 +166,181 @@ Deno.serve(async (req) => {
                 display: 'flex',
                 flexDirection: 'column',
                 width: '100%',
-                gap: '15px',
+                gap: '14px',
               },
-              children: topProducts.slice(0, 5).map((product: TopProduct, index: number) => ({
-                type: 'div',
-                props: {
-                  style: {
-                    display: 'flex',
-                    alignItems: 'center',
-                    width: '100%',
-                    backgroundColor: '#374151', // bg-gray-700
-                    borderRadius: '15px',
-                    padding: '15px',
+              children: topProducts.slice(0, 5).map((product: TopProduct, index: number) => {
+                const colorScheme = rankColors[index] || rankColors[4];
+                return {
+                  type: 'div',
+                  props: {
+                    style: {
+                      display: 'flex',
+                      alignItems: 'center',
+                      width: '100%',
+                      backgroundColor: '#15151C',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      borderRadius: '20px',
+                      padding: '16px 20px',
+                      boxSizing: 'border-box',
+                    },
+                    children: [
+                      // Rank Number Pill
+                      {
+                        type: 'div',
+                        props: {
+                          style: {
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '46px',
+                            height: '46px',
+                            borderRadius: '14px',
+                            backgroundColor: colorScheme.bg,
+                            border: `1px solid ${colorScheme.border}`,
+                            color: colorScheme.text,
+                            fontSize: '20px',
+                            fontWeight: '800',
+                            marginRight: '16px',
+                            flexShrink: 0,
+                          },
+                          children: `#${index + 1}`,
+                        },
+                      },
+                      // Product Title
+                      {
+                        type: 'div',
+                        props: {
+                          style: {
+                            display: 'flex',
+                            flexDirection: 'column',
+                            flexGrow: 1,
+                            minWidth: 0,
+                            marginRight: '12px',
+                          },
+                          children: [
+                            {
+                              type: 'span',
+                              props: {
+                                style: {
+                                  display: 'flex',
+                                  fontSize: '18px',
+                                  fontWeight: '700',
+                                  color: '#FFFFFF',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                },
+                                children: String(product.title || 'Producto'),
+                              },
+                            },
+                          ],
+                        },
+                      },
+                      // Score Pill
+                      {
+                        type: 'div',
+                        props: {
+                          style: {
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            borderRadius: '12px',
+                            padding: '6px 14px',
+                            flexShrink: 0,
+                          },
+                          children: [
+                            {
+                              type: 'span',
+                              props: {
+                                style: {
+                                  display: 'flex',
+                                  fontSize: '18px',
+                                  fontWeight: '800',
+                                  color: colorScheme.text,
+                                },
+                                children: `${product.score ?? 0} pts`,
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
                   },
-                  children: [
-                    {
-                      type: 'div',
-                      props: {
-                        style: {
-                          display: 'flex',
-                          fontSize: '30px',
-                          fontWeight: 'bold',
-                          color: '#60A5FA', // text-blue-400
-                          width: '50px',
-                        },
-                        children: `#${index + 1}`,
-                      },
-                    },
-                    {
-                      type: 'div',
-                      props: {
-                        style: {
-                          display: 'flex',
-                          flexDirection: 'column',
-                          flexGrow: 1,
-                        },
-                        children: [
-                          {
-                            type: 'div',
-                            props: {
-                              style: {
-                                display: 'flex',
-                                fontSize: '24px',
-                                fontWeight: '600',
-                              },
-                              children: String(product.title || ''),
-                            },
-                          },
-                        ],
-                      },
-                    },
-                    {
-                      type: 'div',
-                      props: {
-                        style: {
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                        },
-                        children: [
-                          {
-                            type: 'div',
-                            props: {
-                              style: {
-                                display: 'flex',
-                                fontSize: '28px',
-                                fontWeight: 'bold',
-                                color: '#34D399', // text-green-400
-                              },
-                              children: String(product.score ?? 0),
-                            },
-                          },
-                          {
-                            type: 'div',
-                            props: {
-                              style: {
-                                display: 'flex',
-                                fontSize: '16px',
-                                color: '#9CA3AF',
-                              },
-                              children: 'Puntos',
-                            },
-                          },
-                        ],
-                      },
-                    },
-                  ],
-                },
-              })),
+                };
+              }),
             },
           },
+
+          // Call to Action Banner at bottom
           {
             type: 'div',
             props: {
               style: {
                 display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                width: '100%',
                 marginTop: 'auto',
-                fontSize: '20px',
-                color: '#6B7280', // text-gray-500
+                paddingTop: '24px',
               },
-              children: 'Generado por Tiender.com', // Your brand
+              children: [
+                {
+                  type: 'div',
+                  props: {
+                    style: {
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '100%',
+                      backgroundColor: '#A3E635',
+                      borderRadius: '18px',
+                      padding: '16px 20px',
+                      boxSizing: 'border-box',
+                      marginBottom: '16px',
+                    },
+                    children: [
+                      {
+                        type: 'span',
+                        props: {
+                          style: {
+                            display: 'flex',
+                            fontSize: '16px',
+                            fontWeight: '800',
+                            color: '#09090D',
+                            letterSpacing: '0.5px',
+                            textTransform: 'uppercase',
+                          },
+                          children: '👉 Toca el enlace para ver y pedir',
+                        },
+                      },
+                    ],
+                  },
+                },
+                // Footer Branding
+                {
+                  type: 'div',
+                  props: {
+                    style: {
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '14px',
+                      color: '#64748B',
+                    },
+                    children: [
+                      {
+                        type: 'span',
+                        props: {
+                          style: { display: 'flex' },
+                          children: 'Tiender • Social Commerce para WhatsApp',
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
             },
           },
         ],

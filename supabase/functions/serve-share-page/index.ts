@@ -81,6 +81,7 @@ Deno.serve(async (req) => {
 
         <!-- Redirect user to the actual store page -->
         <meta http-equiv="refresh" content="0; url=${storeUrl}" />
+        <script>window.location.replace("${storeUrl}");</script>
         <link rel="canonical" href="${storeUrl}" />
 
         <title>Redirigiendo a ${storeName}...</title>

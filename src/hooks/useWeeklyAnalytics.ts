@@ -15,15 +15,21 @@ export function useWeeklyAnalytics(storeId: string | undefined) {
   const fetchWeeklyAnalytics = useCallback(async (id: string, start: Date, end: Date) => {
     setLoadingWeeklyAnalytics(true);
     try {
-      const { data, error } = await getSupabase().rpc('get_weekly_heatmap_analytics', {
+      const rpcPromise = getSupabase().rpc('get_weekly_heatmap_analytics', {
         target_store_id: id,
         start_date: start.toISOString(),
         end_date: end.toISOString()
       });
+
+      const timeoutPromise = new Promise<{ data: null; error: Error }>((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout fetching weekly analytics')), 6000)
+      );
+
+      const { data, error } = await Promise.race([rpcPromise, timeoutPromise]) as { data: WeeklyAnalyticsData | null; error?: Error };
       if (error) throw error;
       setWeeklyAnalyticsData(data);
     } catch (err: unknown) {
-      console.error((err as Error).message);
+      console.warn('[useWeeklyAnalytics]', (err as Error).message);
     } finally {
       setLoadingWeeklyAnalytics(false);
     }

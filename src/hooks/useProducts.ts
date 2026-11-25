@@ -10,17 +10,25 @@ export function useProducts(storeId: string | undefined) {
     // Avoid redundant state updates
     setLoadingProducts(true);
     try {
-      const { data: productsData, error: productsError } = await getSupabase()
+      const queryPromise = getSupabase()
         .from('products')
         .select('id, title, price, description, image_url, store_id, created_at, external_link, video_link, discount_percentage, discount_timer_seconds, wholesale_price, wholesale_threshold, shipping_options, hashtags')
         .eq('store_id', id)
         .order('created_at', { ascending: false });
+
+      const timeoutPromise = new Promise<{ data: null; error: Error }>((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout fetching products')), 6000)
+      );
+
+      const { data: productsData, error: productsError } = await Promise.race([queryPromise, timeoutPromise]) as { data: Product[] | null; error?: Error };
 
       if (productsError) {
         console.error('[useProducts] Error fetching products:', productsError);
       } else {
         setProducts(productsData || []);
       }
+    } catch (err: unknown) {
+      console.warn('[useProducts] Error or timeout:', err);
     } finally {
       setLoadingProducts(false);
     }

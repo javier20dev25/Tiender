@@ -97,13 +97,19 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
       setIsUploadingImage(true);
       setError('');
       const compressedFile = await compressImage(file);
-      const fileExtension = compressedFile.name.split('.').pop();
+      const fileExtension = compressedFile.name.split('.').pop() || 'jpg';
       const fileName = `${uuidv4()}.${fileExtension}`;
       const filePath = `${product.store_id}/${fileName}`;
 
-      const { error: uploadError } = await getSupabase().storage
+      const uploadPromise = getSupabase().storage
         .from('product-images')
-        .upload(filePath, compressedFile);
+        .upload(filePath, compressedFile, { upsert: true });
+
+      const timeoutPromise = new Promise<{ error: Error }>((_, reject) =>
+        setTimeout(() => reject(new Error('La subida de imagen tardó demasiado. Intenta de nuevo.')), 15000)
+      );
+
+      const { error: uploadError } = await Promise.race([uploadPromise, timeoutPromise]) as { error?: Error };
 
       if (uploadError) throw uploadError;
 
@@ -122,37 +128,57 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
   };
 
   const compressImage = (file: File): Promise<File> => {
+    if (file.size < 500 * 1024 && file.type.startsWith('image/')) {
+      return Promise.resolve(file);
+    }
+
     return new Promise((resolve) => {
+      const safetyTimeout = setTimeout(() => resolve(file), 4000);
+
       const reader = new FileReader();
-      reader.readAsDataURL(file);
+      reader.onerror = () => {
+        clearTimeout(safetyTimeout);
+        resolve(file);
+      };
       reader.onload = (event) => {
         const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          const maxDim = 1200;
-          if (width > height && width > maxDim) {
-            height *= maxDim / width;
-            width = maxDim;
-          } else if (height > maxDim) {
-            width *= maxDim / height;
-            height = maxDim;
-          }
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          canvas.toBlob((blob) => {
-            if (blob) {
-              resolve(new File([blob], file.name, { type: 'image/jpeg' }));
-            } else {
-              resolve(file);
-            }
-          }, 'image/jpeg', 0.8);
+        img.onerror = () => {
+          clearTimeout(safetyTimeout);
+          resolve(file);
         };
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            const maxDim = 1200;
+            if (width > height && width > maxDim) {
+              height *= maxDim / width;
+              width = maxDim;
+            } else if (height > maxDim) {
+              width *= maxDim / height;
+              height = maxDim;
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+            canvas.toBlob((blob) => {
+              clearTimeout(safetyTimeout);
+              if (blob) {
+                resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+              } else {
+                resolve(file);
+              }
+            }, 'image/jpeg', 0.8);
+          } catch {
+            clearTimeout(safetyTimeout);
+            resolve(file);
+          }
+        };
+        img.src = event.target?.result as string;
       };
+      reader.readAsDataURL(file);
     });
   };
 

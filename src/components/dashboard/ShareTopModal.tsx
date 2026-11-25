@@ -15,7 +15,10 @@ export const ShareTopModal: React.FC<ShareTopModalProps> = ({ store, onClose }) 
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const shareUrl = `${window.location.origin}/s/${store.id}`;
+  const canonicalOrigin = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? window.location.origin
+    : 'https://tiender.vercel.app';
+  const shareUrl = `${canonicalOrigin}/s/${store.id}`;
 
   const generateImage = useCallback(async () => {
     setLoading(true);
