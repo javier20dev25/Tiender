@@ -61,106 +61,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ACTION: run-migration (Applies schema updates and fixes RPCs)
-    if (action === 'run-migration') {
-      const dbUrl = Deno.env.get('SUPABASE_DB_URL');
-      if (!dbUrl) {
-        return new Response(JSON.stringify({ error: 'Falta variable SUPABASE_DB_URL.' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      const sql = postgres(dbUrl, { prepare: false });
-      try {
-        await sql.unsafe(`
-          ALTER TABLE public.products
-          ADD COLUMN IF NOT EXISTS shipping_options JSONB NOT NULL DEFAULT '[{"method_type":"Por coordinar","method_name":"Envío","cost":0}]'::jsonb;
-
-          ALTER TABLE public.stores
-          ADD COLUMN IF NOT EXISTS billing_exempt BOOLEAN NOT NULL DEFAULT false;
-
-          DROP FUNCTION IF EXISTS public.get_store_products(UUID);
-
-          CREATE OR REPLACE FUNCTION public.get_store_products(
-              target_store_id UUID
-          )
-          RETURNS TABLE (
-              id UUID,
-              title TEXT,
-              price NUMERIC,
-              image_url TEXT,
-              external_link TEXT,
-              video_link TEXT,
-              store_id UUID,
-              created_at TIMESTAMPTZ,
-              description TEXT,
-              hashtags TEXT[],
-              is_hot BOOLEAN,
-              discount_timer_seconds INTEGER,
-              discount_percentage INTEGER,
-              wholesale_threshold INTEGER,
-              wholesale_price NUMERIC,
-              shipping_options JSONB
-          )
-          LANGUAGE plpgsql
-          SECURITY DEFINER
-          SET search_path = public
-          AS $$
-          BEGIN
-              RETURN QUERY
-              WITH product_reactions AS (
-                  SELECT
-                      pa.product_id,
-                      COUNT(*) FILTER (WHERE pa.event_type = 'LIKE') as like_count
-                  FROM public.product_analytics pa
-                  WHERE pa.store_id = target_store_id
-                    AND pa.created_at > (NOW() - INTERVAL '7 days')
-                  GROUP BY pa.product_id
-              )
-              SELECT
-                  p.id,
-                  p.title,
-                  p.price::NUMERIC,
-                  p.image_url,
-                  p.external_link,
-                  p.video_link,
-                  p.store_id,
-                  p.created_at,
-                  p.description,
-                  p.hashtags,
-                  COALESCE(pr.like_count >= 5, false) as is_hot,
-                  p.discount_timer_seconds,
-                  p.discount_percentage,
-                  p.wholesale_threshold,
-                  p.wholesale_price::NUMERIC,
-                  COALESCE(p.shipping_options, '[{"method_type":"Por coordinar","method_name":"Envío","cost":0}]'::jsonb) as shipping_options
-              FROM public.products p
-              LEFT JOIN product_reactions pr ON p.id = pr.product_id
-              WHERE p.store_id = target_store_id
-              ORDER BY p.created_at DESC;
-          END;
-          $$;
-        `);
-
-        return new Response(JSON.stringify({ success: true, message: 'Migración y función RPC ejecutadas con éxito.' }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      } catch (sqlErr: unknown) {
-        console.error('[run-migration] SQL Error:', sqlErr);
-        return new Response(JSON.stringify({ error: (sqlErr as Error)?.message || 'Error ejecutando SQL' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      } finally {
-        await sql.end();
-      }
-    }
-
     // ACTION: list
     if (action === 'list') {
-      const { data: usersData, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
+      const { data: usersData, error: usersError } = await supabaseAdmin.auth.admin.listUsers({
+        perPage: 1000
+      });
       if (usersError) throw usersError;
 
       const { data: stores, error: storesError } = await supabaseAdmin
@@ -175,18 +80,29 @@ Deno.serve(async (req) => {
         .map(u => {
           const userStore = stores?.find(s => s.user_id === u.id);
           const rawPhone = u.user_metadata?.phone || u.email?.split('@')[0] || '';
+          const isExempt = Boolean(
+            userStore?.billing_exempt ||
+            userStore?.plan_type === 'socio' ||
+            (userStore?.trial_ends_at ? new Date(userStore.trial_ends_at).getFullYear() >= 2030 : false)
+          );
+
           return {
             id: u.id,
             email: u.email,
             phone: rawPhone,
             created_at: u.created_at,
             must_change_password: u.user_metadata?.must_change_password ?? true,
+            tag: u.user_metadata?.tag || null,
             store: userStore ? {
               id: userStore.id,
               name: userStore.name,
               slug: userStore.slug,
-              plan_type: userStore.plan_type,
-              billing_exempt: userStore.plan_type === 'full' || (userStore.trial_ends_at ? new Date(userStore.trial_ends_at).getFullYear() >= 2030 : false),
+              plan_type: userStore.plan_type || 'standard',
+              product_limit: userStore.product_limit || (userStore.plan_type === 'standard' ? 10 : 30),
+              billing_exempt: isExempt,
+              trial_ends_at: userStore.trial_ends_at,
+              plan_expires_at: userStore.plan_expires_at,
+              status: userStore.status || 'active',
               whatsapp_number: userStore.whatsapp_number,
               created_at: userStore.created_at
             } : null
@@ -201,7 +117,16 @@ Deno.serve(async (req) => {
 
     // ACTION: create
     if (action === 'create') {
-      const { phone, storeName, password } = payload || {};
+      const {
+        phone,
+        storeName,
+        password,
+        planType = 'standard',
+        durationDays = 30,
+        billingExempt = false,
+        tag = ''
+      } = payload || {};
+
       if (!phone || !password || !storeName) {
         return new Response(JSON.stringify({ error: 'Teléfono, nombre de tienda y contraseña requeridos.' }), {
           status: 400,
@@ -212,7 +137,10 @@ Deno.serve(async (req) => {
       const normalizedPhone = String(phone).replace(/\D/g, '');
       const fakeEmail = `${normalizedPhone}@tiender.app`;
 
-      // 1. Crear el usuario en auth.users (usando shadow email)
+      const isSocio = planType === 'socio' || Boolean(billingExempt);
+      const chosenTag = tag?.trim() || (isSocio ? 'Socio Marketing' : (durationDays === 7 ? 'Prueba 1 semana' : ''));
+
+      // 1. Crear el usuario en auth.users
       const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email: fakeEmail,
         password: String(password).trim(),
@@ -220,12 +148,13 @@ Deno.serve(async (req) => {
         user_metadata: {
           phone: normalizedPhone,
           must_change_password: true,
-          created_by_admin: true
+          created_by_admin: true,
+          tag: chosenTag
         }
       });
 
       if (createError) {
-        return new Response(JSON.stringify({ error: `Error creando auth user: ${createError.message}` }), {
+        return new Response(JSON.stringify({ error: `Error creando usuario en Auth: ${createError.message}` }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -239,7 +168,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      // 2. Crear identidad de WhatsApp si la tabla existe (opcional / no bloqueante)
+      // 2. WhatsApp identity si aplica
       try {
         await supabaseAdmin.from('whatsapp_identities').upsert({
           whatsapp_number: normalizedPhone,
@@ -250,26 +179,36 @@ Deno.serve(async (req) => {
         console.warn('Advertencia creando whatsapp_identities:', wErr);
       }
 
-      // 3. Crear la tienda con plan full y trial extendido a 5 años
+      // 3. Crear tienda con los parámetros de plan solicitados
       const cleanStoreName = String(storeName).trim();
       const slug = cleanStoreName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + user.id.substring(0, 6);
 
       const trialEnds = new Date();
-      trialEnds.setFullYear(trialEnds.getFullYear() + 5); // 5 years
+      if (isSocio) {
+        trialEnds.setFullYear(trialEnds.getFullYear() + 10); // 10 years (vitalicio)
+      } else {
+        trialEnds.setDate(trialEnds.getDate() + Number(durationDays || 30));
+      }
+
+      const productLimit = isSocio ? 30 : (planType === 'standard' ? 10 : 30);
+      const dbPlanType = isSocio ? 'full' : (planType === 'standard' ? 'standard' : 'full');
 
       const { data: store, error: storeError } = await supabaseAdmin.from('stores').insert({
         user_id: user.id,
         name: cleanStoreName,
         slug,
         whatsapp_number: normalizedPhone,
-        plan_type: 'full',
+        plan_type: dbPlanType,
+        product_limit: productLimit,
+        billing_exempt: isSocio,
         trial_ends_at: trialEnds.toISOString(),
+        plan_expires_at: trialEnds.toISOString(),
+        status: 'active'
       }).select().single();
 
       if (storeError) {
-        // Rollback user if store creation fails
         await supabaseAdmin.auth.admin.deleteUser(user.id);
-        return new Response(JSON.stringify({ error: `Error creando tienda en base de datos: ${storeError.message || JSON.stringify(storeError)}` }), {
+        return new Response(JSON.stringify({ error: `Error creando tienda en DB: ${storeError.message}` }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -281,10 +220,118 @@ Deno.serve(async (req) => {
           id: user.id,
           phone: normalizedPhone,
           email: fakeEmail,
+          tag: chosenTag,
           store,
           must_change_password: true
         }
       }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ACTION: renew-plan (Marcar como Pagado / Extender +X días)
+    if (action === 'renew-plan') {
+      const { storeId, days = 30 } = payload || {};
+      if (!storeId) {
+        return new Response(JSON.stringify({ error: 'storeId requerido.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: store, error: fetchErr } = await supabaseAdmin
+        .from('stores')
+        .select('*')
+        .eq('id', storeId)
+        .single();
+
+      if (fetchErr || !store) {
+        return new Response(JSON.stringify({ error: 'Tienda no encontrada.' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const currentExp = store.plan_expires_at || store.trial_ends_at;
+      let baseTime = Date.now();
+      if (currentExp && new Date(currentExp).getTime() > Date.now()) {
+        baseTime = new Date(currentExp).getTime(); // Extiende a partir de la fecha existente
+      }
+      const newExpiration = new Date(baseTime + Number(days) * 86400000);
+
+      const { error: updateErr } = await supabaseAdmin
+        .from('stores')
+        .update({
+          trial_ends_at: newExpiration.toISOString(),
+          plan_expires_at: newExpiration.toISOString(),
+          status: 'active'
+        })
+        .eq('id', storeId);
+
+      if (updateErr) throw updateErr;
+
+      return new Response(JSON.stringify({
+        success: true,
+        newExpiration: newExpiration.toISOString(),
+        message: `Plan renovado por ${days} días exitosamente.`
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ACTION: relaunch (Reactivar cuenta vencida)
+    if (action === 'relaunch') {
+      const { storeId } = payload || {};
+      if (!storeId) {
+        return new Response(JSON.stringify({ error: 'storeId requerido.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const newExpiration = new Date(Date.now() + 30 * 86400000); // +30 días desde hoy
+      const { error: updateErr } = await supabaseAdmin
+        .from('stores')
+        .update({
+          trial_ends_at: newExpiration.toISOString(),
+          plan_expires_at: newExpiration.toISOString(),
+          status: 'active'
+        })
+        .eq('id', storeId);
+
+      if (updateErr) throw updateErr;
+
+      return new Response(JSON.stringify({
+        success: true,
+        newExpiration: newExpiration.toISOString(),
+        message: 'Cuenta reactivada por 30 días.'
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ACTION: update-tag
+    if (action === 'update-tag') {
+      const { userId, tag } = payload || {};
+      if (!userId) {
+        return new Response(JSON.stringify({ error: 'userId requerido.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: { user }, error: getErr } = await supabaseAdmin.auth.admin.getUserById(userId);
+      if (getErr) throw getErr;
+
+      const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        user_metadata: { ...user?.user_metadata, tag: String(tag || '').trim() }
+      });
+      if (updateErr) throw updateErr;
+
+      return new Response(JSON.stringify({ success: true, message: 'Etiqueta actualizada.' }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -341,70 +388,6 @@ Deno.serve(async (req) => {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
-    }
-
-    // ACTION: add-rls-policy (makes stores/products publicly readable)
-    if (action === 'add-rls-policy') {
-      const dbUrl = Deno.env.get('SUPABASE_DB_URL');
-      if (!dbUrl) {
-        return new Response(JSON.stringify({ error: 'Falta variable SUPABASE_DB_URL.' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      const { default: postgres } = await import('npm:postgres@3.4.4');
-      const sql = postgres(dbUrl, { prepare: false });
-      try {
-        await sql.unsafe(`
-          DO $$
-          BEGIN
-            DROP POLICY IF EXISTS "Public stores are viewable by everyone" ON public.stores;
-            CREATE POLICY "Public stores are viewable by everyone" ON public.stores FOR SELECT USING (true);
-            DROP POLICY IF EXISTS "Public products are viewable by everyone" ON public.products;
-            CREATE POLICY "Public products are viewable by everyone" ON public.products FOR SELECT USING (true);
-            GRANT EXECUTE ON FUNCTION public.get_store_products(UUID) TO anon;
-            GRANT EXECUTE ON FUNCTION public.get_store_products(UUID) TO authenticated;
-
-            -- Storage policies for product-images
-            DROP POLICY IF EXISTS "Allow authenticated uploads to product-images" ON storage.objects;
-            CREATE POLICY "Allow authenticated uploads to product-images" ON storage.objects
-            FOR INSERT TO authenticated
-            WITH CHECK (bucket_id = 'product-images');
-
-            DROP POLICY IF EXISTS "Allow public uploads to product-images" ON storage.objects;
-            CREATE POLICY "Allow public uploads to product-images" ON storage.objects
-            FOR INSERT TO anon
-            WITH CHECK (bucket_id = 'product-images');
-
-            DROP POLICY IF EXISTS "Allow public read on product-images" ON storage.objects;
-            CREATE POLICY "Allow public read on product-images" ON storage.objects
-            FOR SELECT TO public
-            USING (bucket_id = 'product-images');
-
-            DROP POLICY IF EXISTS "Allow authenticated updates on product-images" ON storage.objects;
-            CREATE POLICY "Allow authenticated updates on product-images" ON storage.objects
-            FOR UPDATE TO authenticated
-            USING (bucket_id = 'product-images');
-
-            DROP POLICY IF EXISTS "Allow authenticated deletes on product-images" ON storage.objects;
-            CREATE POLICY "Allow authenticated deletes on product-images" ON storage.objects
-            FOR DELETE TO authenticated
-            USING (bucket_id = 'product-images');
-          END $$;
-        `);
-        return new Response(JSON.stringify({ success: true, message: 'RLS policies creadas correctamente.' }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      } catch (sqlErr: unknown) {
-        return new Response(JSON.stringify({ error: (sqlErr as Error)?.message || 'Error en SQL' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      } finally {
-        await sql.end();
-      }
     }
 
     return new Response(JSON.stringify({ error: 'Acción no reconocida.' }), {

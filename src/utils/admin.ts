@@ -7,17 +7,17 @@ export const ADMIN_EMAILS = [
 ];
 
 export const isMasterAdmin = (email?: string | null, metadata?: Record<string, unknown> | null): boolean => {
-  if (!email && !metadata) {
-    return localStorage.getItem('tiender_admin_authenticated') === 'true';
-  }
+  if (email || metadata) {
+    const clean = (email || '').toLowerCase().trim();
+    if (ADMIN_EMAILS.includes(clean) || clean.startsWith('sleyther')) {
+      return true;
+    }
 
-  const clean = (email || '').toLowerCase().trim();
-  if (ADMIN_EMAILS.includes(clean) || clean.startsWith('sleyther')) {
-    return true;
-  }
+    if (metadata?.role === 'admin' || metadata?.is_admin === true) {
+      return true;
+    }
 
-  if (metadata?.role === 'admin' || metadata?.is_admin === true) {
-    return true;
+    return false;
   }
 
   return localStorage.getItem('tiender_admin_authenticated') === 'true';
