@@ -134,6 +134,7 @@ Deno.serve(async (req) => {
                       type: 'div',
                       props: {
                         style: {
+                          display: 'flex',
                           fontSize: '30px',
                           fontWeight: 'bold',
                           color: '#60A5FA', // text-blue-400
@@ -155,10 +156,11 @@ Deno.serve(async (req) => {
                             type: 'div',
                             props: {
                               style: {
+                                display: 'flex',
                                 fontSize: '24px',
                                 fontWeight: '600',
                               },
-                              children: product.title,
+                              children: String(product.title || ''),
                             },
                           },
                         ],
@@ -177,17 +179,19 @@ Deno.serve(async (req) => {
                             type: 'div',
                             props: {
                               style: {
+                                display: 'flex',
                                 fontSize: '28px',
                                 fontWeight: 'bold',
                                 color: '#34D399', // text-green-400
                               },
-                              children: product.score,
+                              children: String(product.score ?? 0),
                             },
                           },
                           {
                             type: 'div',
                             props: {
                               style: {
+                                display: 'flex',
                                 fontSize: '16px',
                                 color: '#9CA3AF',
                               },
@@ -202,10 +206,11 @@ Deno.serve(async (req) => {
               })),
             },
           },
-           {
+          {
             type: 'div',
             props: {
               style: {
+                display: 'flex',
                 marginTop: 'auto',
                 fontSize: '20px',
                 color: '#6B7280', // text-gray-500
