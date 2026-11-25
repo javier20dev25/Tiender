@@ -33,26 +33,12 @@ Deno.serve(async (req) => {
     const { name: storeName } = storeData;
     console.log(`[serve-share-page] Found store: ${storeName}`);
 
-    // 2. Invoke the image generation function to ensure the image is fresh and get its URL
-    console.log('[serve-share-page] Invoking generate-share-image function...');
-    const { data: generatedImageData, error: generationError } = await supabaseAdmin.functions.invoke('generate-share-image', {
-      body: { storeId },
-    });
-
-    if (generationError || !generatedImageData.imageUrl) {
-      console.error('[serve-share-page] Critical error: Could not generate or retrieve share image.', generationError);
-    }
-    
-    let imageUrl = generatedImageData?.imageUrl;
-    console.log(`[serve-share-page] Image URL from generator: ${imageUrl}`);
-    
-    if (imageUrl) {
-      imageUrl = `${imageUrl}?t=${new Date().getTime()}`;
-    }
+    // 2. Use the existing share image URL directly (no synchronous re-generation on crawl)
+    const imageUrl = `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/share-images/${storeId}.png`;
 
     // 3. Define final, correct URLs using the APP_URL
-    const pageUrl = `${APP_URL}/s/${storeId}`; 
-    const storeUrl = `${APP_URL}/tienda/${storeId}`;
+    const pageUrl = `https://tiender.vercel.app/s/${storeId}`; 
+    const storeUrl = `https://tiender.vercel.app/tienda/${storeId}`;
     console.log(`[serve-share-page] Final URLs | Page: ${pageUrl} | Store: ${storeUrl}`);
 
     // 4. Generate the definitive HTML with all fixes
