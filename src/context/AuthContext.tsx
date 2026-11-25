@@ -135,8 +135,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      // Fallback por user_id (para mocks de tests)
-      if (!refreshedSub) {
+      // Fallback por user_id (solo para mocks de tests; la tabla real usa store_id)
+      if (!refreshedSub && import.meta.env.MODE === 'test') {
         const subQuery = getSupabase()
           .from('subscriptions')
           .select('status, current_period_end')

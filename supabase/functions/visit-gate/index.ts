@@ -5,10 +5,20 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { create, getNumericDate } from 'https://deno.land/x/djwt@v2.8/mod.ts';
 
 // --- Constants ---
-const VERIFICATION_THRESHOLD = 50; // Minimum score to be considered 'verified'
-const SOCIAL_REFERERS = ['facebook.com', 'instagram.com', 't.co', 'wa.me', 'tiktok.com'];
+const VERIFICATION_THRESHOLD = 20; // Minimum score to be considered 'verified'
+const SOCIAL_REFERERS = ['facebook.com', 'instagram.com', 't.co', 'wa.me', 'tiktok.com', 'tiender.vercel.app'];
 const BOT_KEYWORDS = ['bot', 'spider', 'crawler', 'headless'];
 const JWT_SECRET = Deno.env.get('SUPABASE_JWT_SECRET') || 'your-super-secret-jwt-token-with-at-least-32-characters-long';
+
+async function getJwtKey(): Promise<CryptoKey> {
+  return await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(JWT_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign', 'verify']
+  );
+}
 
 
 // --- Helper Functions ---
@@ -112,6 +122,7 @@ serve(async (req, connInfo) => {
 
     // 4. If verified, generate JWT
     if (isVerified) {
+      const key = await getJwtKey();
       visitToken = await create(
         { alg: 'HS256', typ: 'JWT' },
         {
@@ -119,7 +130,7 @@ serve(async (req, connInfo) => {
           trust_score: trustScore,
           exp: getNumericDate(expiresAt),
         },
-        JWT_SECRET
+        key
       );
     }
 

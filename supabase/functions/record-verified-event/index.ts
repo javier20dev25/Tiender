@@ -6,6 +6,16 @@ import { verify } from 'https://deno.land/x/djwt@v2.8/mod.ts';
 
 const JWT_SECRET = Deno.env.get('SUPABASE_JWT_SECRET') || 'your-super-secret-jwt-token-with-at-least-32-characters-long';
 
+async function getJwtKey(): Promise<CryptoKey> {
+  return await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(JWT_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign', 'verify']
+  );
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -23,7 +33,8 @@ serve(async (req) => {
 
     let payload;
     try {
-      payload = await verify(visitToken, JWT_SECRET, 'HS256');
+      const key = await getJwtKey();
+      payload = await verify(visitToken, key);
     } catch (_e) {
       return new Response(JSON.stringify({ error: 'Token de visita inválido o expirado.' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

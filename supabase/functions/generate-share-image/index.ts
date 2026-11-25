@@ -1,7 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import satori from 'https://esm.sh/satori@0.10.9';
-import { Resvg } from 'https://deno.land/x/resvg_wasm/mod.ts';
+import satori from 'npm:satori@0.10.13';
+import { Resvg, initWasm } from 'npm:@resvg/resvg-wasm@2.6.2';
 import { corsHeaders } from '../_shared/cors.ts';
+
+let wasmInitialized = false;
 
 // --- Type Definitions ---
 interface ShareImagePayload {
@@ -44,7 +46,7 @@ Deno.serve(async (req) => {
     ] = await Promise.all([
       supabaseAdmin.from('stores').select('name, logo_url').eq('id', storeId).single(),
       supabaseAdmin.rpc('get_store_analytics', { target_store_id: storeId }),
-      fetch('https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa1ZL7.woff2').then((res) => res.arrayBuffer()),
+      fetch('https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.8/files/inter-latin-400-normal.woff').then((res) => res.arrayBuffer()),
     ]);
     
     if (storeError) throw new Error(`Failed to fetch store: ${storeError.message}`);
@@ -238,6 +240,11 @@ Deno.serve(async (req) => {
     });
 
     // 5. Convert SVG to PNG
+    if (!wasmInitialized) {
+      const wasmRes = await fetch('https://unpkg.com/@resvg/resvg-wasm@2.6.2/index_bg.wasm');
+      await initWasm(await wasmRes.arrayBuffer());
+      wasmInitialized = true;
+    }
     const resvg = new Resvg(svg);
     const pngData = resvg.render();
     const pngBuffer = pngData.asPng();
