@@ -1,6 +1,11 @@
 // api/share.js
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://zilkwckvsnxualaaapud.supabase.co';
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppbGt3Y2t2c254dWFsYWFhcHVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2ODU1NjgsImV4cCI6MjA4MzI2MTU2OH0.JZYT0b6UXEhxNmytfrzLSQDg7bVeecRhk6hddXir-UQ';
+const sanitizeEnv = (val) => {
+  if (!val) return '';
+  return String(val).replace(/^[\uFEFF\u200B-\u200D\s"']+|[\uFEFF\u200B-\u200D\s"']+$/g, '').trim();
+};
+
+const SUPABASE_URL = sanitizeEnv(process.env.VITE_SUPABASE_URL) || 'https://zilkwckvsnxualaaapud.supabase.co';
+const SUPABASE_ANON_KEY = sanitizeEnv(process.env.VITE_SUPABASE_ANON_KEY) || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppbGt3Y2t2c254dWFsYWFhcHVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2ODU1NjgsImV4cCI6MjA4MzI2MTU2OH0.JZYT0b6UXEhxNmytfrzLSQDg7bVeecRhk6hddXir-UQ';
 const APP_URL = 'https://tiender.vercel.app';
 
 export default async function handler(req, res) {
