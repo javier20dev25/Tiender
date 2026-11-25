@@ -27,6 +27,8 @@ import { useWeeklyAnalytics } from '../hooks/useWeeklyAnalytics';
 import { StoreHeader } from '../components/dashboard/StoreHeader';
 import { StatsGrid } from '../components/dashboard/StatsGrid';
 import { ProductList } from '../components/dashboard/ProductList';
+import { TopProductsSection, type TopProductItem } from '../components/dashboard/TopProductsSection';
+import { ShareTopModal } from '../components/dashboard/ShareTopModal';
 
 const DashboardPage: React.FC = () => {
   const { user, store, subscription, loading: authLoading } = useAuth();
@@ -47,6 +49,34 @@ const DashboardPage: React.FC = () => {
   const { products, loadingProducts, fetchProducts } = useProducts(store?.id);
   const { weeklyAnalyticsData, loadingWeeklyAnalytics, startDate } = useWeeklyAnalytics(store?.id);
 
+  // Top Products (from v1 get_store_analytics RPC)
+  const [topProducts, setTopProducts] = useState<TopProductItem[]>([]);
+  const [loadingTopProducts, setLoadingTopProducts] = useState(false);
+
+  useEffect(() => {
+    if (!store?.id) {
+      setTopProducts([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingTopProducts(true);
+    (async () => {
+      try {
+        const { data, error: rpcError } = await getSupabase().rpc('get_store_analytics', {
+          target_store_id: store.id,
+        });
+        if (!cancelled && !rpcError && data?.top_products) {
+          setTopProducts(data.top_products as TopProductItem[]);
+        }
+      } catch {
+        // silent fallback
+      } finally {
+        if (!cancelled) setLoadingTopProducts(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [store?.id]);
+
   // Perf tracking
   useEffect(() => {
     if (authLoading) {
@@ -65,6 +95,7 @@ const DashboardPage: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [showCreateStoreForm, setShowCreateStoreForm] = useState(false);
+  const [showShareTopModal, setShowShareTopModal] = useState(false);
 
   // AI Report State
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -168,6 +199,7 @@ const DashboardPage: React.FC = () => {
             store={store} 
             onEditClick={() => setShowEditStoreForm(true)}
             onUpgradeClick={handleUpgrade}
+            onShareClick={() => setShowShareTopModal(true)}
             isSubmittingUpgrade={isSubmitting}
           />
 
@@ -191,8 +223,14 @@ const DashboardPage: React.FC = () => {
               onDeleteClick={handleDeleteProduct}
             />
 
-            {/* Analytics Section */}
+            {/* Analytics & Top Products Section */}
             <div className="space-y-6">
+              <TopProductsSection
+                topProducts={topProducts}
+                loading={loadingTopProducts}
+                onShareTopClick={() => setShowShareTopModal(true)}
+              />
+
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-brand-cyan" />
                 Actividad Reciente
@@ -252,6 +290,7 @@ const DashboardPage: React.FC = () => {
         {showAddProductForm && store && <AddProductForm storeId={store.id} plan_type={store.plan_type} onClose={() => setShowAddProductForm(false)} onProductAdded={() => fetchProducts(store.id)} />}
         {editingProduct && store && <EditProductForm product={editingProduct} plan_type={store.plan_type} onClose={() => setEditingProduct(null)} onProductUpdated={() => fetchProducts(store.id)} />}
         {showEditStoreForm && store && <EditStoreForm store={store} onClose={() => setShowEditStoreForm(false)} onStoreUpdated={() => window.location.reload()} />}
+        {showShareTopModal && store && <ShareTopModal store={store} onClose={() => setShowShareTopModal(false)} />}
       </AnimatePresence>
 
       <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onOpenCancelModal={() => setIsCancelModalOpen(true)} />

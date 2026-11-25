@@ -8,10 +8,11 @@ interface StoreHeaderProps {
   store: Store;
   onEditClick: () => void;
   onUpgradeClick: () => void;
+  onShareClick?: () => void;
   isSubmittingUpgrade: boolean;
 }
 
-export const StoreHeader: React.FC<StoreHeaderProps> = ({ store, onEditClick, onUpgradeClick, isSubmittingUpgrade }) => {
+export const StoreHeader: React.FC<StoreHeaderProps> = ({ store, onEditClick, onUpgradeClick, onShareClick, isSubmittingUpgrade }) => {
   const [copied, setCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
@@ -22,6 +23,10 @@ export const StoreHeader: React.FC<StoreHeaderProps> = ({ store, onEditClick, on
   };
 
   const handleShare = async () => {
+    if (onShareClick) {
+      onShareClick();
+      return;
+    }
     setIsSharing(true);
     try {
       await getSupabase().functions.invoke('generate-share-image', { body: { storeId: store.id } });
