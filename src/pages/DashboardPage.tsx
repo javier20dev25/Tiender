@@ -1,9 +1,7 @@
 // src/pages/DashboardPage.tsx
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  LayoutDashboard, Plus, AlertTriangle, Menu, Sparkles, BarChart3
-} from 'lucide-react';
+import { Plus, AlertTriangle, Menu, Sparkles, BarChart3 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getSupabase } from '../lib/supabaseClient';
 import type { Product } from '../types';
@@ -12,7 +10,6 @@ import EditProductForm from '../components/EditProductForm';
 import EditStoreForm from '../components/EditStoreForm';
 import MobileMenu from '../components/MobileMenu';
 import CancellationModal from '../components/CancellationModal';
-import ReportModal from '../components/ReportModal';
 import SubscriptionStatusBanner from '../components/SubscriptionStatusBanner';
 import TrialBanner from '../components/TrialBanner';
 import CreateStoreForm from '../components/CreateStoreForm';
@@ -28,6 +25,7 @@ import { StoreHeader } from '../components/dashboard/StoreHeader';
 import { StatsGrid } from '../components/dashboard/StatsGrid';
 import { ProductList } from '../components/dashboard/ProductList';
 import { TopProductsSection, type TopProductItem } from '../components/dashboard/TopProductsSection';
+import { CustomerInsights } from '../components/dashboard/CustomerInsights';
 import { ShareTopModal } from '../components/dashboard/ShareTopModal';
 
 const DashboardPage: React.FC = () => {
@@ -43,8 +41,6 @@ const DashboardPage: React.FC = () => {
     }
   }, [user]);
 
-  // (store sync is handled exclusively by AuthContext)
-  
   // Custom Hooks
   const { products, loadingProducts, fetchProducts } = useProducts(store?.id);
   const { weeklyAnalyticsData, loadingWeeklyAnalytics, startDate } = useWeeklyAnalytics(store?.id);
@@ -97,23 +93,6 @@ const DashboardPage: React.FC = () => {
   const [showCreateStoreForm, setShowCreateStoreForm] = useState(false);
   const [showShareTopModal, setShowShareTopModal] = useState(false);
 
-  // AI Report State
-  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  const [report, setReport] = useState<string | null>(null);
-
-  const handleGenerateReport = async () => {
-    setIsGeneratingReport(true);
-    try {
-      const { data, error } = await getSupabase().functions.invoke('generate-store-report');
-      if (error || data.error) throw new Error(error?.message || data.error);
-      setReport(data.report);
-    } catch {
-      setError('No se pudo generar el reporte IA.');
-    } finally {
-      setIsGeneratingReport(false);
-    }
-  };
-
   const handleDeleteProduct = async (productId: string, imageUrl: string | null) => {
     if (!window.confirm('¿Quieres eliminar este producto?')) return;
     setIsSubmitting(true);
@@ -148,7 +127,6 @@ const DashboardPage: React.FC = () => {
       const hasActivePayPalSubscription = subscription?.status === 'active' || subscription?.status === 'trialing';
 
       if (isTrialActive && !hasActivePayPalSubscription) {
-        console.log('[DashboardPage] Trial active, upgrading to FULL via DB update.');
         const { error: updateError } = await getSupabase()
           .from('stores')
           .update({ plan_type: 'full' })
@@ -161,7 +139,6 @@ const DashboardPage: React.FC = () => {
         return;
       }
 
-      console.log('[DashboardPage] handleUpgrade: Calling create-paypal-subscription');
       const { data, error } = await getSupabase().functions.invoke('create-paypal-subscription', {
         body: { planType: 'full' },
       });
@@ -176,7 +153,6 @@ const DashboardPage: React.FC = () => {
       }
     } catch (err: unknown) {
       const error = err as { message?: string };
-      console.error('[DashboardPage] handleUpgrade error:', error);
       setError(error?.message || 'Error al iniciar la mejora de plan.');
       setIsSubmitting(false);
     }
@@ -208,11 +184,25 @@ const DashboardPage: React.FC = () => {
             analyticsData={weeklyAnalyticsData}
             productsCount={products.length}
             productLimit={productLimit}
-            isGeneratingReport={isGeneratingReport}
-            onGenerateReport={handleGenerateReport}
           />
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Ranking Top y Análisis de Clientes (A la par del Top) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+            <TopProductsSection
+              topProducts={topProducts}
+              loading={loadingTopProducts}
+              onShareTopClick={() => setShowShareTopModal(true)}
+            />
+            <CustomerInsights
+              topProducts={topProducts}
+              analyticsData={weeklyAnalyticsData}
+              productsCount={products.length}
+              loading={loadingTopProducts || loadingWeeklyAnalytics}
+            />
+          </div>
+
+          {/* Catálogo de Productos y Actividad Reciente */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             {/* Products Section */}
             <ProductList 
               products={products}
@@ -223,19 +213,18 @@ const DashboardPage: React.FC = () => {
               onDeleteClick={handleDeleteProduct}
             />
 
-            {/* Analytics & Top Products Section */}
-            <div className="space-y-6">
-              <TopProductsSection
-                topProducts={topProducts}
-                loading={loadingTopProducts}
-                onShareTopClick={() => setShowShareTopModal(true)}
-              />
-
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-brand-cyan" />
-                Actividad Reciente
-              </h3>
-              <div className="p-6 rounded-[30px] bg-zinc-900 border border-white/5">
+            {/* Actividad Reciente Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-sky-50 text-sky-600">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 leading-tight">Actividad Reciente</h3>
+                  <p className="text-xs text-slate-500">Flujo semanal y conversiones</p>
+                </div>
+              </div>
+              <div className="p-6 rounded-[28px] bg-white border border-slate-200/80 shadow-sm">
                 <WeeklyAnalytics
                   heatmapData={weeklyAnalyticsData?.heatmap_data || []}
                   productSummary={weeklyAnalyticsData?.product_summary || []}
@@ -252,11 +241,18 @@ const DashboardPage: React.FC = () => {
 
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center py-20 text-center">
-        <div className="p-6 bg-brand-neon/10 text-brand-neon rounded-full mb-8"><Sparkles className="w-12 h-12" /></div>
-        <h2 className="text-4xl font-black text-white mb-4 tracking-tighter italic uppercase">Tiender Pro</h2>
-        <p className="text-zinc-500 max-w-sm mb-10 font-medium text-lg leading-relaxed">Estás a un paso de revolucionar tus ventas de WhatsApp. ¡Crea tu tienda ahora!</p>
-        <button onClick={() => setShowCreateStoreForm(true)} className="sunset-button px-10 py-5 rounded-[25px] text-xl flex items-center gap-3">
-          <Plus className="w-7 h-7" />
+        <div className="p-6 bg-violet-50 text-violet-600 rounded-full mb-6 border border-violet-100 shadow-sm">
+          <Sparkles className="w-12 h-12" />
+        </div>
+        <h2 className="text-4xl font-black text-slate-900 mb-3 tracking-tight italic uppercase">Tiender Pro</h2>
+        <p className="text-slate-500 max-w-sm mb-8 font-medium text-base leading-relaxed">
+          Estás a un paso de revolucionar tus ventas de WhatsApp. ¡Crea tu tienda ahora!
+        </p>
+        <button
+          onClick={() => setShowCreateStoreForm(true)}
+          className="sunset-button px-9 py-4 rounded-2xl text-lg flex items-center gap-3 shadow-lg shadow-violet-500/20"
+        >
+          <Plus className="w-6 h-6" />
           <span>Lanzar mi Tienda</span>
         </button>
       </motion.div>
@@ -264,22 +260,30 @@ const DashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-brand-dark text-white selection:bg-brand-neon/30 pb-12">
-      <div className="max-w-6xl mx-auto px-6 pt-10">
-        <div className="flex justify-between items-center mb-12">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-brand-neon rounded-xl"><LayoutDashboard className="w-6 h-6 text-brand-dark" /></div>
-            <h1 className="text-2xl font-black tracking-tighter uppercase italic">Centro de Mando</h1>
+    <div className="min-h-screen bg-slate-50 text-slate-900 selection:bg-violet-200 pb-16">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        {/* Discreet Top Bar with Menu */}
+        <div className="flex justify-between items-center py-5 mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-sunset-gradient flex items-center justify-center font-black italic text-brand-dark text-xs shadow-sm">
+              T
+            </div>
+            <span className="font-black text-slate-900 tracking-tight italic uppercase text-base">Tiender</span>
+            <h1 className="sr-only">Centro de Mando</h1>
           </div>
-          <button onClick={() => setIsMenuOpen(true)} className="p-3 bg-zinc-900 border border-white/5 rounded-2xl hover:bg-zinc-800 transition-all group">
-            <Menu className="w-6 h-6 text-zinc-400 group-hover:text-white" />
+          <button
+            onClick={() => setIsMenuOpen(true)}
+            className="p-2.5 bg-white border border-slate-200/80 rounded-2xl shadow-sm hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition-all"
+            title="Menú"
+          >
+            <Menu className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5" />
-            <p className="font-bold text-sm tracking-tight">{error}</p>
+          <div className="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl flex items-center gap-3 shadow-sm">
+            <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0" />
+            <p className="font-bold text-sm">{error}</p>
           </div>
         )}
 
@@ -287,15 +291,47 @@ const DashboardPage: React.FC = () => {
       </div>
 
       <AnimatePresence>
-        {showAddProductForm && store && <AddProductForm storeId={store.id} plan_type={store.plan_type} onClose={() => setShowAddProductForm(false)} onProductAdded={() => fetchProducts(store.id)} />}
-        {editingProduct && store && <EditProductForm product={editingProduct} plan_type={store.plan_type} onClose={() => setEditingProduct(null)} onProductUpdated={() => fetchProducts(store.id)} />}
-        {showEditStoreForm && store && <EditStoreForm store={store} onClose={() => setShowEditStoreForm(false)} onStoreUpdated={() => window.location.reload()} />}
-        {showShareTopModal && store && <ShareTopModal store={store} onClose={() => setShowShareTopModal(false)} />}
+        {showAddProductForm && store && (
+          <AddProductForm
+            storeId={store.id}
+            plan_type={store.plan_type}
+            onClose={() => setShowAddProductForm(false)}
+            onProductAdded={() => fetchProducts(store.id)}
+          />
+        )}
+        {editingProduct && store && (
+          <EditProductForm
+            product={editingProduct}
+            plan_type={store.plan_type}
+            onClose={() => setEditingProduct(null)}
+            onProductUpdated={() => fetchProducts(store.id)}
+          />
+        )}
+        {showEditStoreForm && store && (
+          <EditStoreForm
+            store={store}
+            onClose={() => setShowEditStoreForm(false)}
+            onStoreUpdated={() => window.location.reload()}
+          />
+        )}
+        {showShareTopModal && store && (
+          <ShareTopModal
+            store={store}
+            onClose={() => setShowShareTopModal(false)}
+          />
+        )}
       </AnimatePresence>
 
-      <MobileMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} onOpenCancelModal={() => setIsCancelModalOpen(true)} />
-      <CancellationModal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)} onSuccess={() => { setIsCancelModalOpen(false); alert('Suscripción cancelada.'); }} />
-      {report && <ReportModal report={report} onClose={() => setReport(null)} />}
+      <MobileMenu
+        isOpen={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        onOpenCancelModal={() => setIsCancelModalOpen(true)}
+      />
+      <CancellationModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        onSuccess={() => { setIsCancelModalOpen(false); alert('Suscripción cancelada.'); }}
+      />
       {showCreateStoreForm && <CreateStoreForm onClose={() => setShowCreateStoreForm(false)} />}
       <PasswordChangeModal isOpen={isPasswordModalOpen} onSuccess={() => setIsPasswordModalOpen(false)} />
     </div>

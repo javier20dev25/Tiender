@@ -24,10 +24,17 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
+  const [currency, setCurrency] = useState<'USD' | 'NIO'>('USD');
   const [externalLink, setExternalLink] = useState('');
   const [videoLink, setVideoLink] = useState('');
   const [hashtags, setHashtags] = useState('');
-  const [shippingOptions, setShippingOptions] = useState(defaultShipping());
+  const [shippingOptions, setShippingOptions] = useState<Array<{
+    method_type: string;
+    method_name: string;
+    cost: string;
+    delivery_included?: boolean;
+    notes?: string;
+  }>>(defaultShipping());
   const [isDiscountActive, setIsDiscountActive] = useState(false);
   const [discountTimerSeconds, setDiscountTimerSeconds] = useState('');
   const [discountPercentage, setDiscountPercentage] = useState('');
@@ -45,17 +52,21 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
       setTitle(product.title);
       setDescription(product.description || '');
       setPrice(product.price.toString());
+      const pAny = product as Product & { currency?: string };
+      setCurrency(pAny.currency === 'NIO' || pAny.currency === 'C$' ? 'NIO' : 'USD');
       setExternalLink(product.external_link || '');
       setVideoLink(product.video_link || '');
       setHashtags(product.hashtags ? product.hashtags.join(', ') : '');
       setImagePreview(product.image_url);
 
-      const loaded = (product as Product & { shipping_options?: ShippingOption[] | null }).shipping_options;
+      const loaded = (product as Product & { shipping_options?: Array<ShippingOption & { notes?: string; delivery_included?: boolean }> | null }).shipping_options;
       if (Array.isArray(loaded) && loaded.length > 0) {
         setShippingOptions(loaded.map((o) => ({
           method_type: o.method_type || 'Por coordinar',
           method_name: o.method_name || 'Envío',
           cost: String(o.cost ?? 0),
+          delivery_included: Boolean(o.delivery_included),
+          notes: o.notes || '',
         })));
       } else {
         setShippingOptions(defaultShipping());
@@ -73,12 +84,12 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
     }
   }, [product]);
 
-  const updateShippingOption = (index: number, field: 'method_type' | 'method_name' | 'cost', value: string) => {
+  const updateShippingOption = (index: number, field: 'method_type' | 'method_name' | 'cost' | 'delivery_included' | 'notes', value: unknown) => {
     setShippingOptions((prev) => prev.map((opt, i) => (i === index ? { ...opt, [field]: value } : opt)));
   };
 
   const addShippingOption = () => {
-    setShippingOptions((prev) => [...prev, { method_type: 'Domicilio', method_name: 'Envío', cost: '0' }]);
+    setShippingOptions((prev) => [...prev, { method_type: 'Aéreo', method_name: 'Envío', cost: '0', delivery_included: false, notes: '' }]);
   };
 
   const removeShippingOption = (index: number) => {
@@ -207,6 +218,8 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
         method_type: (o.method_type || 'Por coordinar').trim(),
         method_name: (o.method_name || '').trim(),
         cost: Number(o.cost),
+        delivery_included: Boolean(o.delivery_included),
+        notes: (o.notes || '').trim() || undefined,
       }))
       .filter((o) => o.method_name && Number.isFinite(o.cost) && o.cost >= 0);
 
@@ -224,6 +237,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
         title,
         description: description || null,
         price: parseFloat(price),
+        currency,
         image_url: finalImageUrl,
         external_link: externalLink || null,
         video_link: videoLink || null,
@@ -312,9 +326,22 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
                 <label className={labelClasses}><Package className="w-3.5 h-3.5" /> Nombre del producto</label>
                 <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej: Vestido floral" className={inputClasses} required />
               </div>
-              <div>
-                <label className={labelClasses}><DollarSign className="w-3.5 h-3.5" /> Precio</label>
-                <input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" className={inputClasses} required />
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-1">
+                  <label className={labelClasses}>Moneda</label>
+                  <select
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value as 'USD' | 'NIO')}
+                    className="w-full bg-zinc-800/50 border border-white/5 rounded-2xl px-3 py-4 text-white font-bold text-sm focus:outline-none focus:ring-2 focus:ring-brand-cyan/50"
+                  >
+                    <option value="USD">$ USD</option>
+                    <option value="NIO">C$ NIO</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className={labelClasses}><DollarSign className="w-3.5 h-3.5" /> Precio ({currency === 'NIO' ? 'C$' : '$'})</label>
+                  <input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" className={inputClasses} required />
+                </div>
               </div>
               <div>
                 <label className={labelClasses}><Hash className="w-3.5 h-3.5" /> Descripción (Opcional)</label>
@@ -346,62 +373,91 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
               <div>
                 <h3 className="text-sm font-black text-white tracking-widest uppercase flex items-center gap-2">
                   <Truck className="w-4 h-4 text-brand-cyan" />
-                  Envío
+                  Opciones de Envío
                 </h3>
-                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-tighter mt-1">Método/tipo y costo (obligatorio)</p>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-tighter mt-1">
+                  Aéreo, Marítimo, Delivery local y notas de cobro
+                </p>
               </div>
               <button type="button" onClick={addShippingOption} className="px-3 py-2 rounded-xl bg-brand-cyan/10 text-brand-cyan text-[10px] font-black uppercase hover:bg-brand-cyan hover:text-brand-dark transition-all flex items-center gap-1">
-                <Plus className="w-3.5 h-3.5" /> Agregar
+                <Plus className="w-3.5 h-3.5" /> Agregar Opción
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {shippingOptions.map((opt, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                  <div className="md:col-span-3">
-                    <label className="text-[9px] font-bold text-zinc-500 mb-1 block uppercase">Tipo</label>
-                    <select
-                      value={opt.method_type}
-                      onChange={(e) => updateShippingOption(index, 'method_type', e.target.value)}
-                      className="w-full bg-black/30 border border-white/5 rounded-xl px-3 py-3 text-sm text-white focus:ring-1 focus:ring-brand-cyan"
-                    >
-                      <option value="Domicilio">Domicilio</option>
-                      <option value="Recogida">Recogida</option>
-                      <option value="Punto de encuentro">Punto de encuentro</option>
-                      <option value="Por coordinar">Por coordinar</option>
-                      <option value="Otro">Otro</option>
-                    </select>
+                <div key={index} className="p-4 rounded-2xl bg-black/20 border border-white/5 space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                    <div className="md:col-span-4">
+                      <label className="text-[9px] font-bold text-zinc-500 mb-1 block uppercase">Modalidad</label>
+                      <select
+                        value={opt.method_type}
+                        onChange={(e) => updateShippingOption(index, 'method_type', e.target.value)}
+                        className="w-full bg-zinc-800 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-white focus:ring-1 focus:ring-brand-cyan font-medium"
+                      >
+                        <option value="Aéreo">Aéreo</option>
+                        <option value="Marítimo">Marítimo</option>
+                        <option value="Delivery local">Delivery local</option>
+                        <option value="Retiro en tienda">Retiro en tienda</option>
+                        <option value="Punto de encuentro">Punto de encuentro</option>
+                        <option value="Por coordinar">Por coordinar</option>
+                      </select>
+                    </div>
+                    <div className="md:col-span-5">
+                      <label className="text-[9px] font-bold text-zinc-500 mb-1 block uppercase">Descripción del Método</label>
+                      <input
+                        type="text"
+                        value={opt.method_name}
+                        onChange={(e) => updateShippingOption(index, 'method_name', e.target.value)}
+                        placeholder="Ej: Aéreo express, Marítimo estándar"
+                        className="w-full bg-zinc-800 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-white placeholder-zinc-500 focus:ring-1 focus:ring-brand-cyan"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-[9px] font-bold text-zinc-500 mb-1 block uppercase">Costo ({currency === 'NIO' ? 'C$' : '$'})</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={opt.cost}
+                        onChange={(e) => updateShippingOption(index, 'cost', e.target.value)}
+                        className="w-full bg-zinc-800 border border-white/5 rounded-xl px-3 py-2.5 text-sm text-white focus:ring-1 focus:ring-brand-cyan font-bold"
+                      />
+                    </div>
+                    <div className="md:col-span-1 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => removeShippingOption(index)}
+                        disabled={shippingOptions.length <= 1}
+                        className="p-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all disabled:opacity-30 disabled:hover:bg-red-500/10 disabled:hover:text-red-500"
+                        aria-label="Eliminar envío"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="md:col-span-6">
-                    <label className="text-[9px] font-bold text-zinc-500 mb-1 block uppercase">Método / Descripción</label>
-                    <input
-                      type="text"
-                      value={opt.method_name}
-                      onChange={(e) => updateShippingOption(index, 'method_name', e.target.value)}
-                      placeholder="Ej: Delivery en ciudad, Retiro en tienda"
-                      className="w-full bg-black/30 border border-white/5 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-500 focus:ring-1 focus:ring-brand-cyan"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="text-[9px] font-bold text-zinc-500 mb-1 block uppercase">Costo</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={opt.cost}
-                      onChange={(e) => updateShippingOption(index, 'cost', e.target.value)}
-                      className="w-full bg-black/30 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:ring-1 focus:ring-brand-cyan"
-                    />
-                  </div>
-                  <div className="md:col-span-1 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => removeShippingOption(index)}
-                      disabled={shippingOptions.length <= 1}
-                      className="p-3 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all disabled:opacity-30 disabled:hover:bg-red-500/10 disabled:hover:text-red-500"
-                      aria-label="Eliminar envío"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+
+                  {/* Complementary note & Delivery toggle */}
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center pt-2 border-t border-white/5">
+                    <div className="md:col-span-8">
+                      <input
+                        type="text"
+                        value={opt.notes || ''}
+                        onChange={(e) => updateShippingOption(index, 'notes', e.target.value)}
+                        placeholder="Nota complementaria opcional (Ej: $3.50 por libra, entrega en 10-15 días)"
+                        className="w-full bg-zinc-900 border border-white/5 rounded-xl px-3 py-2 text-xs text-zinc-300 placeholder-zinc-600 focus:ring-1 focus:ring-brand-cyan"
+                      />
+                    </div>
+                    <div className="md:col-span-4 flex items-center gap-2">
+                      <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-300">
+                        <input
+                          type="checkbox"
+                          checked={!!opt.delivery_included}
+                          onChange={(e) => updateShippingOption(index, 'delivery_included', e.target.checked)}
+                          className="w-4 h-4 rounded accent-brand-cyan"
+                        />
+                        <span className="text-[11px] font-medium text-zinc-400">Incluye delivery a domicilio</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -413,11 +469,14 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, plan_type, o
               <div>
                 <label className={labelClasses}><LinkIcon className="w-3.5 h-3.5" /> Link de producto / marketplace (Opcional)</label>
                 <input type="url" value={externalLink} onChange={(e) => setExternalLink(e.target.value)} placeholder="https://shein.com/... o https://amazon.com/..." className={inputClasses} />
-                <p className="text-[9px] text-zinc-600 mt-1 ml-1 font-bold uppercase tracking-tighter">Shein, AliExpress, Amazon u otra tienda</p>
+                <p className="text-[9px] text-zinc-500 mt-1 ml-1 font-bold uppercase tracking-tighter">Shein, AliExpress, Amazon u otra tienda</p>
               </div>
               <div>
                 <label className={labelClasses}><Youtube className="w-3.5 h-3.5" /> Link de video (Opcional)</label>
-                <input type="url" value={videoLink} onChange={(e) => setVideoLink(e.target.value)} placeholder="https://tiktok.com/..." className={inputClasses} />
+                <input type="url" value={videoLink} onChange={(e) => setVideoLink(e.target.value)} placeholder="https://youtube.com/watch?v=... o https://youtube.com/shorts/..." className={inputClasses} />
+                <p className="text-[10px] text-zinc-400 mt-1.5 ml-1 leading-relaxed">
+                  ℹ️ <strong>YouTube (estándar y Shorts):</strong> se reproducen en un modal dentro de la tienda sin salir de la web. Enlaces de TikTok o Instagram redirigirán a su app o web oficial.
+                </p>
               </div>
             </div>
             <div>

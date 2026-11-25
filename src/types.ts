@@ -7,6 +7,8 @@ export interface ShippingOption {
   method_type: string;
   method_name: string;
   cost: number;
+  delivery_included?: boolean;
+  notes?: string;
 }
 
 export interface Product {
@@ -17,6 +19,7 @@ export interface Product {
   image_url: string | null;
   store_id: string;
   created_at: string;
+  currency?: 'USD' | 'NIO' | string;
 
   // Nuevos campos para enlaces externos
   external_link: string | null;

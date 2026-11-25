@@ -1,10 +1,36 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
-import { Heart, X, ShoppingCart, ShoppingBag, Trash2, ArrowRight, Truck } from 'lucide-react';
+import { Heart, X, ShoppingCart, ShoppingBag, Trash2, ArrowRight, Truck, Play } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { getSupabase } from '../lib/supabaseClient';
-import type { Store, Product } from '../types';
+import type { Store, Product, ShippingOption } from '../types';
 import { Perf } from '../utils/perf';
+
+// Helper to extract embeddable YouTube URL (regular & Shorts)
+function getYouTubeEmbedUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const raw = url.trim();
+    const cleanUrl = raw.startsWith('http') ? raw : `https://${raw}`;
+    const parsed = new URL(cleanUrl);
+    if (parsed.hostname.includes('youtube.com')) {
+      if (parsed.pathname.includes('/shorts/')) {
+        const id = parsed.pathname.split('/shorts/')[1]?.split('/')[0]?.split('?')[0];
+        return id ? `https://www.youtube.com/embed/${id}?autoplay=1&rel=0` : null;
+      }
+      const v = parsed.searchParams.get('v');
+      if (v) return `https://www.youtube.com/embed/${v}?autoplay=1&rel=0`;
+    }
+    if (parsed.hostname.includes('youtu.be')) {
+      const id = parsed.pathname.replace('/', '').split('?')[0];
+      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&rel=0` : null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
 
 // --- Types ---
 type CartItem = Product & { quantity: number };
@@ -66,10 +92,28 @@ const SocialStorePage: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
+  const [isIdleHinting, setIsIdleHinting] = useState(false);
+  const [reactionOverlay, setReactionOverlay] = useState<'LIKE' | 'DISLIKE' | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const hasLoggedVisit = useRef(false);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 1-second idle tilt hint animation
+  useEffect(() => {
+    setIsIdleHinting(false);
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    if (products.length > 0) {
+      idleTimerRef.current = setTimeout(() => {
+        setIsIdleHinting(true);
+      }, 1000);
+    }
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, [currentIndex, products.length]);
 
   // Motion values for swipe effect
   const x = useMotionValue(0);
@@ -224,6 +268,7 @@ const SocialStorePage: React.FC = () => {
 
   // --- Event Handlers ---
   const handleNextProduct = (type: 'LIKE' | 'DISLIKE') => {
+    setIsIdleHinting(false);
     if (products.length <= 1) {
       x.set(0);
       return;
@@ -233,6 +278,14 @@ const SocialStorePage: React.FC = () => {
     setCurrentIndex(prev => (prev + 1) % products.length);
     x.set(0);
     Perf.end('ProductSwipe');
+  };
+
+  const handleNextWithFeedback = (type: 'LIKE' | 'DISLIKE') => {
+    setReactionOverlay(type);
+    setTimeout(() => {
+      setReactionOverlay(null);
+      handleNextProduct(type);
+    }, 280);
   };
 
   const handleAddToCart = () => {
@@ -247,6 +300,18 @@ const SocialStorePage: React.FC = () => {
       return [...prev, { ...currentProduct, quantity: 1 }];
     });
     logEvent('ADD_TO_CART');
+
+    // Confetti celebration animation
+    try {
+      confetti({
+        particleCount: 65,
+        spread: 60,
+        origin: { y: 0.8 },
+        colors: ['#EC4899', '#A3E635', '#06B6D4', '#F59E0B', '#8B5CF6']
+      });
+    } catch {
+      /* silent */
+    }
     Perf.end('CartAdd');
   };
 
@@ -261,6 +326,11 @@ const SocialStorePage: React.FC = () => {
       }
       return newCart;
     });
+  };
+
+  const getCurrencySymbol = (product?: Product | null) => {
+    const p = product as (Product & { currency?: string }) | undefined;
+    return p?.currency === 'NIO' || p?.currency === 'C$' ? 'C$' : '$';
   };
 
   const getProductPrice = (product: Product) => {
@@ -352,9 +422,15 @@ const SocialStorePage: React.FC = () => {
             {/* Current Card */}
             <motion.div
               style={{ x, rotate, opacity }}
+              animate={isIdleHinting ? {
+                rotate: [0, -3.5, 3.5, -2, 2, 0],
+                transition: { duration: 0.85, ease: 'easeInOut' }
+              } : undefined}
               drag="x"
               dragConstraints={{ left: 0, right: 0 }}
+              onDragStart={() => setIsIdleHinting(false)}
               onDragEnd={(_, info) => {
+                setIsIdleHinting(false);
                 if (info.offset.x > 100) handleNextProduct('LIKE');
                 else if (info.offset.x < -100) handleNextProduct('DISLIKE');
               }}
@@ -367,7 +443,35 @@ const SocialStorePage: React.FC = () => {
                   className="w-full h-full transition-transform duration-700 group-hover:scale-105"
                 />
 
-                {/* Visual Feedback Seals */}
+                {/* Reaction Pop Feedback (from button clicks) */}
+                <AnimatePresence>
+                  {reactionOverlay === 'LIKE' && (
+                    <motion.div
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1.2, opacity: 1 }}
+                      exit={{ scale: 1.5, opacity: 0 }}
+                      className="absolute inset-0 z-30 flex items-center justify-center bg-black/20 backdrop-blur-[2px] pointer-events-none"
+                    >
+                      <div className="p-6 bg-brand-neon rounded-full shadow-2xl text-brand-dark animate-bounce">
+                        <Heart className="w-16 h-16 fill-brand-dark" />
+                      </div>
+                    </motion.div>
+                  )}
+                  {reactionOverlay === 'DISLIKE' && (
+                    <motion.div
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1.2, opacity: 1 }}
+                      exit={{ scale: 1.5, opacity: 0 }}
+                      className="absolute inset-0 z-30 flex items-center justify-center bg-black/20 backdrop-blur-[2px] pointer-events-none"
+                    >
+                      <div className="p-6 bg-red-500 rounded-full shadow-2xl text-white">
+                        <X className="w-16 h-16 stroke-[3]" />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Visual Feedback Seals (from dragging) */}
                 <motion.div style={{ opacity: likeOpacity }} className="absolute top-10 left-10 z-20 border-4 border-brand-neon px-4 py-2 rounded-xl -rotate-12 pointer-events-none">
                   <span className="text-brand-neon font-display text-4xl font-bold tracking-tighter uppercase">Me gusta</span>
                 </motion.div>
@@ -393,11 +497,11 @@ const SocialStorePage: React.FC = () => {
                       <div className="text-right">
                         {currentProduct.discount_percentage ? (
                            <>
-                             <span className="block text-sm font-medium text-white/50 line-through mb-0.5">${currentProduct.price.toFixed(2)}</span>
-                             <span className="block text-2xl font-bold text-brand-neon mb-1">${getProductPrice(currentProduct).toFixed(2)}</span>
+                             <span className="block text-sm font-medium text-white/50 line-through mb-0.5">{getCurrencySymbol(currentProduct)}{currentProduct.price.toFixed(2)}</span>
+                             <span className="block text-2xl font-bold text-brand-neon mb-1">{getCurrencySymbol(currentProduct)}{getProductPrice(currentProduct).toFixed(2)}</span>
                            </>
                         ) : (
-                           <span className="block text-2xl font-bold text-brand-neon mb-1">${currentProduct.price.toFixed(2)}</span>
+                           <span className="block text-2xl font-bold text-brand-neon mb-1">{getCurrencySymbol(currentProduct)}{currentProduct.price.toFixed(2)}</span>
                         )}
                       </div>
                     </div>
@@ -409,13 +513,20 @@ const SocialStorePage: React.FC = () => {
                         <Truck className="w-3.5 h-3.5" />
                         <span>Envío</span>
                       </div>
-                      <div className="space-y-1">
-                        {currentProduct.shipping_options.slice(0, 3).map((opt, i) => (
-                          <div key={`${opt.method_type}-${opt.method_name}-${i}`} className="text-[11px] text-white/85 flex justify-between gap-2">
-                            <span className="truncate">{opt.method_type}: {opt.method_name}</span>
-                            <span className="font-bold whitespace-nowrap">${Number(opt.cost || 0).toFixed(2)}</span>
-                          </div>
-                        ))}
+                      <div className="space-y-1.5">
+                        {currentProduct.shipping_options.slice(0, 3).map((opt, i) => {
+                          const optAny = opt as ShippingOption & { notes?: string; delivery_included?: boolean };
+                          return (
+                            <div key={`${opt.method_type}-${opt.method_name}-${i}`} className="text-[11px] text-white/90 flex justify-between items-center gap-2">
+                              <span className="truncate">
+                                <span className="font-semibold">{opt.method_type}:</span> {opt.method_name}
+                                {optAny.delivery_included ? ' · Delivery incluido' : ''}
+                                {optAny.notes ? ` (${optAny.notes})` : ''}
+                              </span>
+                              <span className="font-bold whitespace-nowrap">{getCurrencySymbol(currentProduct)}{Number(opt.cost || 0).toFixed(2)}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -428,9 +539,22 @@ const SocialStorePage: React.FC = () => {
                         </a>
                       )}
                       {currentProduct.video_link && (
-                        <a href={currentProduct.video_link.startsWith('http') ? currentProduct.video_link : `https://${currentProduct.video_link}`} target="_blank" rel="noreferrer" className="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white px-4 py-2.5 rounded-xl text-center text-sm font-bold transition-colors">
-                          Ver video
-                        </a>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const embed = getYouTubeEmbedUrl(currentProduct.video_link);
+                            if (embed) {
+                              setActiveVideoUrl(embed);
+                            } else {
+                              const raw = currentProduct.video_link!;
+                              window.open(raw.startsWith('http') ? raw : `https://${raw}`, '_blank');
+                            }
+                          }}
+                          className="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white px-4 py-2.5 rounded-xl text-center text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Play className="w-4 h-4 fill-white" />
+                          <span>Ver video</span>
+                        </button>
                       )}
                     </div>
                   )}
@@ -447,7 +571,7 @@ const SocialStorePage: React.FC = () => {
         {/* Interaction Controls */}
         <div className="flex justify-center items-center gap-6 mt-10">
           <button
-            onClick={() => handleNextProduct('DISLIKE')}
+            onClick={() => handleNextWithFeedback('DISLIKE')}
             aria-label="Siguiente producto"
             className="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center text-gray-400 hover:text-brand-pink hover:scale-110 active:scale-95 transition-all border border-gray-100"
           >
@@ -462,7 +586,7 @@ const SocialStorePage: React.FC = () => {
             <span>Añadir</span>
           </button>
           <button
-            onClick={() => handleNextProduct('LIKE')}
+            onClick={() => handleNextWithFeedback('LIKE')}
             aria-label="Me gusta"
             className="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center text-gray-400 hover:text-brand-neon hover:scale-110 active:scale-95 transition-all border border-gray-100"
           >
@@ -528,7 +652,7 @@ const SocialStorePage: React.FC = () => {
                     <div className="flex-grow">
                       <h4 className="font-bold text-[15px] leading-tight mb-1">{item.title}</h4>
                       <div className="flex flex-col mb-2">
-                        <span className="text-brand-dark font-bold">${getCartItemPrice(item).toFixed(2)}</span>
+                        <span className="text-brand-dark font-bold">{getCurrencySymbol(item)}{getCartItemPrice(item).toFixed(2)}</span>
                         {item.wholesale_threshold && item.quantity >= item.wholesale_threshold && item.wholesale_price && (
                            <span className="text-[10px] font-bold text-brand-pink uppercase tracking-wider">Mayorista Activado</span>
                         )}
@@ -557,7 +681,7 @@ const SocialStorePage: React.FC = () => {
                      <span className="block text-sm text-gray-400 font-bold mb-1">TOTAL</span>
                      <span className="text-xl font-bold tracking-tight text-gray-900">{cart.reduce((sum, item) => sum + item.quantity, 0)} artículos</span>
                   </div>
-                  <span className="text-4xl font-black text-brand-pink tracking-tight">${cart.reduce((sum, item) => sum + (getCartItemPrice(item) * item.quantity), 0).toFixed(2)}</span>
+                  <span className="text-4xl font-black text-brand-pink tracking-tight">{getCurrencySymbol(cart[0])}{cart.reduce((sum, item) => sum + (getCartItemPrice(item) * item.quantity), 0).toFixed(2)}</span>
                 </div>
               </div>
 
@@ -565,11 +689,11 @@ const SocialStorePage: React.FC = () => {
                 onClick={() => {
                   if (isSubmitting) return;
                   setIsSubmitting(true);
-                  // Simulate a short delay to prevent accidental double-clicks and show feedback
                   setTimeout(() => {
+                    const curr = getCurrencySymbol(cart[0]);
                     const items = cart.map(i => `${i.title} (x${i.quantity})`).join(', ');
                     const total = cart.reduce((sum, item) => sum + (getCartItemPrice(item) * item.quantity), 0).toFixed(2);
-                    const message = encodeURIComponent(`¡Hola! Me gustaría comprar: ${items}. Total: $${total}`);
+                    const message = encodeURIComponent(`¡Hola! Me gustaría comprar: ${items}. Total: ${curr}${total}`);
                     window.open(`https://wa.me/${store.whatsapp_number}?text=${message}`, '_blank');
                     setIsCartOpen(false);
                     setIsSubmitting(false);
@@ -590,14 +714,56 @@ const SocialStorePage: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {/* Video Modal Player (YouTube & Shorts) */}
+      <AnimatePresence>
+        {activeVideoUrl && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveVideoUrl(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-xl bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden shadow-2xl z-10"
+            >
+              <div className="flex items-center justify-between p-4 border-b border-white/10 bg-zinc-900/60">
+                <span className="text-xs font-bold text-zinc-300 uppercase tracking-widest flex items-center gap-2">
+                  <Play className="w-3.5 h-3.5 text-red-500 fill-red-500" /> Video del Producto
+                </span>
+                <button
+                  onClick={() => setActiveVideoUrl(null)}
+                  className="p-1.5 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="relative aspect-video w-full bg-black">
+                <iframe
+                  src={activeVideoUrl}
+                  title="Video de producto"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full border-0"
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Non-invasive subtle footer */}
       <footer className="text-center mt-12 mb-8 px-6">
-        <a href="/auth" className="inline-flex items-center justify-center mb-4 px-5 py-3 rounded-2xl bg-brand-dark text-white font-bold text-sm shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all">
+        <a
+          href="/auth"
+          className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-gray-200/50 hover:bg-gray-200 text-gray-500 hover:text-gray-700 font-medium text-xs transition-colors"
+        >
           Solicita tu tienda en Tiender
         </a>
-        <p className="text-sm font-medium text-gray-400 flex items-center justify-center gap-2">
-          Desarrollado con <Heart className="w-3 h-3 text-brand-pink fill-brand-pink" /> por
-          <a href="/" className="text-gray-600 hover:text-brand-pink transition-colors underline decoration-brand-pink/20 underline-offset-4">Tiender</a>
-        </p>
       </footer>
     </div>
   );

@@ -58,12 +58,13 @@ Deno.serve(async (req) => {
     const topProducts: TopProduct[] = analyticsData.top_products;
 
     // 3. Design the shareable image using Satori (Stories aspect ratio 600x1067)
+    // White top fading through soft lavender to a vibrant purple at the bottom
     const rankColors = [
-      { bg: 'rgba(245, 158, 11, 0.2)', text: '#FBBF24', border: 'rgba(245, 158, 11, 0.5)' }, // 1st - Gold
-      { bg: 'rgba(6, 182, 212, 0.2)', text: '#22D3EE', border: 'rgba(6, 182, 212, 0.5)' },  // 2nd - Cyan
-      { bg: 'rgba(236, 72, 153, 0.2)', text: '#F472B6', border: 'rgba(236, 72, 153, 0.5)' }, // 3rd - Pink
-      { bg: 'rgba(163, 230, 53, 0.2)', text: '#A3E635', border: 'rgba(163, 230, 53, 0.5)' }, // 4th - Neon
-      { bg: 'rgba(148, 163, 184, 0.15)', text: '#CBD5E1', border: 'rgba(148, 163, 184, 0.3)' } // 5th - Slate
+      { bg: 'rgba(245, 158, 11, 0.15)', text: '#D97706', border: 'rgba(245, 158, 11, 0.4)' }, // 1st - Gold
+      { bg: 'rgba(124, 58, 237, 0.15)', text: '#7C3AED', border: 'rgba(124, 58, 237, 0.4)' }, // 2nd - Violet
+      { bg: 'rgba(236, 72, 153, 0.15)', text: '#DB2777', border: 'rgba(236, 72, 153, 0.4)' }, // 3rd - Pink
+      { bg: 'rgba(16, 185, 129, 0.15)', text: '#059669', border: 'rgba(16, 185, 129, 0.4)' }, // 4th - Emerald
+      { bg: 'rgba(100, 116, 139, 0.12)', text: '#475569', border: 'rgba(100, 116, 139, 0.3)' } // 5th - Slate
     ];
 
     const template = {
@@ -74,15 +75,15 @@ Deno.serve(async (req) => {
           flexDirection: 'column',
           width: '100%',
           height: '100%',
-          backgroundColor: '#09090D',
-          color: 'white',
+          background: 'linear-gradient(180deg, #FFFFFF 0%, #FAF5FF 35%, #DDD6FE 65%, #7C3AED 100%)',
+          color: '#1E1B4B',
           padding: '48px 36px',
           fontFamily: '"Inter"',
           boxSizing: 'border-box',
           position: 'relative',
         },
         children: [
-          // Header Section
+          // Header Section (on white background)
           {
             type: 'div',
             props: {
@@ -101,11 +102,11 @@ Deno.serve(async (req) => {
                     style: {
                       display: 'flex',
                       alignItems: 'center',
-                      backgroundColor: 'rgba(163, 230, 53, 0.15)',
-                      border: '1px solid rgba(163, 230, 53, 0.4)',
+                      backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                      border: '1px solid rgba(124, 58, 237, 0.3)',
                       borderRadius: '999px',
                       padding: '6px 18px',
-                      marginBottom: '16px',
+                      marginBottom: '14px',
                     },
                     children: [
                       {
@@ -114,8 +115,8 @@ Deno.serve(async (req) => {
                           style: {
                             display: 'flex',
                             fontSize: '13px',
-                            fontWeight: '600',
-                            color: '#A3E635',
+                            fontWeight: '700',
+                            color: '#7C3AED',
                             letterSpacing: '2px',
                             textTransform: 'uppercase',
                           },
@@ -131,11 +132,11 @@ Deno.serve(async (req) => {
                   props: {
                     style: {
                       display: 'flex',
-                      fontSize: '42px',
+                      fontSize: '44px',
                       fontWeight: '800',
                       margin: '0 0 8px 0',
                       textAlign: 'center',
-                      color: '#FFFFFF',
+                      color: '#1E1B4B',
                       letterSpacing: '-1px',
                     },
                     children: String(storeName || 'Tienda'),
@@ -148,7 +149,8 @@ Deno.serve(async (req) => {
                     style: {
                       display: 'flex',
                       fontSize: '16px',
-                      color: '#94A3B8',
+                      fontWeight: '500',
+                      color: '#6B7280',
                       margin: '0',
                     },
                     children: 'Los favoritos de nuestra comunidad',
@@ -177,8 +179,8 @@ Deno.serve(async (req) => {
                       display: 'flex',
                       alignItems: 'center',
                       width: '100%',
-                      backgroundColor: '#15151C',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.92)',
+                      border: '1px solid rgba(124, 58, 237, 0.18)',
                       borderRadius: '20px',
                       padding: '16px 20px',
                       boxSizing: 'border-box',
@@ -225,7 +227,7 @@ Deno.serve(async (req) => {
                                   display: 'flex',
                                   fontSize: '18px',
                                   fontWeight: '700',
-                                  color: '#FFFFFF',
+                                  color: '#1E1B4B',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap',
@@ -245,7 +247,7 @@ Deno.serve(async (req) => {
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            backgroundColor: 'rgba(124, 58, 237, 0.08)',
                             borderRadius: '12px',
                             padding: '6px 14px',
                             flexShrink: 0,
@@ -256,7 +258,7 @@ Deno.serve(async (req) => {
                               props: {
                                 style: {
                                   display: 'flex',
-                                  fontSize: '18px',
+                                  fontSize: '17px',
                                   fontWeight: '800',
                                   color: colorScheme.text,
                                 },
@@ -273,7 +275,7 @@ Deno.serve(async (req) => {
             },
           },
 
-          // Call to Action Banner at bottom
+          // Call to Action Banner at bottom (on purple background)
           {
             type: 'div',
             props: {
@@ -294,7 +296,7 @@ Deno.serve(async (req) => {
                       alignItems: 'center',
                       justifyContent: 'center',
                       width: '100%',
-                      backgroundColor: '#A3E635',
+                      backgroundColor: '#FFFFFF',
                       borderRadius: '18px',
                       padding: '16px 20px',
                       boxSizing: 'border-box',
@@ -308,7 +310,7 @@ Deno.serve(async (req) => {
                             display: 'flex',
                             fontSize: '16px',
                             fontWeight: '800',
-                            color: '#09090D',
+                            color: '#6D28D9',
                             letterSpacing: '0.5px',
                             textTransform: 'uppercase',
                           },
@@ -327,7 +329,8 @@ Deno.serve(async (req) => {
                       alignItems: 'center',
                       gap: '8px',
                       fontSize: '14px',
-                      color: '#64748B',
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      fontWeight: '500',
                     },
                     children: [
                       {

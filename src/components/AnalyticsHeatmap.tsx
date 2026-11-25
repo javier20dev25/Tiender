@@ -31,21 +31,21 @@ export const AnalyticsHeatmap: React.FC<AnalyticsHeatmapProps> = ({ data, startD
   const dayLabels = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
 
   return (
-    <div className="p-4 bg-zinc-950/50 rounded-2xl overflow-x-auto custom-scrollbar">
-      <div className="min-w-[600px]">
-        <div className="flex text-[9px] font-black text-zinc-600 mb-3 text-center uppercase tracking-tighter">
-          <div className="w-8">&nbsp;</div>
+    <div className="p-4 bg-slate-50 overflow-x-auto custom-scrollbar">
+      <div className="min-w-[560px]">
+        <div className="flex text-[9px] font-black text-slate-400 mb-2.5 text-center uppercase tracking-tighter">
+          <div className="w-7">&nbsp;</div>
           {hours.map(hour => (
-            <div key={hour} className="w-6 flex-shrink-0">{hour}</div>
+            <div key={hour} className="w-5 flex-shrink-0">{hour}</div>
           ))}
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           {days.map(day => {
             const dayOfWeek = day.getUTCDay();
             return (
               <div key={day.toISOString()} className="flex items-center gap-1.5">
-                <div className="w-8 text-[10px] font-bold text-zinc-500 text-center">
+                <div className="w-7 text-[10px] font-bold text-slate-500 text-center">
                   {dayLabels[dayOfWeek]}
                 </div>
                 <div className="flex gap-1">
@@ -58,29 +58,29 @@ export const AnalyticsHeatmap: React.FC<AnalyticsHeatmapProps> = ({ data, startD
                     const visits = cellData?.visits || 0;
                     const addsToCart = cellData?.adds_to_cart || 0;
 
-                    const opacity = visits > 0 ? 0.1 + (visits / maxVisits) * 0.9 : 0;
+                    const opacity = visits > 0 ? 0.2 + (visits / maxVisits) * 0.8 : 0;
 
                     return (
                       <div
                         key={key}
-                        className="w-6 h-6 rounded-md transition-all duration-300 relative group cursor-crosshair"
+                        className="w-5 h-5 rounded-md transition-all duration-200 relative group cursor-pointer"
                         style={{
-                          backgroundColor: visits > 0 ? `rgba(255, 77, 77, ${opacity})` : 'rgba(255, 255, 255, 0.03)',
-                          border: addsToCart > 0 ? '2px solid #00F0FF' : 'none',
-                          boxShadow: addsToCart > 0 ? '0 0 10px rgba(0, 240, 255, 0.3)' : 'none'
+                          backgroundColor: visits > 0 ? `rgba(244, 63, 94, ${opacity})` : 'rgba(226, 232, 240, 0.7)',
+                          border: addsToCart > 0 ? '2px solid #0284c7' : 'none',
+                          boxShadow: addsToCart > 0 ? '0 0 6px rgba(2, 132, 199, 0.35)' : 'none'
                         }}
                       >
                         {/* Tooltip */}
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-zinc-900 border border-white/10 rounded-xl text-[10px] font-bold text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl">
-                          <p className="text-zinc-500 mb-1">{cellDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-[10px] font-bold text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl">
+                          <p className="text-slate-400 mb-1">{cellDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
                           <div className="flex flex-col gap-0.5">
                             <span className="flex items-center gap-1.5">
-                              <div className="w-1.5 h-1.5 rounded-full bg-brand-pink"></div>
+                              <div className="w-1.5 h-1.5 rounded-full bg-rose-400"></div>
                               {visits} Visitas
                             </span>
                             <span className="flex items-center gap-1.5">
-                              <div className="w-1.5 h-1.5 rounded-full bg-brand-cyan"></div>
-                              {addsToCart} Interés
+                              <div className="w-1.5 h-1.5 rounded-full bg-sky-400"></div>
+                              {addsToCart} Carrito
                             </span>
                           </div>
                         </div>

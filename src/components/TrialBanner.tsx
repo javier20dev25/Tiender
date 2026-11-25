@@ -39,12 +39,12 @@ const TrialBanner: React.FC = () => {
                         ) : (
                             <Clock className="w-4 h-4 text-brand-pink" />
                         )}
-                        <p className={`text-[11px] font-bold uppercase tracking-wider ${isLastDays ? 'text-red-500' : 'text-zinc-400'
+                        <p className={`text-[11px] font-bold uppercase tracking-wider ${isLastDays ? 'text-red-600' : 'text-slate-600'
                             }`}>
                             {diffDays === 0 ? (
-                                <span>¡Tu prueba gratuita termina <span className="text-white italic">hoy</span>!</span>
+                                <span>¡Tu prueba gratuita termina <span className="text-slate-900 font-extrabold italic">hoy</span>!</span>
                             ) : (
-                                <span>Quedan <span className="text-white italic">{diffDays} días</span> de prueba gratuita para tu plan <span className="text-white italic capitalize">{store.plan_type}</span></span>
+                                <span>Quedan <span className="text-slate-900 font-extrabold italic">{diffDays} días</span> de prueba gratuita para tu plan <span className="text-slate-900 font-extrabold italic capitalize">{store.plan_type}</span></span>
                             )}
                         </p>
                     </div>

@@ -40,8 +40,8 @@ export const WeeklyAnalytics: React.FC<WeeklyAnalyticsProps> = ({
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <div className="w-8 h-8 border-2 border-brand-cyan/30 border-t-brand-cyan rounded-full animate-spin mb-3"></div>
-        <p className="text-zinc-500 text-sm font-medium">Sincronizando datos...</p>
+        <div className="w-8 h-8 border-2 border-violet-200 border-t-violet-600 rounded-full animate-spin mb-3"></div>
+        <p className="text-slate-500 text-sm font-medium">Sincronizando datos...</p>
       </div>
     );
   }
@@ -51,46 +51,52 @@ export const WeeklyAnalytics: React.FC<WeeklyAnalyticsProps> = ({
     : '0.0';
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       {/* Mini Stats Summary */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="p-4 rounded-2xl bg-zinc-800/50 border border-white/5">
-          <div className="flex items-center gap-2 mb-1 text-zinc-500">
-            <TrendingUp className="w-3.5 h-3.5" />
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70">
+          <div className="flex items-center gap-2 mb-1 text-slate-500">
+            <TrendingUp className="w-3.5 h-3.5 text-violet-600" />
             <span className="text-[10px] font-bold uppercase tracking-widest">Conversión</span>
           </div>
-          <div className="text-2xl font-black text-brand-neon">{conversionRate}%</div>
+          <div className="text-2xl font-black text-violet-700">{conversionRate}%</div>
         </div>
-        <div className="p-4 rounded-2xl bg-zinc-800/50 border border-white/5">
-          <div className="flex items-center gap-2 mb-1 text-zinc-500">
-            <Calendar className="w-3.5 h-3.5" />
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70">
+          <div className="flex items-center gap-2 mb-1 text-slate-500">
+            <Calendar className="w-3.5 h-3.5 text-slate-600" />
             <span className="text-[10px] font-bold uppercase tracking-widest">Ciclo</span>
           </div>
-          <div className="text-lg font-bold text-white leading-none mt-1">7 Días</div>
+          <div className="text-lg font-bold text-slate-800 leading-none mt-1">7 Días</div>
         </div>
       </div>
 
       {/* Heatmap Section */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-            <Info className="w-3.5 h-3.5" />
+          <h4 className="text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center gap-2">
+            <Info className="w-3.5 h-3.5 text-slate-500" />
             Flujo Horario
           </h4>
-          <div className="flex items-center gap-3 text-[10px] font-medium text-zinc-500">
-            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-brand-pink/40"></div> Visitas</div>
-            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-brand-cyan border border-brand-cyan"></div> Carrito</div>
+          <div className="flex items-center gap-3 text-[10px] font-medium text-slate-500">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded bg-rose-400"></div>
+              <span>Visitas</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded bg-sky-50 border-2 border-sky-500"></div>
+              <span>Carrito</span>
+            </div>
           </div>
         </div>
-        <div className="rounded-[25px] bg-brand-dark/50 overflow-hidden">
+        <div className="rounded-2xl overflow-hidden border border-slate-200/70">
           <AnalyticsHeatmap data={heatmapData} startDate={startDate} />
         </div>
       </div>
 
-      {/* Top Products Table (Simplified for Sidebar/Dashboard vibe) */}
-      <div className="space-y-4">
-        <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-          <Package className="w-3.5 h-3.5" />
+      {/* Top Products Table */}
+      <div className="space-y-3">
+        <h4 className="text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center gap-2">
+          <Package className="w-3.5 h-3.5 text-slate-500" />
           Rendimiento por Producto
         </h4>
         <div className="space-y-2">
@@ -99,24 +105,26 @@ export const WeeklyAnalytics: React.FC<WeeklyAnalyticsProps> = ({
               <motion.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: idx * 0.1 }}
+                transition={{ delay: idx * 0.08 }}
                 key={product.id}
-                className="flex items-center gap-3 p-2 rounded-2xl bg-zinc-800/30 border border-white/5"
+                className="flex items-center gap-3 p-2.5 rounded-2xl bg-slate-50 border border-slate-200/70 hover:bg-slate-100/70 transition-colors"
               >
-                <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm flex-shrink-0">
+                <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm flex-shrink-0 bg-slate-100 border border-slate-200">
                   <img src={product.image_url || 'https://placehold.co/50x50'} alt="" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-grow min-w-0">
-                  <p className="text-xs font-bold text-white truncate">{product.title}</p>
+                  <p className="text-xs font-bold text-slate-800 truncate">{product.title}</p>
                 </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-pink/10 text-brand-pink border border-brand-pink/10">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 border border-rose-200/60">
                   <ShoppingCart className="w-3 h-3" />
                   <span className="text-[10px] font-black">{product.total_added_to_cart}</span>
                 </div>
               </motion.div>
             ))
           ) : (
-            <div className="text-center py-6 text-[10px] font-medium text-zinc-600 italic">No hay datos de productos aún.</div>
+            <div className="text-center py-6 text-xs font-medium text-slate-400 italic bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+              No hay datos de productos aún.
+            </div>
           )}
         </div>
       </div>
